@@ -2,43 +2,48 @@
 
 Image-based Displacement Calculation (IDC) implementation in python.
 
+# BASIC USAGE:
+Create an instance:
+```
+v = pydic.pyIDC('video.cih')
+```
+Set the points where displacements will be determined. In this step the method of calculation is specified.
 
-# STRUCTURE OF THE CLASSES:
-- pyIDC
-    - load_video
-	- _images
-	- _info
-	- get_displacements(points, method)
-	    - Call appropriate method (DigitalImageCorrelation)
+If `points` is given, these are the ones used:
+```
+p = np.array([[0, 1], [1, 1], [2, 1]]) # example of points
+v.set_points(points=p, method='simplified_optical_flow')
+```
+If `points` is **not** given, the `get_points` method is triggered:
+```
+v.set_points(method='simplified_optical_flow')
+```
+After points are set, displacements can be calculated (using method, set in `set_points`):
+```
+displacements = v.get_displacements()
+```
 
-- IDCMethods
-	- Common functions
+# DEVELOPER GUIDELINES:
+* Add _name_of_method.py with class that inherits after `IDCMethods`
+* This class must have methods:
+	* `calculate_displacements` with attribute `displacements`
+	* `get_points` (static method)
+	* `show_points` (static method)
+* In `pyIDC`'s `set_points`, `show_points` and `get_displacements` add new method of calculation
 
-- DigitalImageCorrelation(IDCMethods)
-	- Calculation with DIC
-	- __init__ returns displacements
-
-- SimplifiedOpticalFlow(IDCMethods)
-	- Calculation with SOF
-	- __init__ returns displacements
 
 # FILE STRUCTURE:
 - pyidc
 	- pyidc
 	    - __init__.py
 	    - pyidc.py
-	    - idc_tools.py
 	    - idc_methods.py
-	    - _digital_image_correlation.py
 	    - _simplified_optical_flow.py
+	    - _digital_image_correlation.py
 	    - ⋮
 	- setup.py
 	- README.rst
 	- LICENSE.txt
 	- ⋮
 
-# BASIC USAGE:
-```
-v = pydic.pydic(‘video.cih’)
-displacements = v.get_displacements(points, method=’DIC’)
-```
+
