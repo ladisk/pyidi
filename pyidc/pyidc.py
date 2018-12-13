@@ -7,6 +7,11 @@ class pyIDC:
     def __init__(self, cih_file):
         self.cih_file = cih_file
 
+        self.avaliable_methods = {
+            'simplified_optical_flow': SimplifiedOpticalFlow,
+            'sof': SimplifiedOpticalFlow,
+        }
+
         self.mraw, self.info = self.load_video()
 
     def set_points(self, points=None, method='simplified_optical_flow', **kwargs):
@@ -15,30 +20,29 @@ class pyIDC:
         The method of displacement calculation must be specified here.
         If `points` is None, a method is called to help the user determine the points.
         """
-        self.method = method
+        if method in self.avaliable_methods.keys():
+            self.method = self.avaliable_methods[method]
+        else:
+            self.method = method
+
         if points is None:
-            if self.method == 'simplified_optical_flow':
-                self.points = SimplifiedOpticalFlow.get_points(self, **kwargs)
-            # elif method == '':
-            #     self.points = 
+            self.method.get_points(self, **kwargs) # get_points sets the attribute video.points
         else:
             self.points = points
 
     def show_points(self):
         """Show selected points on image.
         """
-        if self.method == 'simplified_optical_flow':
-            SimplifiedOpticalFlow.show_points(self)
-        # elif method == '':
-            # pass
+        fig, ax = plt.subplots(figsize=(15, 5))
+        ax.imshow(self.mraw[0].astype(float), cmap='gray')
+        ax.scatter(self.points[:, 1], self.points[:, 0], marker='.', color='r')
+        plt.grid(False)
+        plt.show()
 
     def get_displacements(self, **kwargs):
         """Calculate the displacements based on chosen method.
         """
-        if self.method == 'simplified_optical_flow':
-            self.method_object = SimplifiedOpticalFlow(self, **kwargs)
-        # elif method == '':
-        #     self.method = 
+        self.method_object = self.method(self, **kwargs)
 
         self.method_object.calculate_displacements(self)
         return self.method_object.displacements

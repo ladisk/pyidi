@@ -27,9 +27,8 @@ displacements = v.get_displacements()
 * Add _name_of_method.py with class that inherits after `IDCMethods`
 * This class must have methods:
 	* `calculate_displacements` with attribute `displacements`
-	* `get_points` (static method)
-	* `show_points` (static method)
-* In `pyIDC`'s `set_points`, `show_points` and `get_displacements` add new method of calculation
+	* `get_points` (static method - sets attribute video.points)
+* In `pyIDC` add a new method of calculation in `avaliable_methods` dictionary.
 
 
 # FILE STRUCTURE:

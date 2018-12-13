@@ -11,20 +11,21 @@ class SimplifiedOpticalFlow(IDCMethods):
     def __init__(self, video, **kwargs):
         """
         :param video: 'parent' object
-        :param kwargs: - subset_size
-                       - pixel_shift
-                       - contert_from_px
         """
         options = {
             'subset_size': 3,
             'pixel_shift': False,
             'convert_from_px': 1,
+            'mraw_range': 'all',
+            'mean_n_neighbours': 0,
         }
         options.update(kwargs)
 
         self.subset_size = options['subset_size']
         self.pixel_shift = options['pixel_shift']
         self.convert_from_px = options['convert_from_px']
+        self.mraw_range = options['mraw_range']
+        self.mean_n_neighbours = options['mean_n_neighbours']
 
         self.reference_image, self.gradient_0, self.gradient_1, self.gradient_magnitude = self.reference(
             video.mraw[:100], self.subset_size)
@@ -34,25 +35,56 @@ class SimplifiedOpticalFlow(IDCMethods):
     def calculate_displacements(self, video):
         self.displacements = np.zeros((video.N, self.indices.shape[0]))
         latest_displacements = 0
+
+        if video.direction == 0:
+            gradient_in_direction = np.copy(self.gradient_0)
+        elif video.direction == 1:
+            gradient_in_direction = np.copy(self.gradient_0)
+
         signs = np.sign(
-            self.gradient_0[self.indices[:, 0], self.indices[:, 1]])
+            gradient_in_direction[self.indices[:, 0], self.indices[:, 1]])
 
         direction_correction = np.abs(
-            self.gradient_0[self.indices[:, 0], self.indices[:, 1]] / self.gradient_magnitude[self.indices[:, 0], self.indices[:, 1]])
+            gradient_in_direction[self.indices[:, 0], self.indices[:, 1]] / self.gradient_magnitude[self.indices[:, 0], self.indices[:, 1]])
 
-        for i, image in enumerate(tqdm(video.mraw[:5000])):
+        # limited range of mraw can be observed
+        if self.mraw_range != 'all':
+            limited_mraw = video.mraw[self.mraw_range[0]: self.mraw_range[1]]
+        else:
+            limited_mraw = video.mraw
+
+        # calculating the displacements
+        for i, image in enumerate(tqdm(limited_mraw)):
             image_filtered = self.subset(image, self.subset_size)
-            
+
             image_roi = image_filtered[self.indices[:, 0], self.indices[:, 1]]
-            
+
             latest_displacements = signs * \
                 (self.reference_image[self.indices[:, 0], self.indices[:, 1]] - image_roi) / \
                 self.gradient_magnitude[self.indices[:, 0], self.indices[:, 1]]
-            
-            self.displacements[i, :] = direction_correction * latest_displacements * self.convert_from_px
+
+            self.displacements[i, :] = direction_correction * \
+                latest_displacements * self.convert_from_px
+        
+        # average the neighbouring points
+        if isinstance(self.mean_n_neighbours, int):
+            if self.mean_n_neighbours > 0:
+                self.displacement_averaging()
+
+    def displacement_averaging(self):
+        """Calculate the average of displacements.
+        """
+        print('Averaging...')
+        reshaped = self.displacements.reshape(
+            self.displacements.shape[0], 
+            self.displacements.shape[1]//(self.mean_n_neighbours), 
+            self.mean_n_neighbours)
+
+        self.displacements = np.mean(reshaped, axis=2)
+        print('Finished!')
 
     def pixel_shift(self):
-        """Pixel shifting implementation
+        """Pixel shifting implementation.
         """
         pass
 
@@ -90,30 +122,21 @@ class SimplifiedOpticalFlow(IDCMethods):
                 subset_image.append(subset_roll)
 
         return np.sum(np.asarray(subset_image), axis=0)
-    
+
     @staticmethod
     def get_points(video, **kwargs):
         """Determine the points.
         """
         options = {
             'n': 1,
+            'direction': 0  # direction of observed movement (0 - vertical)
         }
 
         options.update(kwargs)
 
-        polygon = PickPoints(video, n=options['n'])
+        video.direction = options['direction']
 
-    @staticmethod
-    def show_points(video):
-        """Showing the observed pixels on the image.
-        """
-        fig, ax = plt.subplots(figsize=(15, 5))
-        ax.imshow(video.mraw[0].astype(float), cmap='gray')
-        ax.scatter(video.points[:, 1], video.points[:, 0], marker='.')
-        if hasattr(video, 'polygon'):
-            ax.add_patch(patches.Polygon(video.polygon, closed=True, color='w', fill=False, lw=1))
-        plt.grid(False)
-        plt.show()
+        polygon = PickPoints(video, n=options['n'])
 
 
 class PickPoints:
@@ -121,22 +144,26 @@ class PickPoints:
 
     Select the points with highest gradient in vertical direction.
     """
+
     def __init__(self, video, n):
         image = video.mraw[0]
         gradient_0, gradient_1 = np.gradient(image.astype(float))
+        self.direction = video.direction
 
         self.corners = []
         fig, ax = plt.subplots(figsize=(15, 5))
         ax.grid(False)
         ax.imshow(image, cmap='gray')
-        self.polygon = [[],[]]
+        self.polygon = [[], []]
         line, = ax.plot(self.polygon[0], self.polygon[1], 'r.-')
+
         def onclick(event):
-            if event.button == 2: #če smo pritisnili gumb 2 (srednji na miški)
+            if event.button == 2:
                 if event.xdata is not None and event.ydata is not None:
                     self.polygon[0].append(int(np.round(event.xdata)))
                     self.polygon[1].append(int(np.round(event.ydata)))
-                    print(f'x: {np.round(event.xdata):5.0f}, y: {np.round(event.ydata):5.0f}')
+                    print(
+                        f'x: {np.round(event.xdata):5.0f}, y: {np.round(event.ydata):5.0f}')
             elif event.button == 3:
                 print('Deleted the last point...')
                 del self.polygon[0][-1]
@@ -149,21 +176,23 @@ class PickPoints:
         def handle_close(event):
             """On closing."""
             try:
-                clear_output() # pobrišemo prejšnje printe iz trenutne celice
+                clear_output()  # Delete previous prints
             except:
                 pass
             self.polygon = np.asarray(self.polygon).T
             for i, point in enumerate(self.polygon):
                 print(f'{i+1}. point: x ={point[0]:5.0f}, y ={point[1]:5.0f}')
-            
-            # Add points to video object
-            video.points = self.observed_pixels(gradient_0, n=n, points=self.polygon)
-            video.polygon = self.polygon
-            
-        cid = fig.canvas.mpl_connect('button_press_event', onclick)
-        fig.canvas.mpl_connect('close_event', handle_close) #ko zapremo figuro
 
-    def observed_pixels(self, gradient_0, n, points):
+            # Add points to video object
+            video.points = self.observed_pixels(
+                gradient_0, gradient_1, n=n, points=self.polygon, direction=video.direction)
+            video.polygon = self.polygon
+
+        cid = fig.canvas.mpl_connect('button_press_event', onclick)
+        fig.canvas.mpl_connect(
+            'close_event', handle_close)  # on closing the figure
+
+    def observed_pixels(self, gradient_0, gradient_1, n, points, direction=0):
         """Determine the observed pixels.
 
         Chooses the pixels with the highest gradient in 0 direction. Makes it suitable for beam like structures.
@@ -174,7 +203,10 @@ class PickPoints:
         :param points: Polygon points. Pixels are chosen only from within the polygon.
         :return: Indices of observed pixels
         """
-        g = np.copy(gradient_0)
+        if direction == 0:
+            g = np.copy(gradient_0)
+        elif direction == 1:
+            g = np.copy(gradient_1)
         indices = []
         inside = []
         x = points[:, 0]
@@ -187,19 +219,21 @@ class PickPoints:
         for x_ in range(x_low, x_high):
             for y_ in range(y_low, y_high):
                 if self.inside_polygon(x_, y_, points) is True:
-                    inside.append([y_, x_]) # Change indices (height, width)
-        inside = np.asarray(inside) # Indices of points in the polygon
+                    inside.append([y_, x_])  # Change indices (height, width)
+        inside = np.asarray(inside)  # Indices of points in the polygon
 
         g_inside = np.zeros_like(g)
         g_inside[inside[:, 0], inside[:, 1]] = g[inside[:, 0], inside[:, 1]]
 
         # Pixels with heighest gradient in 0 direction.
         for i in range(x_low, x_high):
-            max_grad_ind = np.argsort(np.abs(g_inside[y_low:y_high, i]))[-n:] # n highest gradients
+            max_grad_ind = np.argsort(
+                np.abs(g_inside[y_low:y_high, i]))[-n:]  # n highest gradients
             if any(self.inside_polygon(i, g_, points) is not True for g_ in max_grad_ind+y_low):
                 continue
 
-            indices.append([[g_, i] for g_ in max_grad_ind+y_low]) # y_low has to be compensated for
+            # y_low has to be compensated for
+            indices.append([[g_, i] for g_ in max_grad_ind+y_low])
 
         return np.asarray(indices).reshape(n*(x_low-x_high), 2)
 
@@ -218,7 +252,8 @@ class PickPoints:
                 if y <= max(p1y, p2y):
                     if x <= max(p1x, p2x):
                         if p1y != p2y:
-                            xinters = (y - p1y) * (p2x - p1x) / (p2y - p1y) + p1x
+                            xinters = (y - p1y) * (p2x - p1x) / \
+                                (p2y - p1y) + p1x
                         if p1x == p2x or x <= xinters:
                             inside = not inside
             p1x, p1y = p2x, p2y
