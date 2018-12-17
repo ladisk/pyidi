@@ -36,15 +36,12 @@ class SimplifiedOpticalFlow(IDCMethods):
         self.displacements = np.zeros((video.N, self.indices.shape[0]))
         latest_displacements = 0
 
-        if video.direction == 0:
-            gradient_in_direction = np.copy(self.gradient_0)
-        elif video.direction == 1:
-            gradient_in_direction = np.copy(self.gradient_0)
+        gradient_in_direction = np.copy(self.gradient_0)
 
         signs = np.sign(
             gradient_in_direction[self.indices[:, 0], self.indices[:, 1]])
 
-        direction_correction = np.abs(
+        self.direction_correction = np.abs(
             gradient_in_direction[self.indices[:, 0], self.indices[:, 1]] / self.gradient_magnitude[self.indices[:, 0], self.indices[:, 1]])
 
         # limited range of mraw can be observed
@@ -57,14 +54,19 @@ class SimplifiedOpticalFlow(IDCMethods):
         for i, image in enumerate(tqdm(limited_mraw)):
             image_filtered = self.subset(image, self.subset_size)
 
-            image_roi = image_filtered[self.indices[:, 0], self.indices[:, 1]]
+            if self.pixel_shift:
+                print('Pixel-shifting is not yet implemented.')
+                break
 
-            latest_displacements = signs * \
-                (self.reference_image[self.indices[:, 0], self.indices[:, 1]] - image_roi) / \
-                self.gradient_magnitude[self.indices[:, 0], self.indices[:, 1]]
+            else:
+                self.image_roi = image_filtered[self.indices[:, 0], self.indices[:, 1]]
 
-            self.displacements[i, :] = direction_correction * \
-                latest_displacements * self.convert_from_px
+                self.latest_displacements = signs * \
+                    (self.reference_image[self.indices[:, 0], self.indices[:, 1]] - self.image_roi) / \
+                    self.gradient_magnitude[self.indices[:, 0], self.indices[:, 1]]
+
+            self.displacements[i, :] = self.direction_correction * \
+                self.latest_displacements * self.convert_from_px
         
         # average the neighbouring points
         if isinstance(self.mean_n_neighbours, int):
@@ -129,12 +131,9 @@ class SimplifiedOpticalFlow(IDCMethods):
         """
         options = {
             'n': 1,
-            'direction': 0  # direction of observed movement (0 - vertical)
         }
 
         options.update(kwargs)
-
-        video.direction = options['direction']
 
         polygon = PickPoints(video, n=options['n'])
 
@@ -148,7 +147,6 @@ class PickPoints:
     def __init__(self, video, n):
         image = video.mraw[0]
         gradient_0, gradient_1 = np.gradient(image.astype(float))
-        self.direction = video.direction
 
         self.corners = []
         fig, ax = plt.subplots(figsize=(15, 5))
@@ -185,28 +183,25 @@ class PickPoints:
 
             # Add points to video object
             video.points = self.observed_pixels(
-                gradient_0, gradient_1, n=n, points=self.polygon, direction=video.direction)
+                gradient_0, gradient_1, n=n, points=self.polygon)
             video.polygon = self.polygon
 
         cid = fig.canvas.mpl_connect('button_press_event', onclick)
         fig.canvas.mpl_connect(
             'close_event', handle_close)  # on closing the figure
 
-    def observed_pixels(self, gradient_0, gradient_1, n, points, direction=0):
+    def observed_pixels(self, gradient_0, gradient_1, n, points):
         """Determine the observed pixels.
 
         Chooses the pixels with the highest gradient in 0 direction. Makes it suitable for beam like structures.
         Can be used to choose multiple points on one image width.
 
-        :param gradient_0: Gradient in 0 direction. Used to determine observed pixels.
         :param n: Number of points on every image width. 
         :param points: Polygon points. Pixels are chosen only from within the polygon.
         :return: Indices of observed pixels
         """
-        if direction == 0:
-            g = np.copy(gradient_0)
-        elif direction == 1:
-            g = np.copy(gradient_1)
+
+        g = np.copy(gradient_0)
         indices = []
         inside = []
         x = points[:, 0]
@@ -258,3 +253,5 @@ class PickPoints:
                             inside = not inside
             p1x, p1y = p2x, p2y
         return inside
+
+
