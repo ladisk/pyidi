@@ -18,6 +18,7 @@ class SimplifiedOpticalFlow(IDCMethods):
             'convert_from_px': 1,
             'mraw_range': 'all',
             'mean_n_neighbours': 0,
+            'zero_shift': False,
         }
         options.update(kwargs)
 
@@ -26,6 +27,7 @@ class SimplifiedOpticalFlow(IDCMethods):
         self.convert_from_px = options['convert_from_px']
         self.mraw_range = options['mraw_range']
         self.mean_n_neighbours = options['mean_n_neighbours']
+        self.zero_shift = options['zero_shift']
 
         self.reference_image, self.gradient_0, self.gradient_1, self.gradient_magnitude = self.reference(
             video.mraw[:100], self.subset_size)
@@ -72,6 +74,11 @@ class SimplifiedOpticalFlow(IDCMethods):
         if isinstance(self.mean_n_neighbours, int):
             if self.mean_n_neighbours > 0:
                 self.displacement_averaging()
+        
+        # shift the mean of the signal to zero
+        if isinstance(self.zero_shift, bool):
+            if self.zero_shift is True:
+                self.displacements -= np.mean(self.displacements, axis=0)
 
     def displacement_averaging(self):
         """Calculate the average of displacements.
