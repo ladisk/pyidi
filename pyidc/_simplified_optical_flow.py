@@ -8,9 +8,23 @@ from .idc_methods import *
 
 
 class SimplifiedOpticalFlow(IDCMethods):
+    """Displacmenet computation based on Simplified Optical Flow method [1].
+
+    Literature:
+        [1] Javh, J., Slavič, J., & Boltežar, M. (2017). The subpixel resolution 
+            of optical-flow-based modal analysis. Mechanical Systems 
+            and Signal Processing, 88, 89–99.
+        [2] Lucas, B. D., & Kanade, T. (1981). An Iterative Image Registration 
+            Technique with an Application to Stereo Vision. In Proceedings of 
+            the 7th International Joint Conference on Artificial 
+            Intelligence - Volume 2 (pp. 674–679). San Francisco, CA, 
+            USA: Morgan Kaufmann Publishers Inc.
+    """
+
     def __init__(self, video, **kwargs):
         """
         :param video: 'parent' object
+        :param kwargs: keyword arguments (defined in `options`)
         """
         options = {
             'subset_size': 3,
@@ -61,20 +75,22 @@ class SimplifiedOpticalFlow(IDCMethods):
                 break
 
             else:
-                self.image_roi = image_filtered[self.indices[:, 0], self.indices[:, 1]]
+                self.image_roi = image_filtered[self.indices[:,
+                                                             0], self.indices[:, 1]]
 
                 self.latest_displacements = signs * \
                     (self.reference_image[self.indices[:, 0], self.indices[:, 1]] - self.image_roi) / \
-                    self.gradient_magnitude[self.indices[:, 0], self.indices[:, 1]]
+                    self.gradient_magnitude[self.indices[:,
+                                                         0], self.indices[:, 1]]
 
             self.displacements[i, :] = self.direction_correction * \
                 self.latest_displacements * self.convert_from_px
-        
+
         # average the neighbouring points
         if isinstance(self.mean_n_neighbours, int):
             if self.mean_n_neighbours > 0:
                 self.displacement_averaging()
-        
+
         # shift the mean of the signal to zero
         if isinstance(self.zero_shift, bool):
             if self.zero_shift is True:
@@ -85,8 +101,8 @@ class SimplifiedOpticalFlow(IDCMethods):
         """
         print('Averaging...')
         reshaped = self.displacements.reshape(
-            self.displacements.shape[0], 
-            self.displacements.shape[1]//(self.mean_n_neighbours), 
+            self.displacements.shape[0],
+            self.displacements.shape[1]//(self.mean_n_neighbours),
             self.mean_n_neighbours)
 
         self.displacements = np.mean(reshaped, axis=2)
@@ -260,5 +276,3 @@ class PickPoints:
                             inside = not inside
             p1x, p1y = p2x, p2y
         return inside
-
-
