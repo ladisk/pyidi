@@ -15,7 +15,8 @@ setup(name='pyIDI',
       author_email='janko.slavic@fs.uni-lj.si, ladisk@gmail.com',
       description='Python Image Displacement Identification.',
       url='https://github.com/ladisk/pyIDI',
-      py_modules=['pyIDI'],
+      packages=['pyidi'],
       long_description=desc,
-      install_requires=['numpy', 'tqdm', 'matplotlib']
+      install_requires=['numpy>=1.15.4', 'tqdm', 'matplotlib>=3.0.0'],
+      keywords='computer vision dic gradient-based image identification',
       )

@@ -1,8 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
-from tqdm import tqdm_notebook as tqdm
-from IPython.display import clear_output
+from tqdm import tqdm
 
 from .idi_methods import *
 
@@ -196,10 +195,6 @@ class PickPoints:
 
         def handle_close(event):
             """On closing."""
-            try:
-                clear_output()  # Delete previous prints
-            except:
-                pass
             self.polygon = np.asarray(self.polygon).T
             for i, point in enumerate(self.polygon):
                 print(f'{i+1}. point: x ={point[0]:5.0f}, y ={point[1]:5.0f}')

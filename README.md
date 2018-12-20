@@ -1,13 +1,12 @@
-# pyidc
-
-Image-based Displacement Calculation (IDC) implementation in python.
+# pyidi
+Image-based Displacement Identification (IDI) implementation in python.
 
 # BASIC USAGE:
 Create an instance:
 ```
-v = pydic.pyIDC('video.cih')
+v = pydic.pyIDI('video.cih')
 ```
-Set the points where displacements will be determined. In this step the method of calculation is specified.
+Set the points where displacements will be determined. In this step the method of identification is specified.
 
 If `points` is given, these are the ones used:
 ```
@@ -24,25 +23,8 @@ displacements = v.get_displacements()
 ```
 
 # DEVELOPER GUIDELINES:
-* Add _name_of_method.py with class that inherits after `IDCMethods`
+* Add _name_of_method.py with class that inherits after `IDIMethods`
 * This class must have methods:
 	* `calculate_displacements` with attribute `displacements`
 	* `get_points` (static method - sets attribute video.points)
-* In `pyIDC` add a new method of calculation in `avaliable_methods` dictionary.
-
-
-# FILE STRUCTURE:
-- pyidc
-	- pyidc
-	    - __init__.py
-	    - pyidc.py
-	    - idc_methods.py
-	    - _simplified_optical_flow.py
-	    - _digital_image_correlation.py
-	    - ⋮
-	- setup.py
-	- README.rst
-	- LICENSE.txt
-	- ⋮
-
-
+* In `pyIDI` add a new method of identification in `avaliable_methods` dictionary.
