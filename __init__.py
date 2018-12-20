@@ -1,1 +1,1 @@
-from .pyidc import *
+from .pyidi import *
