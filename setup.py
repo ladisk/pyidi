@@ -9,12 +9,12 @@ For the showcase see: https://github.com/ladisk/pyIDI/blob/master/pyIDI%20Showca
 """
 
 from setuptools import setup
-setup(name='pyIDI',
-      version='0.10',
+setup(name='pyidi',
+      version='0.11',
       author='Klemen Zaletelj, Domen Gorjup, Janko Slavič',
       author_email='janko.slavic@fs.uni-lj.si, ladisk@gmail.com',
       description='Python Image Displacement Identification.',
-      url='https://github.com/ladisk/pyIDI',
+      url='https://github.com/ladisk/pyidi',
       packages=['pyidi'],
       long_description=desc,
       install_requires=['numpy>=1.15.4', 'tqdm', 'matplotlib>=3.0.0'],

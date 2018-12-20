@@ -3,6 +3,9 @@ import collections
 
 from ._simplified_optical_flow import *
 
+
+__version__ = '0.11'
+
 class pyIDI:
     def __init__(self, cih_file):
         self.cih_file = cih_file
