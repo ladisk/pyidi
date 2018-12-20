@@ -4,7 +4,7 @@ Image-based Displacement Identification (IDI) implementation in python.
 # BASIC USAGE:
 Create an instance:
 ```
-v = pydic.pyIDI('video.cih')
+v = pyidi.pyIDI('video.cih')
 ```
 Set the points where displacements will be determined. In this step the method of identification is specified.
 
