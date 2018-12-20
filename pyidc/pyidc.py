@@ -3,7 +3,7 @@ import collections
 
 from ._simplified_optical_flow import *
 
-class pyIDC:
+class pyIDI:
     def __init__(self, cih_file):
         self.cih_file = cih_file
 

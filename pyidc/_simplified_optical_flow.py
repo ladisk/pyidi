@@ -4,10 +4,10 @@ import matplotlib.patches as patches
 from tqdm import tqdm_notebook as tqdm
 from IPython.display import clear_output
 
-from .idc_methods import *
+from .idi_methods import *
 
 
-class SimplifiedOpticalFlow(IDCMethods):
+class SimplifiedOpticalFlow(IDIMethods):
     """Displacmenet computation based on Simplified Optical Flow method [1].
 
     Literature:
