@@ -22,6 +22,11 @@ class GradientBasedOpticalFlow(IDIMethods):
         options.update(kwargs)
 
         self.roi_size = options['roi_size']
+        if isinstance(self.roi_size, int):
+            self.roi_size = (self.roi_size, self.roi_size)
+        if np.sum(self.roi_size) < 40:
+            print('Selected region of interest is small. For better results select larger ROI size.')
+
         self.kernel = options['kernel']
         self.prefilter_gauss = options['prefilter_gauss']
 
@@ -53,41 +58,28 @@ class GradientBasedOpticalFlow(IDIMethods):
         :rtype: numpy array
         """
         roi_reference = np.asarray(roi_reference)
-        F = self._get_roi_image(video.mraw[0], roi_reference)  # First ROI image, used for the initial guess.
-
-        Fx, Fy = self.get_gradient(F)
-        Fx2 = np.sum(Fx**2)
-        Fy2 = np.sum(Fy**2)
-        FxFy = np.sum(Fx * Fy)
-        FxF = np.sum(Fx * F)
-        FyF = np.sum(Fy * F)
-
-        mean_F = np.mean(F)
-        Fi = F - mean_F
-        denominator = np.sum(Fi**2)
+        F = self._get_roi_image(video.mraw[0], roi_reference).astype(float)  # First ROI image, used for the initial guess.
 
         results = np.array([[0, 0]], dtype=np.float64)          # Initialize the results array.
         p_ref = roi_reference                                   # Initialize a reference for all following calculations.
 
         for i in range(1, len(video.mraw)):                         # First image was loaded already.
             d_int = np.round(results[-1])                       # Last calculated integer translation.
-            G = self._get_roi_image(video.mraw[i], p_ref + d_int) # Current image at integer location.
-            mean_G = np.mean(G)
-            Gi = G - mean_G
-            
-            # Optimization step:
-            numerator = np.sum(Fi * Gi)
-            a_opt = numerator / denominator
-            b_opt = mean_G - mean_F * a_opt
+            G = self._get_roi_image(video.mraw[i], p_ref + d_int).astype(float) # Current image at integer location.
+            Gx, Gy = self.get_gradient(G)
 
-            Gb = G - b_opt
-            A = np.array([[Fx2, FxFy],
-                        [FxFy, Fx2]]) * a_opt
-            b = np.array([-a_opt*FxF + np.sum(Fx*Gb), 
-                        -a_opt*FyF + np.sum(Fy*Gb)])
+            Gx2 = np.sum(Gx**2)
+            Gy2 = np.sum(Gy**2)
+            GxGy = np.sum(Gx * Gy)
+
+            A = np.array([[Gx2, GxGy],
+                        [GxGy, Gy2]])
+            
+            b = np.array([np.sum(Gx*(F - G)), np.sum(Gy*(F-G))])
+
             d = np.linalg.solve(A, b) # dx, dy
 
-            results = np.vstack((results, d_int+d[::-1])) # y, x
+            results = np.vstack((results, d_int-d[::-1])) # y, x
         return results
 
     
@@ -112,10 +104,10 @@ class GradientBasedOpticalFlow(IDIMethods):
         '''
         if self.kernel == 'central_fd':
             if self.prefilter_gauss:
-                #x_kernel = np.array([[-0.14086616, -0.20863973,  0.,  0.20863973,  0.14086616]])
+                # x_kernel = np.array([[-0.14086616, -0.20863973,  0.,  0.20863973,  0.14086616]])
                 x_kernel = np.array([[-0.44637882,  0.        ,  0.44637882]])
             else:
-                #x_kernel = np.array([[1, -8, 0, 8, -1]], dtype=float)/12
+                # x_kernel = np.array([[1, -8, 0, 8, -1]], dtype=float)/12
                 x_kernel = np.array([[-0.5,  0. ,  0.5]])
             y_kernel = np.transpose(x_kernel)
         elif not isinstance(self.kernel, str) and len(self.kernel) == 2 and self.kernel[0].shape[1] >= 3 and self.kernel[1].shape[0] >= 3:
@@ -124,8 +116,8 @@ class GradientBasedOpticalFlow(IDIMethods):
         else:
             raise ValueError('Please input valid gradient convolution kernels!')
 
-        g_x = scipy.signal.convolve2d(image, x_kernel, mode='same')
-        g_y = scipy.signal.convolve2d(image, y_kernel, mode='same')
+        g_x = scipy.signal.convolve2d(image.astype(float), x_kernel, mode='same')
+        g_y = scipy.signal.convolve2d(image.astype(float), y_kernel, mode='same')
         return np.array([g_x, g_y], dtype=np.float64)
     
     @staticmethod
