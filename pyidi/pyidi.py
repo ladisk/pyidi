@@ -12,7 +12,7 @@ class pyIDI:
             'simplified_optical_flow': SimplifiedOpticalFlow,
             'sof': SimplifiedOpticalFlow,
             'gradient_based_optical_flow': GradientBasedOpticalFlow,
-            'gbof': GradientBasedOpticalFlow,
+            'gb': GradientBasedOpticalFlow,
         }
 
         self.mraw, self.info = self.load_video()

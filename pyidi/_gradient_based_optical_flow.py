@@ -2,17 +2,135 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 from tqdm import tqdm
+import scipy.signal
 
 from .idi_methods import *
 
 class GradientBasedOpticalFlow(IDIMethods):
 
     def __init__(self, video, **kwargs):
-        pass
+        """
+        :param video: 'parent' object
+        :param kwargs: keyword arguments (defined in `options`)
+        """
+        options = {
+            'roi_size': (9, 9),
+            'kernel': 'central_fd', # Tuple of convolution kernels in x and y direction. Central finite difference used if left blank.
+            'prefilter_gauss': True, # If True, the gradient kernel is first filtered with a Gauss filter to eliminate noise.
+        }
+        
+        options.update(kwargs)
+
+        self.roi_size = options['roi_size']
+        self.kernel = options['kernel']
+        self.prefilter_gauss = options['prefilter_gauss']
 
     def calculate_displacements(self, video):
-        pass
+        """Get the displacements of all selected points/roi_references.
+
+        Calls a `get_simple_translation` method that calculates a displacement
+        for one point only.
+        
+        :param video: parent object
+        :type video: object
+        """
+        self.displacements = []
+        for roi_ref in tqdm(video.points):
+            single_roi_translation = self.get_simple_translation(video, roi_ref)
+            self.displacements.append(single_roi_translation)
+        self.displacements = np.asarray(self.displacements)
+    	
+    def get_simple_translation(self, video, roi_reference):
+        """Onle point/roi_reference caluclation.
+
+        Calculates a displacement for one point/roi_reference only.
+        
+        :param video: parent object
+        :type video: object
+        :param roi_reference: Center vertex of RIO
+        :type roi_reference: tuple
+        :return: Displacements in y and x direction
+        :rtype: numpy array
+        """
+        roi_reference = np.asarray(roi_reference)
+        F = self._get_roi_image(video.mraw[0], roi_reference)  # First ROI image, used for the initial guess.
+
+        Fx, Fy = self.get_gradient(F)
+        Fx2 = np.sum(Fx**2)
+        Fy2 = np.sum(Fy**2)
+        FxFy = np.sum(Fx * Fy)
+        FxF = np.sum(Fx * F)
+        FyF = np.sum(Fy * F)
+
+        mean_F = np.mean(F)
+        Fi = F - mean_F
+        denominator = np.sum(Fi**2)
+
+        results = np.array([[0, 0]], dtype=np.float64)          # Initialize the results array.
+        p_ref = roi_reference                                   # Initialize a reference for all following calculations.
+
+        for i in range(1, len(video.mraw)):                         # First image was loaded already.
+            d_int = np.round(results[-1])                       # Last calculated integer translation.
+            G = self._get_roi_image(video.mraw[i], p_ref + d_int) # Current image at integer location.
+            mean_G = np.mean(G)
+            Gi = G - mean_G
+            
+            # Optimization step:
+            numerator = np.sum(Fi * Gi)
+            a_opt = numerator / denominator
+            b_opt = mean_G - mean_F * a_opt
+
+            Gb = G - b_opt
+            A = np.array([[Fx2, FxFy],
+                        [FxFy, Fx2]]) * a_opt
+            b = np.array([-a_opt*FxF + np.sum(Fx*Gb), 
+                        -a_opt*FyF + np.sum(Fy*Gb)])
+            d = np.linalg.solve(A, b) # dx, dy
+
+            results = np.vstack((results, d_int+d[::-1])) # y, x
+        return results
+
+    
+    def _get_roi_image(self, target, roi_reference):
+        '''Get 2D ROI array from target image, ROI position and size.
+        
+        :param target: Target iamge.
+        :param roi_reference: Center coordinate point of ROI, (y, x).
+        :return: ROI image (2D numpy array).
+        '''
+        ul = (np.array(roi_reference) - np.array(self.roi_size)//2).astype(int)  # Center vertex of ROI
+        m, n = target.shape
+        ul = np.clip(np.array(ul), 0, [m-self.roi_size[0]-1, n-self.roi_size[1]-1])
+        roi_image = target[ul[0]:ul[0]+self.roi_size[0], ul[1]:ul[1]+self.roi_size[1]]
+        return roi_image
+
+    def get_gradient(self, image):
+        '''Computes gradient of inputimage, using the specified convoluton kernels.
+        
+        :param image: Image to compute gradient of.
+        :return: [gx, gy] (numpy array): Gradient images with respect to x and y direction.
+        '''
+        if self.kernel == 'central_fd':
+            if self.prefilter_gauss:
+                #x_kernel = np.array([[-0.14086616, -0.20863973,  0.,  0.20863973,  0.14086616]])
+                x_kernel = np.array([[-0.44637882,  0.        ,  0.44637882]])
+            else:
+                #x_kernel = np.array([[1, -8, 0, 8, -1]], dtype=float)/12
+                x_kernel = np.array([[-0.5,  0. ,  0.5]])
+            y_kernel = np.transpose(x_kernel)
+        elif not isinstance(self.kernel, str) and len(self.kernel) == 2 and self.kernel[0].shape[1] >= 3 and self.kernel[1].shape[0] >= 3:
+            x_kernel = self.kernel[0]
+            y_kernel = self.kernel[1]
+        else:
+            raise ValueError('Please input valid gradient convolution kernels!')
+
+        g_x = scipy.signal.convolve2d(image, x_kernel, mode='same')
+        g_y = scipy.signal.convolve2d(image, y_kernel, mode='same')
+        return np.array([g_x, g_y], dtype=np.float64)
     
     @staticmethod
     def get_points(video, **kwargs):
+        print('Point/ROI selection is not yet implemented!')
         pass
+
+    
