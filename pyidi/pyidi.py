@@ -2,6 +2,7 @@ import numpy as np
 import collections
 
 from ._simplified_optical_flow import *
+from ._gradient_based_optical_flow import *
 
 class pyIDI:
     def __init__(self, cih_file):
@@ -10,6 +11,8 @@ class pyIDI:
         self.avaliable_methods = {
             'simplified_optical_flow': SimplifiedOpticalFlow,
             'sof': SimplifiedOpticalFlow,
+            'gradient_based_optical_flow': GradientBasedOpticalFlow,
+            'gbof': GradientBasedOpticalFlow,
         }
 
         self.mraw, self.info = self.load_video()
