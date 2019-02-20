@@ -48,16 +48,21 @@ class SimplifiedOpticalFlow(IDIMethods):
         self.indices = video.points
 
     def calculate_displacements(self, video):
-        self.displacements = np.zeros((video.N, self.indices.shape[0]))
+        self.displacements = np.zeros((self.indices.shape[0], video.N, 2))
         latest_displacements = 0
 
-        gradient_in_direction = np.copy(self.gradient_0)
+        gradient_0_direction = np.copy(self.gradient_0)
+        gradient_1_direction = np.copy(self.gradient_1)
 
-        signs = np.sign(
-            gradient_in_direction[self.indices[:, 0], self.indices[:, 1]])
+        signs_0 = np.sign(
+            gradient_0_direction[self.indices[:, 0], self.indices[:, 1]])
+        signs_1 = np.sign(
+            gradient_1_direction[self.indices[:, 0], self.indices[:, 1]])
 
-        self.direction_correction = np.abs(
-            gradient_in_direction[self.indices[:, 0], self.indices[:, 1]] / self.gradient_magnitude[self.indices[:, 0], self.indices[:, 1]])
+        self.direction_correction_0 = np.abs(
+            gradient_0_direction[self.indices[:, 0], self.indices[:, 1]] / self.gradient_magnitude[self.indices[:, 0], self.indices[:, 1]])
+        self.direction_correction_1 = np.abs(
+            gradient_1_direction[self.indices[:, 0], self.indices[:, 1]] / self.gradient_magnitude[self.indices[:, 0], self.indices[:, 1]])
 
         # limited range of mraw can be observed
         if self.mraw_range != 'all':
@@ -74,15 +79,14 @@ class SimplifiedOpticalFlow(IDIMethods):
                 break
 
             else:
-                self.image_roi = image_filtered[self.indices[:,
-                                                             0], self.indices[:, 1]]
+                self.image_roi = image_filtered[self.indices[:, 0], self.indices[:, 1]]
 
-                self.latest_displacements = signs * \
-                    (self.reference_image[self.indices[:, 0], self.indices[:, 1]] - self.image_roi) / \
-                    self.gradient_magnitude[self.indices[:,
-                                                         0], self.indices[:, 1]]
+                self.latest_displacements = (self.reference_image[self.indices[:, 0], self.indices[:, 1]] - self.image_roi) / \
+                    self.gradient_magnitude[self.indices[:, 0], self.indices[:, 1]]
 
-            self.displacements[i, :] = self.direction_correction * \
+            self.displacements[:, i, 0] = signs_0 * self.direction_correction_0 * \
+                self.latest_displacements * self.convert_from_px
+            self.displacements[:, i, 1] = signs_1 * self.direction_correction_1 * \
                 self.latest_displacements * self.convert_from_px
 
         # average the neighbouring points

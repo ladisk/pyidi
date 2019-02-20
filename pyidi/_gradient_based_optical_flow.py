@@ -25,7 +25,7 @@ class GradientBasedOpticalFlow(IDIMethods):
         if isinstance(self.roi_size, int):
             self.roi_size = (self.roi_size, self.roi_size)
         if np.sum(self.roi_size) < 40:
-            print('Selected region of interest is small. For better results select larger ROI size.')
+            print('WARNING: Selected region of interest is small. For better results select larger ROI size.')
 
         self.kernel = options['kernel']
         self.prefilter_gauss = options['prefilter_gauss']
