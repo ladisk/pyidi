@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
+from scipy.signal import convolve2d
 from tqdm import tqdm
 
 from .idi_method import IDIMethod
@@ -26,13 +27,14 @@ class SimplifiedOpticalFlow(IDIMethod):
         :param kwargs: keyword arguments (defined in `options`)
         """
         options = {
-            'subset_size': 3,
-            'pixel_shift': False,
-            'convert_from_px': 1,
-            'mraw_range': 'all',
-            'mean_n_neighbours': 0,
-            'zero_shift': False,
-            'progress_bar': True,
+            'subset_size': 3,               # Size of the smoothing filter
+            'pixel_shift': False,           # Pixel shifting (not implemented!)
+            'convert_from_px': 1,           # Convert from pixels to other unit
+            'mraw_range': 'all',            # Range of frames for displacement identification
+            'mean_n_neighbours': 0,         # Average the neigbouring pixel displacements
+            'zero_shift': False,            # Shift the mean of the signal to zero
+            'progress_bar': True,           # Show progress bar
+            'reference_range': (0, 100),    # Averaging range for reference image
         }
         options.update(kwargs)
 
@@ -43,9 +45,10 @@ class SimplifiedOpticalFlow(IDIMethod):
         self.mean_n_neighbours = options['mean_n_neighbours']
         self.zero_shift = options['zero_shift']
         self.progress_bar = options['progress_bar']
+        reference_range = options['reference_range']
 
         self.reference_image, self.gradient_0, self.gradient_1, self.gradient_magnitude = self.reference(
-            video.mraw[:100], self.subset_size)
+            video.mraw[reference_range[0]: reference_range[1]], self.subset_size)
 
         self.indices = video.points
 
@@ -105,18 +108,20 @@ class SimplifiedOpticalFlow(IDIMethod):
         # shift the mean of the signal to zero
         if isinstance(self.zero_shift, bool):
             if self.zero_shift is True:
-                self.displacements -= np.mean(self.displacements, axis=0)
+                m = np.mean(self.displacements, axis=1)
+                self.displacements[:, :, 0] -= m[:, 0:1]
+                self.displacements[:, :, 1] -= m[:, 1:]
 
     def displacement_averaging(self):
         """Calculate the average of displacements.
         """
         print('Averaging...')
-        reshaped = self.displacements.reshape(
-            self.displacements.shape[0],
-            self.displacements.shape[1]//(self.mean_n_neighbours),
-            self.mean_n_neighbours)
-
-        self.displacements = np.mean(reshaped, axis=2)
+        kernel = np.ones((self.mean_n_neighbours, 1)) / self.mean_n_neighbours
+        
+        d_0 = convolve2d(self.displacements[:, :, 0], kernel, mode='valid')[::self.mean_n_neighbours]
+        d_1 = convolve2d(self.displacements[:, :, 1], kernel, mode='valid')[::self.mean_n_neighbours]
+        
+        self.displacements = np.concatenate((d_0[:, :, np.newaxis], d_1[:, :, np.newaxis]), axis=2)
         print('Finished!')
 
     def pixel_shift(self):
