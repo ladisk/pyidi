@@ -1,9 +1,7 @@
 import numpy as np
 import collections
 
-from ._simplified_optical_flow import *
-from ._gradient_based_optical_flow import *
-
+from .methods import SimplifiedOpticalFlow, GradientBasedOpticalFlow, TranslationDIC
 
 __version__ = '0.11'
 
@@ -19,6 +17,20 @@ class pyIDI:
         }
 
         self.mraw, self.info = self.load_video()
+
+
+    def set_method(self, method):
+        """
+        Set displacement identification method on video.
+
+        :param method: the method to be used for displacement identification.
+        :type method: IDIMethod or str
+        """
+        if method in self.avaliable_methods.keys():
+            self.method = self.avaliable_methods[method]
+        else:
+            self.method = method
+
 
     def set_points(self, points=None, method='simplified_optical_flow', **kwargs):
         """Set points that will be used to calculate displacements.
@@ -36,6 +48,7 @@ class pyIDI:
         else:
             self.points = points
 
+
     def show_points(self):
         """Show selected points on image.
         """
@@ -45,6 +58,7 @@ class pyIDI:
         plt.grid(False)
         plt.show()
 
+
     def get_displacements(self, **kwargs):
         """Calculate the displacements based on chosen method.
         """
@@ -52,6 +66,7 @@ class pyIDI:
 
         self.method_object.calculate_displacements(self)
         return self.method_object.displacements
+
 
     def load_video(self):
         """Get video and it's information.
@@ -70,6 +85,16 @@ class pyIDI:
         filename = '.'.join(self.cih_file.split('.')[:-1])
         mraw = np.memmap(filename+'.mraw', dtype=self.bit_dtype, mode='r', shape=(self.N, self.image_height, self.image_width))
         return mraw, info
+
+
+    def close_video(self):
+        """
+        Close the .mraw video memmap.
+        """
+        if hasattr(self, 'mraw'):
+            self.mraw._mmap.close()
+            del self.mraw
+
     
     def get_CIH_info(self):
         """Get info from .cih file in path, return it as dict.
