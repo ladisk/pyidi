@@ -61,23 +61,36 @@ class TranslationDIC(IDIMethod):
         roi_reference = np.asarray(roi_reference)
         F = self._get_roi_image(video.mraw[0], roi_reference).astype(float)  # First ROI image, used for the initial guess.
 
-        results = np.array([[0, 0]], dtype=np.float64)          # Initialize the results array.
-        p_ref = roi_reference                                   # Initialize a reference for all following calculations.
+        Fx, Fy = self.get_gradient(F)
+        Fx2 = np.sum(Fx**2)
+        Fy2 = np.sum(Fy**2)
+        FxFy = np.sum(Fx * Fy)
+        FxF = np.sum(Fx * F)
+        FyF = np.sum(Fy * F)
 
-        for i in range(1, len(video.mraw)):                         # First image was loaded already.
-            d_int = np.round(results[-1])                       # Last calculated integer translation.
-            G = self._get_roi_image(video.mraw[i], p_ref + d_int).astype(float) # Current image at integer location.
-            Gx, Gy = self.get_gradient(G)
+        mean_F = np.mean(F)
+        Fi = F - mean_F
+        denominator = np.sum(Fi**2)
 
-            Gx2 = np.sum(Gx**2)
-            Gy2 = np.sum(Gy**2)
-            GxGy = np.sum(Gx * Gy)
+        results = np.array([[0, 0]], dtype=np.float64)      
+        p_ref = roi_reference                                
 
-            A = np.array([[Gx2, GxGy],
-                        [GxGy, Gy2]])
+        for i in range(1, len(video.mraw)):
+            d_int = np.round(results[-1])
+            G = self._get_roi_image(p_ref + d_int, self.roi_size)
+            mean_G = np.mean(G)
+            Gi = G - mean_G
             
-            b = np.array([np.sum(Gx*(F - G)), np.sum(Gy*(F-G))])
+            # Optimization step:
+            numerator = np.sum(Fi * Gi)
+            a_opt = numerator / denominator
+            b_opt = mean_G - mean_F * a_opt
 
+            Gb = G - b_opt
+            A = np.array([[Fx2, FxFy],
+                        [FxFy, Fx2]]) * a_opt
+            b = np.array([-a_opt*FxF + np.sum(Fx*Gb), 
+                        -a_opt*FyF + np.sum(Fy*Gb)])
             d = np.linalg.solve(A, b) # dx, dy
 
             results = np.vstack((results, d_int-d[::-1])) # y, x
