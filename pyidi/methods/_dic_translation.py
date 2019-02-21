@@ -21,16 +21,13 @@ class TranslationDIC(IDIMethod):
         
         options.update(kwargs)
 
-        self.roi_size = options['roi_size']
-        if isinstance(self.roi_size, int):
-            self.roi_size = (self.roi_size, self.roi_size)
-        if np.sum(self.roi_size) < 40:
-            print('WARNING: Selected region of interest is small. For better results select larger ROI size.')
-
+        roi_size = options['roi_size']
+        self._set_roi_size(roi_size)
         self.kernel = options['kernel']
         self.prefilter_gauss = options['prefilter_gauss']
 
-    def calculate_displacements(self, video):
+
+    def calculate_displacements(self, video, roi_size=None):
         """Get the displacements of all selected points/roi_references.
 
         Calls a `get_simple_translation` method that calculates a displacement
@@ -39,12 +36,16 @@ class TranslationDIC(IDIMethod):
         :param video: parent object
         :type video: object
         """
+        if roi_size is not None:
+            self._set_roi_size(roi_size)
+
         self.displacements = []
         for roi_ref in tqdm(video.points):
             single_roi_translation = self.get_simple_translation(video, roi_ref)
             self.displacements.append(single_roi_translation)
         self.displacements = np.asarray(self.displacements)
     	
+
     def get_simple_translation(self, video, roi_reference):
         """Onle point/roi_reference caluclation.
 
@@ -96,6 +97,7 @@ class TranslationDIC(IDIMethod):
         roi_image = target[ul[0]:ul[0]+self.roi_size[0], ul[1]:ul[1]+self.roi_size[1]]
         return roi_image
 
+
     def get_gradient(self, image):
         '''Computes gradient of inputimage, using the specified convoluton kernels.
         
@@ -119,10 +121,43 @@ class TranslationDIC(IDIMethod):
         g_x = scipy.signal.convolve2d(image.astype(float), x_kernel, mode='same')
         g_y = scipy.signal.convolve2d(image.astype(float), y_kernel, mode='same')
         return np.array([g_x, g_y], dtype=np.float64)
-    
+
+    def show_points(self, video, roi_size=None):
+        """
+        Show points to be analyzed, together with ROI borders.
+        """
+
+        if roi_size is None:
+            if hasattr(self, 'roi_size'):
+                roi_size = self.roi_size
+
+        fig, ax = plt.subplots(figsize=(15, 5))
+        ax.imshow(video.mraw[0].astype(float), cmap='gray')
+        ax.scatter(video.points[:, 1], video.points[:, 0], marker='.', color='r')
+
+        if roi_size is not None:
+            for point in video.points:
+                roi_border = patches.Rectangle((point - self.roi_size//2)[::-1], self.roi_size[1], self.roi_size[0], 
+                    linewidth=1, edgecolor='r', facecolor='none')
+                ax.add_patch(roi_border)
+
+        plt.grid(False)
+        plt.show()
+
+
+    def _set_roi_size(self, roi_size):
+        """
+        Set ROI size for displacement identification.
+        """
+        if isinstance(roi_size, int):
+            self.roi_size = np.array([roi_size, roi_size], dtype=int)
+        else:
+            self.roi_size = np.array(roi_size, dtype=int)
+        if np.sum(self.roi_size) < 40:
+            print('WARNING: Selected region of interest is small. For better results select larger ROI size.')
+
+
     @staticmethod
     def get_points(video, **kwargs):
         print('Point/ROI selection is not yet implemented!')
-        pass
-
-    
+        pass    

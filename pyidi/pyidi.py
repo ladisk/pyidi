@@ -1,5 +1,6 @@
 import numpy as np
 import collections
+import matplotlib.pyplot as plt
 
 from .methods import SimplifiedOpticalFlow, GradientBasedOpticalFlow, TranslationDIC
 
@@ -19,7 +20,7 @@ class pyIDI:
         self.mraw, self.info = self.load_video()
 
 
-    def set_method(self, method):
+    def set_method(self, method, **kwargs):
         """
         Set displacement identification method on video.
 
@@ -27,24 +28,23 @@ class pyIDI:
         :type method: IDIMethod or str
         """
         if method in self.avaliable_methods.keys():
-            self.method = self.avaliable_methods[method]
+            self.method = self.avaliable_methods[method](self, **kwargs)
         else:
-            self.method = method
+            self.method = method(self, **kwargs)
 
 
     def set_points(self, points=None, method='simplified_optical_flow', **kwargs):
-        """Set points that will be used to calculate displacements.
-        
-        The method of displacement calculation must be specified here.
-        If `points` is None, a method is called to help the user determine the points.
         """
-        if method in self.avaliable_methods.keys():
-            self.method = self.avaliable_methods[method]
-        else:
-            self.method = method
+        Set points that will be used to calculate displacements.
+        If `points` is None and a `method` has aready been set on this `pyIDI` instance, 
+        the `method` object's `get_point` is used to get method-appropriate points.
+        """
 
         if points is None:
-            self.method.get_points(self, **kwargs) # get_points sets the attribute video.points
+            if hasattr(self, 'method'):
+                self.method.get_points(self, **kwargs) # get_points sets the attribute video.points
+            else:
+                raise ValueError("Invalid arguments. Please input points, or set the IDI method first.")
         else:
             self.points = points
 
@@ -52,20 +52,25 @@ class pyIDI:
     def show_points(self):
         """Show selected points on image.
         """
-        fig, ax = plt.subplots(figsize=(15, 5))
-        ax.imshow(self.mraw[0].astype(float), cmap='gray')
-        ax.scatter(self.points[:, 1], self.points[:, 0], marker='.', color='r')
-        plt.grid(False)
-        plt.show()
+        if hasattr(self, 'method') and hasattr(self.method, 'show_points'):
+            self.method.show_points(self)
+
+        else:
+            fig, ax = plt.subplots(figsize=(15, 5))
+            ax.imshow(self.mraw[0].astype(float), cmap='gray')
+            ax.scatter(self.points[:, 1], self.points[:, 0], marker='.', color='r')
+            plt.grid(False)
+            plt.show()
 
 
     def get_displacements(self, **kwargs):
         """Calculate the displacements based on chosen method.
         """
-        self.method_object = self.method(self, **kwargs)
-
-        self.method_object.calculate_displacements(self)
-        return self.method_object.displacements
+        if hasattr(self, 'method'):
+            self.method.calculate_displacements(self, **kwargs)
+            return self.method.displacements
+        else:
+            raise ValueError('IDI method has not yet been set. Please call `set_method()` first.')
 
 
     def load_video(self):
