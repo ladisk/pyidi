@@ -32,6 +32,7 @@ class SimplifiedOpticalFlow(IDIMethod):
             'mraw_range': 'all',
             'mean_n_neighbours': 0,
             'zero_shift': False,
+            'progress_bar': True,
         }
         options.update(kwargs)
 
@@ -41,6 +42,7 @@ class SimplifiedOpticalFlow(IDIMethod):
         self.mraw_range = options['mraw_range']
         self.mean_n_neighbours = options['mean_n_neighbours']
         self.zero_shift = options['zero_shift']
+        self.progress_bar = options['progress_bar']
 
         self.reference_image, self.gradient_0, self.gradient_1, self.gradient_magnitude = self.reference(
             video.mraw[:100], self.subset_size)
@@ -70,8 +72,14 @@ class SimplifiedOpticalFlow(IDIMethod):
         else:
             limited_mraw = video.mraw
 
+        # Progress bar
+        if self.progress_bar:
+            p_bar = tqdm
+        else:
+            p_bar = lambda x: x # empty function
+
         # calculating the displacements
-        for i, image in enumerate(tqdm(limited_mraw)):
+        for i, image in enumerate(p_bar(limited_mraw)):
             image_filtered = self.subset(image, self.subset_size)
 
             if self.pixel_shift:
