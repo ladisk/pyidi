@@ -50,24 +50,25 @@ class SimplifiedOpticalFlow(IDIMethod):
         self.reference_image, self.gradient_0, self.gradient_1, self.gradient_magnitude = self.reference(
             video.mraw[reference_range[0]: reference_range[1]], self.subset_size)
 
-        self.indices = video.points
-
     def calculate_displacements(self, video):
-        self.displacements = np.zeros((self.indices.shape[0], video.N, 2))
+        if not hasattr(video, 'points'):
+            raise Exception('Please set points for analysis!')
+
+        self.displacements = np.zeros((video.points.shape[0], video.N, 2))
         latest_displacements = 0
 
         gradient_0_direction = np.copy(self.gradient_0)
         gradient_1_direction = np.copy(self.gradient_1)
 
         signs_0 = np.sign(
-            gradient_0_direction[self.indices[:, 0], self.indices[:, 1]])
+            gradient_0_direction[video.points[:, 0], video.points[:, 1]])
         signs_1 = np.sign(
-            gradient_1_direction[self.indices[:, 0], self.indices[:, 1]])
+            gradient_1_direction[video.points[:, 0], video.points[:, 1]])
 
         self.direction_correction_0 = np.abs(
-            gradient_0_direction[self.indices[:, 0], self.indices[:, 1]] / self.gradient_magnitude[self.indices[:, 0], self.indices[:, 1]])
+            gradient_0_direction[video.points[:, 0], video.points[:, 1]] / self.gradient_magnitude[video.points[:, 0], video.points[:, 1]])
         self.direction_correction_1 = np.abs(
-            gradient_1_direction[self.indices[:, 0], self.indices[:, 1]] / self.gradient_magnitude[self.indices[:, 0], self.indices[:, 1]])
+            gradient_1_direction[video.points[:, 0], video.points[:, 1]] / self.gradient_magnitude[video.points[:, 0], video.points[:, 1]])
 
         # limited range of mraw can be observed
         if self.mraw_range != 'all':
@@ -90,10 +91,10 @@ class SimplifiedOpticalFlow(IDIMethod):
                 break
 
             else:
-                self.image_roi = image_filtered[self.indices[:, 0], self.indices[:, 1]]
+                self.image_roi = image_filtered[video.points[:, 0], video.points[:, 1]]
 
-                self.latest_displacements = (self.reference_image[self.indices[:, 0], self.indices[:, 1]] - self.image_roi) / \
-                    self.gradient_magnitude[self.indices[:, 0], self.indices[:, 1]]
+                self.latest_displacements = (self.reference_image[video.points[:, 0], video.points[:, 1]] - self.image_roi) / \
+                    self.gradient_magnitude[video.points[:, 0], video.points[:, 1]]
 
             self.displacements[:, i, 0] = signs_0 * self.direction_correction_0 * \
                 self.latest_displacements * self.convert_from_px

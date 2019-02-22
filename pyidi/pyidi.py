@@ -33,7 +33,7 @@ class pyIDI:
             self.method = method(self, **kwargs)
 
 
-    def set_points(self, points=None, method='simplified_optical_flow', **kwargs):
+    def set_points(self, points=None, method=None, **kwargs):
         """
         Set points that will be used to calculate displacements.
         If `points` is None and a `method` has aready been set on this `pyIDI` instance, 
@@ -41,10 +41,12 @@ class pyIDI:
         """
 
         if points is None:
-            if hasattr(self, 'method'):
-                self.method.get_points(self, **kwargs) # get_points sets the attribute video.points
-            else:
-                raise ValueError("Invalid arguments. Please input points, or set the IDI method first.")
+            if not hasattr(self, 'method'):
+                if method is not None:
+                    self.set_method(method)
+                else:
+                    raise ValueError("Invalid arguments. Please input points, or set the IDI method first.")
+            self.method.get_points(self, **kwargs) # get_points sets the attribute video.points                
         else:
             self.points = points
 
