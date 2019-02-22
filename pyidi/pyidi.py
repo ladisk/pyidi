@@ -2,7 +2,7 @@ import numpy as np
 import collections
 import matplotlib.pyplot as plt
 
-from .methods import SimplifiedOpticalFlow, GradientBasedOpticalFlow, TranslationDIC
+from .methods import SimplifiedOpticalFlow, GradientBasedOpticalFlow
 
 __version__ = '0.12'
 
