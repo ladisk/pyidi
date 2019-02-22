@@ -86,6 +86,8 @@ class pyIDI:
             self.bit_dtype = np.uint16
         elif bit == '8':
             self.bit_dtype = np.uint8
+        else:
+            raise Exception(f'Unknown bit depth: {bit}. Bit depth of the video must be either 8 or 16.')
 
         filename = '.'.join(self.cih_file.split('.')[:-1])
         mraw = np.memmap(filename+'.mraw', dtype=self.bit_dtype, mode='r', shape=(self.N, self.image_height, self.image_width))
