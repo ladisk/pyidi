@@ -10,13 +10,13 @@ For the showcase see: https://github.com/ladisk/pyIDI/blob/master/pyIDI%20Showca
 
 from setuptools import setup
 setup(name='pyidi',
-      version='0.12',
+      version='0.14',
       author='Klemen Zaletelj, Domen Gorjup, Janko Slavič',
       author_email='janko.slavic@fs.uni-lj.si, ladisk@gmail.com',
       description='Python Image Displacement Identification.',
       url='https://github.com/ladisk/pyidi',
-      packages=['pyidi'],
+      packages=['pyidi', 'pyidi.methods'],
       long_description=desc,
-      install_requires=['numpy>=1.15.4', 'tqdm', 'matplotlib>=3.0.0'],
+      install_requires=['numpy>=1.15.4', 'scipy>=1.1.0', 'tqdm', 'matplotlib>=3.0.0'],
       keywords='computer vision dic gradient-based image identification',
       )

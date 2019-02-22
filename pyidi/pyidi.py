@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 
 from .methods import SimplifiedOpticalFlow, GradientBasedOpticalFlow
 
-__version__ = '0.12'
+__version__ = '0.14'
 
 class pyIDI:
     def __init__(self, cih_file):
