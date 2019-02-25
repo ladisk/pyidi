@@ -42,6 +42,10 @@ class pyIDI:
         Set points that will be used to calculate displacements.
         If `points` is None and a `method` has aready been set on this `pyIDI` instance, 
         the `method` object's `get_point` is used to get method-appropriate points.
+
+        kwargs:
+        ---
+        ---
         """
 
         if points is None:

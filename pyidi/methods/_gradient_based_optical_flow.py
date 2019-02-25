@@ -21,7 +21,7 @@ class GradientBasedOpticalFlow(IDIMethod):
         }
         
         # Change docstring (add kwargs documentation) in pyIDI.set_method
-        self.change_docstring(video, options)
+        self.change_docstring(video.set_method, options)
 
         # Check for valid kwargs
         self.check_kwargs(kwargs, options)

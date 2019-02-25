@@ -1,8 +1,13 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
+
 from scipy.signal import convolve2d
 from tqdm import tqdm
+import tkinter as tk
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
+from matplotlib.figure import Figure
+
 
 from .idi_method import IDIMethod
 
@@ -38,7 +43,7 @@ class SimplifiedOpticalFlow(IDIMethod):
         }
 
         # Change docstring (add kwargs documentation) in pyIDI.set_method
-        self.change_docstring(video, options)
+        self.change_docstring(video.set_method, options)
 
         # Check for valid kwargs
         self.check_kwargs(kwargs, options)
@@ -170,12 +175,23 @@ class SimplifiedOpticalFlow(IDIMethod):
         """Determine the points.
         """
         options = {
-            'n': 1,
+            'subset': (20, 20),
+            'axis': None,
         }
+        
+        # Change the docstring in `set_points` to show the options
+        docstring = video.set_points.__doc__.split('---')
+        docstring[1] = '- ' + '\n\t- '.join(options) + '\n\t'
+        video.set_points.__func__.__doc__ = '---\n\t'.join(docstring)
 
         options.update(kwargs)
 
-        polygon = PickPoints(video, n=options['n'])
+        if isinstance(options['subset'], int):
+            options['subset'] = 2*(options['subset'], )
+        elif type(options['subset']) not in [list, tuple]:
+            raise Exception(f'keyword argument "subset" must be int, list or tuple (not {type(options["subset"])})')
+
+        polygon = PickPoints(video, subset=options['subset'], axis=options['axis'])
 
 
 class PickPoints:
@@ -184,89 +200,117 @@ class PickPoints:
     Select the points with highest gradient in vertical direction.
     """
 
-    def __init__(self, video, n):
-        image = video.mraw[0]
-        gradient_0, gradient_1 = np.gradient(image.astype(float))
+    def __init__(self, video, subset, axis):
+        self.subset = subset
+        self.axis = axis
 
-        self.corners = []
-        fig, ax = plt.subplots(figsize=(15, 5))
+        image = video.mraw[0]
+        self.gradient_0, self.gradient_1 = np.gradient(image.astype(float))
+
+        root = tk.Tk() # Tkinter
+        root.title('Pick points') # Tkinter
+        fig = Figure(figsize=(15, 7)) # Tkinter
+        ax = fig.add_subplot(111) # Tkinter
         ax.grid(False)
         ax.imshow(image, cmap='gray')
+
         self.polygon = [[], []]
-        line, = ax.plot(self.polygon[0], self.polygon[1], 'r.-')
+        line, = ax.plot(self.polygon[1], self.polygon[0], 'r.-')
+
+        print('SHIFT + LEFT mouse button to pick a pole.\nRIGHT mouse button to erase the last pick.')
+
+        self.shift_is_held = False
+        def on_key_press(event):
+            """Function triggered on key press (shift)."""
+            if event.key == 'shift':
+                self.shift_is_held = True
+        
+        def on_key_release(event):
+            """Function triggered on key release (shift)."""
+            if event.key == 'shift':
+                self.shift_is_held = False
 
         def onclick(event):
-            if event.button == 2:
+            if event.button == 1 and self.shift_is_held:
                 if event.xdata is not None and event.ydata is not None:
-                    self.polygon[0].append(int(np.round(event.xdata)))
-                    self.polygon[1].append(int(np.round(event.ydata)))
+                    self.polygon[1].append(int(np.round(event.xdata)))
+                    self.polygon[0].append(int(np.round(event.ydata)))
                     print(
-                        f'x: {np.round(event.xdata):5.0f}, y: {np.round(event.ydata):5.0f}')
-            elif event.button == 3:
+                        f'y: {np.round(event.ydata):5.0f}, x: {np.round(event.xdata):5.0f}')
+            elif event.button == 3 and self.shift_is_held:
                 print('Deleted the last point...')
-                del self.polygon[0][-1]
                 del self.polygon[1][-1]
+                del self.polygon[0][-1]
 
-            line.set_xdata(self.polygon[0])
-            line.set_ydata(self.polygon[1])
+            line.set_xdata(self.polygon[1])
+            line.set_ydata(self.polygon[0])
             fig.canvas.draw()
 
         def handle_close(event):
             """On closing."""
             self.polygon = np.asarray(self.polygon).T
             for i, point in enumerate(self.polygon):
-                print(f'{i+1}. point: x ={point[0]:5.0f}, y ={point[1]:5.0f}')
+                print(f'{i+1}. point: x ={point[1]:5.0f}, y ={point[0]:5.0f}')
 
             # Add points to video object
-            video.points = self.observed_pixels(
-                gradient_0, gradient_1, n=n, points=self.polygon)
+            video.points = self.observed_pixels()
             video.polygon = self.polygon
 
-        cid = fig.canvas.mpl_connect('button_press_event', onclick)
-        fig.canvas.mpl_connect(
-            'close_event', handle_close)  # on closing the figure
+        canvas = FigureCanvasTkAgg(fig, root) # Tkinter
+        canvas.get_tk_widget().pack(side='top', fill='both', expand=1) # Tkinter
+        NavigationToolbar2Tk(canvas, root) # Tkinter
 
-    def observed_pixels(self, gradient_0, gradient_1, n, points):
-        """Determine the observed pixels.
+        # Connecting functions to event manager
+        fig.canvas.mpl_connect('key_press_event', on_key_press)
+        fig.canvas.mpl_connect('key_release_event', on_key_release)
+        fig.canvas.mpl_connect('button_press_event', onclick)
+        fig.canvas.mpl_connect('close_event', handle_close)  # on closing the figure
+        
+        root.mainloop()
 
-        Chooses the pixels with the highest gradient in 0 direction. Makes it suitable for beam like structures.
-        Can be used to choose multiple points on one image width.
+    def observed_pixels(self):
+        x = self.polygon[:, 1]
+        y = self.polygon[:, 0]
 
-        :param n: Number of points on every image width. 
-        :param points: Polygon points. Pixels are chosen only from within the polygon.
-        :return: Indices of observed pixels
-        """
-
-        g = np.copy(gradient_0)
-        indices = []
-        inside = []
-        x = points[:, 0]
-        y = points[:, 1]
+        _polygon = np.asarray([x, y]).T
 
         x_low = min(x)
         x_high = max(x)
         y_low = min(y)
         y_high = max(y)
+
+        # Get only the points in selected polygon
+        inside = []
         for x_ in range(x_low, x_high):
             for y_ in range(y_low, y_high):
-                if self.inside_polygon(x_, y_, points) is True:
+                if self.inside_polygon(x_, y_, _polygon) is True:
                     inside.append([y_, x_])  # Change indices (height, width)
         inside = np.asarray(inside)  # Indices of points in the polygon
 
-        g_inside = np.zeros_like(g)
-        g_inside[inside[:, 0], inside[:, 1]] = g[inside[:, 0], inside[:, 1]]
+        # Points outside the polygon have gradient of value 0
+        g0 = np.zeros_like(self.gradient_0)
+        g1 = np.zeros_like(self.gradient_1)
+        g0[inside[:, 0], inside[:, 1]] = self.gradient_0[inside[:, 0], inside[:, 1]]
+        g1[inside[:, 0], inside[:, 1]] = self.gradient_1[inside[:, 0], inside[:, 1]]
 
-        # Pixels with heighest gradient in 0 direction.
-        for i in range(x_low, x_high):
-            max_grad_ind = np.argsort(
-                np.abs(g_inside[y_low:y_high, i]))[-n:]  # n highest gradients
-            if any(self.inside_polygon(i, g_, points) is not True for g_ in max_grad_ind+y_low):
-                continue
+        if self.axis == 0:
+            g = g0
+        elif self.axis == 1:
+            g = g1
+        elif self.axis is None:
+            g = g0**2 + g1**2
+        else:
+            raise Exception(f'axis value {self.axis} is not valid. Please pick 0, 1 or None')
+        
+        indices = []
+        for i in range(y_low, y_high, self.subset[0]):
+            for j in range(x_low, x_high, self.subset[1]):
+                _g = g[i:i+self.subset[0], j:j+self.subset[1]]
+                _ = np.argmax(np.abs(_g))
+                ind = np.unravel_index(_, _g.shape)
+                indices.append([i+ind[0], j+ind[1]])
 
-            # y_low has to be compensated for
-            indices.append([[g_, i] for g_ in max_grad_ind+y_low])
-
-        return np.asarray(indices).reshape(n*(x_low-x_high), 2)
+        return np.asarray(indices)
 
     def inside_polygon(self, x, y, points):
         """Return True if a coordinate (x, y) is inside a polygon defined by
