@@ -18,13 +18,16 @@ class GradientBasedOpticalFlow(IDIMethod):
             'kernel': 'central_fd', # Tuple of convolution kernels in x and y direction. Central finite difference used if left blank.
             'prefilter_gauss': True, # If True, the gradient kernel is first filtered with a Gauss filter to eliminate noise.
         }
-        
-        options.update(kwargs)
 
-        roi_size = options['roi_size']
-        self._set_roi_size(roi_size)
-        self.kernel = options['kernel']
-        self.prefilter_gauss = options['prefilter_gauss']
+        # Check for valid kwargs
+        for kwarg in kwargs.keys():
+            if kwarg not in options.keys():
+                raise Exception(f'keyword argument "{kwarg}" is not one of the options for this method')
+
+        options.update(kwargs) # Update the options dict
+        self.__dict__.update(options) # Update the objects attributes
+
+        self._set_roi_size(self.roi_size)
 
 
     def calculate_displacements(self, video, roi_size=None):

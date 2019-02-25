@@ -36,19 +36,18 @@ class SimplifiedOpticalFlow(IDIMethod):
             'progress_bar': True,           # Show progress bar
             'reference_range': (0, 100),    # Averaging range for reference image
         }
-        options.update(kwargs)
 
-        self.subset_size = options['subset_size']
-        self.pixel_shift = options['pixel_shift']
-        self.convert_from_px = options['convert_from_px']
-        self.mraw_range = options['mraw_range']
-        self.mean_n_neighbours = options['mean_n_neighbours']
-        self.zero_shift = options['zero_shift']
-        self.progress_bar = options['progress_bar']
-        reference_range = options['reference_range']
+        # Check for valid kwargs
+        for kwarg in kwargs.keys():
+            if kwarg not in options.keys():
+                raise Exception(f'keyword argument "{kwarg}" is not one of the options for this method')
 
+        options.update(kwargs) # Update the options dict
+        self.__dict__.update(options) # Update the objects attributes
+
+        # Get reference image and gradients
         self.reference_image, self.gradient_0, self.gradient_1, self.gradient_magnitude = self.reference(
-            video.mraw[reference_range[0]: reference_range[1]], self.subset_size)
+            video.mraw[self.reference_range[0]: self.reference_range[1]], self.subset_size)
 
     def calculate_displacements(self, video):
         if not hasattr(video, 'points'):
