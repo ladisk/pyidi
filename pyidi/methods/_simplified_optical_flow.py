@@ -37,10 +37,11 @@ class SimplifiedOpticalFlow(IDIMethod):
             'reference_range': (0, 100),    # Averaging range for reference image
         }
 
+        # Change docstring (add kwargs documentation) in pyIDI.set_method
+        self.change_docstring(video, options)
+
         # Check for valid kwargs
-        for kwarg in kwargs.keys():
-            if kwarg not in options.keys():
-                raise Exception(f'keyword argument "{kwarg}" is not one of the options for this method')
+        self.check_kwargs(kwargs, options)
 
         options.update(kwargs) # Update the options dict
         self.__dict__.update(options) # Update the objects attributes

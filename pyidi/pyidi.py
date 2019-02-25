@@ -21,8 +21,12 @@ class pyIDI:
 
 
     def set_method(self, method, **kwargs):
-        """
-        Set displacement identification method on video.
+        """Set displacement identification method on video.
+
+        kwargs for the chosen method:
+        ---
+        Will be shown after the method is set.
+        ---
 
         :param method: the method to be used for displacement identification.
         :type method: IDIMethod or str

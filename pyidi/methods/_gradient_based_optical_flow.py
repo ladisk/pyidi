@@ -6,6 +6,7 @@ import scipy.signal
 
 from .idi_method import IDIMethod
 
+
 class GradientBasedOpticalFlow(IDIMethod):
 
     def __init__(self, video, **kwargs):
@@ -18,11 +19,12 @@ class GradientBasedOpticalFlow(IDIMethod):
             'kernel': 'central_fd', # Tuple of convolution kernels in x and y direction. Central finite difference used if left blank.
             'prefilter_gauss': True, # If True, the gradient kernel is first filtered with a Gauss filter to eliminate noise.
         }
+        
+        # Change docstring (add kwargs documentation) in pyIDI.set_method
+        self.change_docstring(video, options)
 
         # Check for valid kwargs
-        for kwarg in kwargs.keys():
-            if kwarg not in options.keys():
-                raise Exception(f'keyword argument "{kwarg}" is not one of the options for this method')
+        self.check_kwargs(kwargs, options)
 
         options.update(kwargs) # Update the options dict
         self.__dict__.update(options) # Update the objects attributes
