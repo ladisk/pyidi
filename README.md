@@ -11,13 +11,18 @@ Set the points where displacements will be determined. In this step the method o
 If `points` is given, these are the ones used:
 ```
 p = np.array([[0, 1], [1, 1], [2, 1]]) # example of points
-v.set_points(points=p, method='simplified_optical_flow')
+v.set_points(points=p)
 ```
-If `points` is **not** given, the `get_points` method is triggered:
+The method of identification has to be specified:
 ```
-v.set_points(method='simplified_optical_flow')
+v.set_method(method='simplified_optical_flow', **method_kwargs)
 ```
-After points are set, displacements can be calculated (using method, set in `set_points`):
+If the `points` argument is not given and the `method` is supplied to `set_points`, the `get_points` method is triggered:
+```
+v.set_points(method='simplified_optical_flow', **set_points_kwargs)
+v.set_method(method='simplified_optical_flow', **method_kwargs)
+```
+After points are set, displacements can be calculated (using method, set in `set_method`):
 ```
 displacements = v.get_displacements()
 ```
