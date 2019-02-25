@@ -73,6 +73,30 @@ class pyIDI:
             plt.show()
 
 
+    def show_field(self, field, scale=1., width=0.5):
+        """Show displacement field on image.
+        
+        :param field: Field of displacements (number_of_points, 2)
+        :type field: ndarray
+        :param scale: scale the field, defaults to 1.
+        :param scale: float, optional
+        :param width: width of the arrow, defaults to 0.5
+        :param width: float, optional
+        """
+
+        max_L = np.max(field[:, 0]**2 + field[:, 1]**2)
+
+        fig, ax = plt.subplots(1)
+        ax.imshow(self.mraw[0], 'gray')
+        for i, ind in enumerate(self.points):
+            f0 = field[i, 0]
+            f1 = field[i, 1]
+            alpha = (f0**2 + f1**2) / max_L
+            if alpha < 0.2:
+                alpha = 0.2
+            plt.arrow(ind[1], ind[0], scale*f1, scale*f0, width=width, color='r', alpha=alpha)
+
+
     def get_displacements(self, **kwargs):
         """Calculate the displacements based on chosen method.
         """
