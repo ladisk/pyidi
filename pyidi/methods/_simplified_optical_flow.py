@@ -177,6 +177,7 @@ class SimplifiedOpticalFlow(IDIMethod):
         options = {
             'subset': (20, 20),
             'axis': None,
+            'min_grad': 0.,
         }
         
         # Change the docstring in `set_points` to show the options
@@ -191,7 +192,7 @@ class SimplifiedOpticalFlow(IDIMethod):
         elif type(options['subset']) not in [list, tuple]:
             raise Exception(f'keyword argument "subset" must be int, list or tuple (not {type(options["subset"])})')
 
-        polygon = PickPoints(video, subset=options['subset'], axis=options['axis'])
+        polygon = PickPoints(video, subset=options['subset'], axis=options['axis'], min_grad=options['min_grad'])
 
 
 class PickPoints:
@@ -200,9 +201,10 @@ class PickPoints:
     Select the points with highest gradient in vertical direction.
     """
 
-    def __init__(self, video, subset, axis):
+    def __init__(self, video, subset, axis, min_grad):
         self.subset = subset
         self.axis = axis
+        self.min_grad = min_grad
 
         image = video.mraw[0]
         self.gradient_0, self.gradient_1 = np.gradient(image.astype(float))
@@ -308,7 +310,8 @@ class PickPoints:
                 _g = g[i:i+self.subset[0], j:j+self.subset[1]]
                 _ = np.argmax(np.abs(_g))
                 ind = np.unravel_index(_, _g.shape)
-                indices.append([i+ind[0], j+ind[1]])
+                if np.abs(_g[ind[0], ind[1]]) > np.max(np.abs(g))*self.min_grad:
+                    indices.append([i+ind[0], j+ind[1]])
 
         return np.asarray(indices)
 
