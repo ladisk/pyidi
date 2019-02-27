@@ -33,3 +33,5 @@ displacements = v.get_displacements()
 	* `calculate_displacements` with attribute `displacements`
 	* `get_points` (static method - sets attribute video.points)
 * In `pyIDI` add a new method of identification in `avaliable_methods` dictionary.
+
+[![Build Status](https://travis-ci.com/ladisk/pyidi.svg?branch=master)](https://travis-ci.com/ladisk/pyidi)
