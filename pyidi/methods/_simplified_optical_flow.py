@@ -59,7 +59,7 @@ class SimplifiedOpticalFlow(IDIMethod):
         self.mraw_range = mraw_range
         self.mean_n_neighbours = mean_n_neighbours
         self.zero_shift = zero_shift
-        self.progress_bar = self.progress_bar
+        self.progress_bar = progress_bar
         self.reference_range = reference_range
 
         # Get reference image and gradients
