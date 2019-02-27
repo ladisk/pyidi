@@ -26,30 +26,41 @@ class SimplifiedOpticalFlow(IDIMethod):
             USA: Morgan Kaufmann Publishers Inc.
     """
 
-    def __init__(self, video, **kwargs):
-        """
+    def __init__(
+        self, video, subset_size=3, pixel_shift=False, convert_from_px=1.,
+        mraw_range='all', mean_n_neighbours=0, zero_shift=False,
+        progress_bar=True, reference_range=(0, 100)
+    ):
+        """Set the attributes, compute reference image and gradients.
+
         :param video: 'parent' object
-        :param kwargs: keyword arguments (defined in `options`)
+        :type video: object
+        :param subset_size: size of the averaging subset, defaults to 3
+        :param subset_size: int, optional
+        :param pixel_shift: use pixel shift or not?, defaults to False
+        :param pixel_shift: bool, optional
+        :param convert_from_px: distance unit per pixel, defaults to 1.
+        :param convert_from_px: float or int, optional
+        :param mraw_range: what range of images to calculate into displacements, defaults to 'all'
+        :param mraw_range: str or tuple, optional
+        :param mean_n_neighbours: average the displacements of neighbouring points (how many points), defaults to 0
+        :param mean_n_neighbours: int, optional
+        :param zero_shift: shift the mean of the signal to zero?, defaults to False
+        :param zero_shift: bool, optional
+        :param progress_bar: show progress bar while calculating the displacements, defaults to True
+        :param progress_bar: bool, optional
+        :param reference_range: what range of images is averaged into reference image, defaults to (0, 100)
+        :param reference_range: tuple, optional
         """
-        options = {
-            'subset_size': 3,               # Size of the smoothing filter
-            'pixel_shift': False,           # Pixel shifting (not implemented!)
-            'convert_from_px': 1,           # Convert from pixels to other unit
-            'mraw_range': 'all',            # Range of frames for displacement identification
-            'mean_n_neighbours': 0,         # Average the neigbouring pixel displacements
-            'zero_shift': False,            # Shift the mean of the signal to zero
-            'progress_bar': True,           # Show progress bar
-            'reference_range': (0, 100),    # Averaging range for reference image
-        }
 
-        # Change docstring (add kwargs documentation) in pyIDI.set_method
-        self.change_docstring(video.set_method, options)
-
-        # Check for valid kwargs
-        self.check_kwargs(kwargs, options)
-
-        options.update(kwargs) # Update the options dict
-        self.__dict__.update(options) # Update the objects attributes
+        self.subset_size = subset_size
+        self.pixel_shift = pixel_shift
+        self.convert_from_px = convert_from_px
+        self.mraw_range = mraw_range
+        self.mean_n_neighbours = mean_n_neighbours
+        self.zero_shift = zero_shift
+        self.progress_bar = self.progress_bar
+        self.reference_range = reference_range
 
         # Get reference image and gradients
         self.reference_image, self.gradient_0, self.gradient_1, self.gradient_magnitude = self.reference(
@@ -85,7 +96,7 @@ class SimplifiedOpticalFlow(IDIMethod):
         if self.progress_bar:
             p_bar = tqdm
         else:
-            p_bar = lambda x: x # empty function
+            def p_bar(x): return x  # empty function
 
         # calculating the displacements
         for i, image in enumerate(p_bar(limited_mraw)):
@@ -96,10 +107,12 @@ class SimplifiedOpticalFlow(IDIMethod):
                 break
 
             else:
-                self.image_roi = image_filtered[video.points[:, 0], video.points[:, 1]]
+                self.image_roi = image_filtered[video.points[:,
+                                                             0], video.points[:, 1]]
 
                 self.latest_displacements = (self.reference_image[video.points[:, 0], video.points[:, 1]] - self.image_roi) / \
-                    self.gradient_magnitude[video.points[:, 0], video.points[:, 1]]
+                    self.gradient_magnitude[video.points[:,
+                                                         0], video.points[:, 1]]
 
             self.displacements[:, i, 0] = signs_0 * self.direction_correction_0 * \
                 self.latest_displacements * self.convert_from_px
@@ -123,11 +136,14 @@ class SimplifiedOpticalFlow(IDIMethod):
         """
         print('Averaging...')
         kernel = np.ones((self.mean_n_neighbours, 1)) / self.mean_n_neighbours
-        
-        d_0 = convolve2d(self.displacements[:, :, 0], kernel, mode='valid')[::self.mean_n_neighbours]
-        d_1 = convolve2d(self.displacements[:, :, 1], kernel, mode='valid')[::self.mean_n_neighbours]
-        
-        self.displacements = np.concatenate((d_0[:, :, np.newaxis], d_1[:, :, np.newaxis]), axis=2)
+
+        d_0 = convolve2d(self.displacements[:, :, 0], kernel, mode='valid')[
+            ::self.mean_n_neighbours]
+        d_1 = convolve2d(self.displacements[:, :, 1], kernel, mode='valid')[
+            ::self.mean_n_neighbours]
+
+        self.displacements = np.concatenate(
+            (d_0[:, :, np.newaxis], d_1[:, :, np.newaxis]), axis=2)
         print('Finished!')
 
     def pixel_shift(self):
@@ -179,7 +195,7 @@ class SimplifiedOpticalFlow(IDIMethod):
             'axis': None,
             'min_grad': 0.,
         }
-        
+
         # Change the docstring in `set_points` to show the options
         docstring = video.set_points.__doc__.split('---')
         docstring[1] = '- ' + '\n\t- '.join(options) + '\n\t'
@@ -190,9 +206,11 @@ class SimplifiedOpticalFlow(IDIMethod):
         if isinstance(options['subset'], int):
             options['subset'] = 2*(options['subset'], )
         elif type(options['subset']) not in [list, tuple]:
-            raise Exception(f'keyword argument "subset" must be int, list or tuple (not {type(options["subset"])})')
+            raise Exception(
+                f'keyword argument "subset" must be int, list or tuple (not {type(options["subset"])})')
 
-        polygon = PickPoints(video, subset=options['subset'], axis=options['axis'], min_grad=options['min_grad'])
+        polygon = PickPoints(
+            video, subset=options['subset'], axis=options['axis'], min_grad=options['min_grad'])
 
 
 class PickPoints:
@@ -200,7 +218,7 @@ class PickPoints:
 
     Select the points with highest gradient in vertical direction.
     """
-
+    
     def __init__(self, video, subset, axis, min_grad):
         self.subset = subset
         self.axis = axis
@@ -209,10 +227,10 @@ class PickPoints:
         image = video.mraw[0]
         self.gradient_0, self.gradient_1 = np.gradient(image.astype(float))
 
-        root = tk.Tk() # Tkinter
-        root.title('Pick points') # Tkinter
-        fig = Figure(figsize=(15, 7)) # Tkinter
-        ax = fig.add_subplot(111) # Tkinter
+        root = tk.Tk()  # Tkinter
+        root.title('Pick points')  # Tkinter
+        fig = Figure(figsize=(15, 7))  # Tkinter
+        ax = fig.add_subplot(111)  # Tkinter
         ax.grid(False)
         ax.imshow(image, cmap='gray')
 
@@ -222,11 +240,12 @@ class PickPoints:
         print('SHIFT + LEFT mouse button to pick a pole.\nRIGHT mouse button to erase the last pick.')
 
         self.shift_is_held = False
+
         def on_key_press(event):
             """Function triggered on key press (shift)."""
             if event.key == 'shift':
                 self.shift_is_held = True
-        
+
         def on_key_release(event):
             """Function triggered on key release (shift)."""
             if event.key == 'shift':
@@ -258,16 +277,17 @@ class PickPoints:
             video.points = self.observed_pixels()
             video.polygon = self.polygon
 
-        canvas = FigureCanvasTkAgg(fig, root) # Tkinter
-        canvas.get_tk_widget().pack(side='top', fill='both', expand=1) # Tkinter
-        NavigationToolbar2Tk(canvas, root) # Tkinter
+        canvas = FigureCanvasTkAgg(fig, root)  # Tkinter
+        canvas.get_tk_widget().pack(side='top', fill='both', expand=1)  # Tkinter
+        NavigationToolbar2Tk(canvas, root)  # Tkinter
 
         # Connecting functions to event manager
         fig.canvas.mpl_connect('key_press_event', on_key_press)
         fig.canvas.mpl_connect('key_release_event', on_key_release)
         fig.canvas.mpl_connect('button_press_event', onclick)
-        fig.canvas.mpl_connect('close_event', handle_close)  # on closing the figure
-        
+        # on closing the figure
+        fig.canvas.mpl_connect('close_event', handle_close)
+
         root.mainloop()
 
     def observed_pixels(self):
@@ -302,8 +322,9 @@ class PickPoints:
         elif self.axis is None:
             g = g0**2 + g1**2
         else:
-            raise Exception(f'axis value {self.axis} is not valid. Please pick 0, 1 or None')
-        
+            raise Exception(
+                f'axis value {self.axis} is not valid. Please pick 0, 1 or None')
+
         indices = []
         for i in range(y_low, y_high, self.subset[0]):
             for j in range(x_low, x_high, self.subset[1]):
