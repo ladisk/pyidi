@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 
 from scipy.signal import convolve2d
-from tqdm import tqdm
+from tqdm.autonotebook import tqdm
 import tkinter as tk
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 from matplotlib.figure import Figure
