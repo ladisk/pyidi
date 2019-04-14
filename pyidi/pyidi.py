@@ -2,7 +2,7 @@ import numpy as np
 import collections
 import matplotlib.pyplot as plt
 
-from .methods import SimplifiedOpticalFlow, GradientBasedOpticalFlow
+from .methods import SimplifiedOpticalFlow, GradientBasedOpticalFlow, LucasKanade
 
 __version__ = '0.16'
 
@@ -15,6 +15,8 @@ class pyIDI:
             'sof': SimplifiedOpticalFlow,
             'gradient_based_optical_flow': GradientBasedOpticalFlow,
             'gb': GradientBasedOpticalFlow,
+            'lucas_kanade': LucasKanade,
+            'lk': LucasKanade,
         }
 
         self.mraw, self.info = self.load_video()
