@@ -12,28 +12,71 @@ from tqdm import trange
 from .idi_method import IDIMethod
 
 class LucasKanade(IDIMethod):
+    """Displacement identification based on Lucas-Kanade method using least-squares.
+    """
 
     def __init__(
-        self, video, roi_size=3, pad=2, max_nfev=20, verbose=1, show_pbar=True
+        self, video, roi_size=3, pad=2, max_nfev=20, tol=1e-8, verbose=1, show_pbar=True
     ):
+        """Displacement identification based on Lucas-Kanade method.
+
+        Using iterative approach to determine displacements.
+        Least-squares method from scipy.optimize is used.
+        
+        :param video: parent object
+        :type video: object
+        :param roi_size: size of the region of interest, defaults to 3
+        :type roi_size: int, tuple, list, optional
+        :param pad: size of padding around the region of interest, defaults to 2
+        :type pad: int, optional
+        :param max_nfev: maximum number of iterations in least-squares optimization, defaults to 20
+        :type max_nfev: int, optional
+        :param tol: tolerance for termination (in least_squares 'ftol', 'xtol', 'gtol' are set equal to 'tol')
+        :type tol: float, optional
+        :param verbose: show text while running, defaults to 1
+        :type verbose: int, optional
+        :param show_pbar: show progress bar, defaults to True
+        :type show_pbar: bool, optional
+        """
         self.pad = pad
         self.max_nfev = max_nfev
+        self.tol = tol
         self.verbose = verbose
         self.show_pbar = show_pbar
         self.roi_size = roi_size
+
         self._set_roi_size(self.roi_size)
 
 
-    def calculate_displacements(self, video, roi_size=None):
+    def calculate_displacements(self, video, roi_size=None, max_nfev=None, tol=None):
+        """Calculate displacements for set points and roi size.
         
+        :param video: parent object
+        :type video: object
+        :param roi_size: size of region of interest (if None, predetermined is used), defaults to None
+        :type roi_size: None, int, tuple, list, optional
+        :param max_nfev: Maximum number of iterations in least_squares (if None, predetermined is used)
+        :type max_nfev: None, int, optional
+        :param tol: tolerance for termination (in least_squares 'ftol', 'xtol', 'gtol' are set equal to 'tol')
+                    (if None, predetermined is used)
+        :type tol: float, optional
+        """
+        if roi_size is not None:
+            self._set_roi_size(roi_size)
+
+        if max_nfev is not None:
+            self.max_nfev = max_nfev
+        
+        if tol is not None:
+            self.tol = tol
+
+
         def opt(d, p, G):
             """Optimization function.
             """
             F_current = self.F_int[p](self.extended_points_0[p, self.pad:-self.pad] - d[0], self.extended_points_1[p, self.pad:-self.pad] - d[1])
             return (F_current - G).flatten()
-        
-        if roi_size is not None:
-            self._set_roi_size(roi_size)
+
 
         self.displacements = np.zeros((video.points.shape[0], video.N, 2))
 
@@ -60,7 +103,12 @@ class LucasKanade(IDIMethod):
                 G = video.mraw[i, self.mgrid_0[p], self.mgrid_1[p]]
                 
                 delta = self.displacements[p, i-1] # Initial value
-                sol = scipy.optimize.least_squares(lambda x: opt(x, p, G), delta, max_nfev=self.max_nfev) # Optimization
+
+                # Optimization
+                sol = scipy.optimize.least_squares(
+                    lambda x: opt(x, p, G), x0=delta, 
+                    max_nfev=self.max_nfev, xtol=self.tol, ftol=self.tol, gtol=self.tol
+                ) 
 
                 self.displacements[p, i] = sol.x
         
@@ -76,6 +124,12 @@ class LucasKanade(IDIMethod):
     
 
     def _pbar(self, x, y):
+        """Set progress bar range or normal range.
+        
+        :param x: start
+        :param y: stop
+        :return: tqdm range or python range
+        """
         if self.show_pbar:
             return trange(x, y, ncols=100, leave=True)
         else:
@@ -83,6 +137,15 @@ class LucasKanade(IDIMethod):
 
 
     def _interpolation(self, video):
+        """Interpolate the reference image.
+
+        Each ROI is interpolated in advanced to save computation costs.
+        Meshgrid for every ROI (without padding) is also determined here and 
+        is later called in every time iteration for every point.
+        
+        :param video: parent object
+        :type video: object
+        """
         self.F_int = []
         self.mgrid_0 = []
         self.mgrid_1 = []
@@ -202,11 +265,17 @@ class LucasKanade(IDIMethod):
 
     def _set_roi_size(self, roi_size):
         """Set ROI size for displacement identification.
+
+        :param roi_size: size of the region of interest
+        :type roi_size: int, list, tuple
         """
         if isinstance(roi_size, int):
             self.roi_size = np.array([roi_size, roi_size], dtype=int)
         else:
-            self.roi_size = np.array(roi_size, dtype=int)
+            if len(roi_size) == 2:
+                self.roi_size = np.array(roi_size, dtype=int)
+            else:
+                raise Exception(f'given roi_size is not valid. Must be list or tuple of length 2 or int')
 
 
     @staticmethod
