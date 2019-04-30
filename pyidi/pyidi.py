@@ -38,6 +38,7 @@ class pyIDI:
         else:
             self.method = method(self, **kwargs)
 
+
     def set_points(self, points=None, method=None, **kwargs):
         """
         Set points that will be used to calculate displacements.
@@ -58,6 +59,7 @@ class pyIDI:
         else:
             self.points = points
 
+
     def show_points(self):
         """Show selected points on image.
         """
@@ -69,6 +71,7 @@ class pyIDI:
             ax.scatter(self.points[:, 1], self.points[:, 0], marker='.', color='r')
             plt.grid(False)
             plt.show()
+
 
     def show_field(self, field, scale=1., width=0.5):
         """Show displacement field on image.
@@ -92,6 +95,7 @@ class pyIDI:
                 alpha = 0.2
             plt.arrow(ind[1], ind[0], scale*f1, scale*f0, width=width, color='r', alpha=alpha)
 
+
     def get_displacements(self, **kwargs):
         """Calculate the displacements based on chosen method.
         """
@@ -100,6 +104,7 @@ class pyIDI:
             return self.method.displacements
         else:
             raise ValueError('IDI method has not yet been set. Please call `set_method()` first.')
+
 
     def load_video(self):
         """Get video and it's information.
@@ -121,6 +126,7 @@ class pyIDI:
         mraw = np.memmap(filename+'.mraw', dtype=self.bit_dtype, mode='r', shape=(self.N, self.image_height, self.image_width))
         return mraw, info
 
+
     def close_video(self):
         """
         Close the .mraw video memmap.
@@ -128,6 +134,7 @@ class pyIDI:
         if hasattr(self, 'mraw'):
             self.mraw._mmap.close()
             del self.mraw
+
 
     def get_CIH_info(self):
         """Get info from .cih file in path, return it as dict.

@@ -1,23 +1,20 @@
 import numpy as np
-import matplotlib.pyplot as plt
-import matplotlib.patches as patches
 import time
 
 import scipy.signal
 from scipy.interpolate import interp2d
 import scipy.optimize
-from tqdm import tqdm as tqdm
-from tqdm import trange
+from tqdm import tqdm
 
 from .idi_method import IDIMethod
-from .. import tools
+
 
 class LucasKanade(IDIMethod):
     """Displacement identification based on Lucas-Kanade method using least-squares.
     """
 
     def __init__(
-        self, video, roi_size=3, pad=2, max_nfev=20, tol=1e-8, verbose=1, show_pbar=True
+        self, video, roi_size=9, pad=2, max_nfev=20, tol=1e-8, verbose=1, show_pbar=True
     ):
         """Displacement identification based on Lucas-Kanade method.
 
@@ -119,9 +116,9 @@ class LucasKanade(IDIMethod):
             if full_time > 60:
                 full_time_m = full_time//60
                 full_time_s = full_time%60
-                print(f'Time to complete: {full_time_m:0f} min, {full_time_s:.1f} s')
+                print(f'Time to complete: {full_time_m:.0f} min, {full_time_s:.1f} s')
             else:
-                print(f'Time to complete: {full_time:1f} s')
+                print(f'Time to complete: {full_time:.1f} s')
     
 
     def _pbar(self, x, y):
@@ -132,7 +129,7 @@ class LucasKanade(IDIMethod):
         :return: tqdm range or python range
         """
         if self.show_pbar:
-            return trange(x, y, ncols=100, leave=True)
+            return tqdm(range(x, y), ncols=100, leave=True)
         else:
             return range(x, y)
 
