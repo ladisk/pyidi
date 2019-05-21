@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 
 from .methods import SimplifiedOpticalFlow, GradientBasedOpticalFlow, LucasKanade
 
-__version__ = '0.16'
+__version__ = '0.17'
 
 class pyIDI:
     def __init__(self, cih_file):

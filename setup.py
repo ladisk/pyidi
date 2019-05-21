@@ -11,7 +11,7 @@ For the showcase see: https://github.com/ladisk/pyIDI/blob/master/pyIDI%20Showca
 from setuptools import setup
 
 setup(name='pyidi',
-      version='0.16',
+      version='0.17',
       author='Klemen Zaletelj, Domen Gorjup, Janko Slavič',
       author_email='janko.slavic@fs.uni-lj.si, ladisk@gmail.com',
       description='Python Image Displacement Identification.',
