@@ -2,10 +2,10 @@
 # -*- coding: utf-8 -*-
 desc = """\
 Python Image Displacement Identification
-=============
+========================================
 This module supports the identification of disploacement from image date
 
-For the showcase see: https://github.com/ladisk/pyIDI/blob/master/pyIDI%20Showcase.ipynb
+For the showcase see: `github.com/ladisk/pyIDI <https://github.com/ladisk/pyIDI/blob/master/Showcase.ipynb>`_
 """
 
 from setuptools import setup
