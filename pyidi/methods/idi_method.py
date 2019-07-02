@@ -5,11 +5,19 @@ class IDIMethod:
     """Common functions for all methods.
     """
     
-    def change_docstring(self, what_method, options):
-        """Add avaliable kwargs to the docstring of `set_method` method.
+    def __init__(self, video, *args, **kwargs):
         """
-        docstring = what_method.__doc__.split('---')
-        docstring[1] = '- ' + '\n\t- '.join(options) + '\n\t'
+        The image displacement identification method constructor.
 
-        what_method.__func__.__doc__ = '---\n\t'.join(docstring)
+        For more configuration options, see `method.configure()`
+        """
+        self.video = video
+        self.configure(*args, **kwargs)
+    
+    
+    def configure(self, *args, **kwargs):
+        """
+        Configure the displacement identification method here.
+        """
+        pass
 

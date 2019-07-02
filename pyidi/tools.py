@@ -307,3 +307,24 @@ def inside_polygon(x, y, points):
                         inside = not inside
         p1x, p1y = p2x, p2y
     return inside
+
+
+def update_docstring(target_method, doc_method, delimiter='---'):
+    """
+    Update the docstring in target_method with the docstring from doc_method.
+    
+    :param target_method: The method that waits for the docstring
+    :type target_method: method
+    :param doc_method: The method that holds the desired docstring
+    :type doc_method: method
+    :param delimiter: insert the desired docstring between two delimiters, defaults to '---'
+    :type delimiter: str, optional
+    """
+    docstring = target_method.__doc__.split(delimiter)
+    
+    if doc_method.__doc__:
+        docstring[1] = doc_method.__doc__
+    else:
+        docstring[1] = '\nThe selected method does not have a docstring.\n'
+
+    target_method.__func__.__doc__ = delimiter.join(docstring)

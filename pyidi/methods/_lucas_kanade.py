@@ -10,13 +10,14 @@ from .idi_method import IDIMethod
 
 
 class LucasKanade(IDIMethod):
-    """Displacement identification based on Lucas-Kanade method using least-squares.
     """
-
-    def __init__(
-        self, video, roi_size=9, pad=2, max_nfev=20, tol=1e-8, verbose=1, show_pbar=True
+    Displacement identification based on Lucas-Kanade method using least-squares.
+    """  
+    def configure(
+        self, roi_size=9, pad=2, max_nfev=20, tol=1e-8, verbose=1, show_pbar=True
     ):
-        """Displacement identification based on Lucas-Kanade method.
+        """
+        Displacement identification based on Lucas-Kanade method.
 
         Using iterative approach to determine displacements.
         Least-squares method from scipy.optimize is used.
@@ -47,7 +48,8 @@ class LucasKanade(IDIMethod):
 
 
     def calculate_displacements(self, video, roi_size=None, max_nfev=None, tol=None):
-        """Calculate displacements for set points and roi size.
+        """
+        Calculate displacements for set points and roi size.
         
         :param video: parent object
         :type video: object
@@ -70,7 +72,8 @@ class LucasKanade(IDIMethod):
 
 
         def opt(d, p, G):
-            """Optimization function.
+            """
+            Optimization function.
             """
             F_current = self.F_int[p](self.extended_points_0[p, self.pad:-self.pad] - d[0], self.extended_points_1[p, self.pad:-self.pad] - d[1])
             return (F_current - G).flatten()
@@ -122,7 +125,8 @@ class LucasKanade(IDIMethod):
     
 
     def _pbar(self, x, y):
-        """Set progress bar range or normal range.
+        """
+        Set progress bar range or normal range.
         
         :param x: start
         :param y: stop
@@ -135,7 +139,8 @@ class LucasKanade(IDIMethod):
 
 
     def _interpolation(self, video):
-        """Interpolate the reference image.
+        """
+        Interpolate the reference image.
 
         Each ROI is interpolated in advanced to save computation costs.
         Meshgrid for every ROI (without padding) is also determined here and 
@@ -158,7 +163,8 @@ class LucasKanade(IDIMethod):
 
 
     def _set_roi_size(self, roi_size):
-        """Set ROI size for displacement identification.
+        """
+        Set ROI size for displacement identification.
 
         :param roi_size: size of the region of interest
         :type roi_size: int, list, tuple
@@ -174,4 +180,4 @@ class LucasKanade(IDIMethod):
 
     @staticmethod
     def get_points():
-        pass
+        raise Exception('Choose a method from `tools` module.')

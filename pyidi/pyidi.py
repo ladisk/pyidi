@@ -3,6 +3,7 @@ import collections
 import matplotlib.pyplot as plt
 
 from .methods import SimplifiedOpticalFlow, GradientBasedOpticalFlow, LucasKanade
+from . import tools
 
 __version__ = '0.17'
 
@@ -13,8 +14,8 @@ class pyIDI:
         self.avaliable_methods = {
             'simplified_optical_flow': SimplifiedOpticalFlow,
             'sof': SimplifiedOpticalFlow,
-            'gradient_based_optical_flow': GradientBasedOpticalFlow,
-            'gb': GradientBasedOpticalFlow,
+            # 'gradient_based_optical_flow': GradientBasedOpticalFlow,
+            # 'gb': GradientBasedOpticalFlow,
             'lucas_kanade': LucasKanade,
             'lk': LucasKanade,
         }
@@ -23,12 +24,10 @@ class pyIDI:
 
 
     def set_method(self, method, **kwargs):
-        """Set displacement identification method on video.
+        """
+        Set displacement identification method on video.
 
-        kwargs for the chosen method:
-        ---
-        Will be shown after the method is set.
-        ---
+        To configure the method, use `method.configure()`
 
         :param method: the method to be used for displacement identification.
         :type method: IDIMethod or str
@@ -37,6 +36,9 @@ class pyIDI:
             self.method = self.avaliable_methods[method](self, **kwargs)
         else:
             self.method = method(self, **kwargs)
+        
+        # Update docstring
+        tools.update_docstring(self.get_displacements, self.method.calculate_displacements)
 
 
     def set_points(self, points=None, method=None, **kwargs):
@@ -44,10 +46,6 @@ class pyIDI:
         Set points that will be used to calculate displacements.
         If `points` is None and a `method` has aready been set on this `pyIDI` instance, 
         the `method` object's `get_point` is used to get method-appropriate points.
-
-        kwargs:
-        ---
-        ---
         """
         if points is None:
             if not hasattr(self, 'method'):
@@ -61,7 +59,8 @@ class pyIDI:
 
 
     def show_points(self):
-        """Show selected points on image.
+        """
+        Show selected points on image.
         """
         if hasattr(self, 'method') and hasattr(self.method, 'show_points'):
             self.method.show_points(self)
@@ -74,7 +73,8 @@ class pyIDI:
 
 
     def show_field(self, field, scale=1., width=0.5):
-        """Show displacement field on image.
+        """
+        Show displacement field on image.
         
         :param field: Field of displacements (number_of_points, 2)
         :type field: ndarray
@@ -97,7 +97,13 @@ class pyIDI:
 
 
     def get_displacements(self, **kwargs):
-        """Calculate the displacements based on chosen method.
+        """
+        Calculate the displacements based on chosen method.
+
+        Method docstring:
+        ---
+        Method is not set. Please use the `set_method` method.
+        ---
         """
         if hasattr(self, 'method'):
             self.method.calculate_displacements(self, **kwargs)
@@ -107,7 +113,8 @@ class pyIDI:
 
 
     def load_video(self):
-        """Get video and it's information.
+        """
+        Get video and it's information.
         """
         info = self.get_CIH_info()
         self.N = int(info['Total Frame'])
@@ -137,7 +144,8 @@ class pyIDI:
 
 
     def get_CIH_info(self):
-        """Get info from .cih file in path, return it as dict.
+        """
+        Get info from .cih file in path, return it as dict.
 
         https://github.com/ladisk/pyDIC/blob/master/py_dic/dic_tools.py - Domen Gorjup
         """
