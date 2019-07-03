@@ -21,3 +21,10 @@ class IDIMethod:
         """
         pass
 
+    
+    def calculate_displacements(self, video, *args, **kwargs):
+        """
+        Calculate the displacements of set points here.
+        The result should be saved into the `self.displacements` attribute.
+        """
+        pass

@@ -309,7 +309,7 @@ def inside_polygon(x, y, points):
     return inside
 
 
-def update_docstring(target_method, doc_method, delimiter='---'):
+def update_docstring(target_method, doc_method=None, delimiter='---', added_doc=''):
     """
     Update the docstring in target_method with the docstring from doc_method.
     
@@ -321,10 +321,15 @@ def update_docstring(target_method, doc_method, delimiter='---'):
     :type delimiter: str, optional
     """
     docstring = target_method.__doc__.split(delimiter)
+    leading_spaces = len(docstring[1].replace('\n', '')) - len(docstring[1].replace('\n', '').lstrip(' '))
     
-    if doc_method.__doc__:
-        docstring[1] = doc_method.__doc__
+    if doc_method is not None:
+        if doc_method.__doc__:
+            docstring[1] = doc_method.__doc__
+        else:
+            docstring[1] = '\n' + ' '*leading_spaces + \
+                'The selected method does not have a docstring.\n'
     else:
-        docstring[1] = '\nThe selected method does not have a docstring.\n'
+        docstring[1] = added_doc.replace('\n', '\n' + ' '*leading_spaces)
 
     target_method.__func__.__doc__ = delimiter.join(docstring)

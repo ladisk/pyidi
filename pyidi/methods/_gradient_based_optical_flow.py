@@ -9,7 +9,7 @@ from .idi_method import IDIMethod
 
 class GradientBasedOpticalFlow(IDIMethod):
     """Displacmenet computation based on Gradient Based Optical 
-    Flow method [1] - non-iterative approach.
+    Flow method [1] - a linearized, non-iterative approach.
 
     Literature:
         [1] Lucas, B. D., & Kanade, T. (1981). An Iterative Image Registration 
@@ -41,6 +41,7 @@ class GradientBasedOpticalFlow(IDIMethod):
 
         self._set_roi_size(self.roi_size)
 
+
     def calculate_displacements(self, video, roi_size=None):
         """Get the displacements of all selected points/roi_references.
 
@@ -59,6 +60,7 @@ class GradientBasedOpticalFlow(IDIMethod):
                 video, roi_ref)
             self.displacements.append(single_roi_translation)
         self.displacements = np.asarray(self.displacements)
+
 
     def get_simple_translation(self, video, roi_reference):
         """Onle point/roi_reference caluclation.
@@ -103,6 +105,7 @@ class GradientBasedOpticalFlow(IDIMethod):
             results = np.vstack((results, d_int-d[::-1]))  # y, x
         return results
 
+
     def _get_roi_image(self, target, roi_reference):
         '''Get 2D ROI array from target image, ROI position and size.
 
@@ -118,6 +121,7 @@ class GradientBasedOpticalFlow(IDIMethod):
         roi_image = target[ul[0]:ul[0]+self.roi_size[0],
                            ul[1]:ul[1]+self.roi_size[1]]
         return roi_image
+
 
     def get_gradient(self, image):
         '''Computes gradient of inputimage, using the specified convoluton kernels.
@@ -146,6 +150,7 @@ class GradientBasedOpticalFlow(IDIMethod):
             image.astype(float), y_kernel, mode='same')
         return np.array([g_x, g_y], dtype=np.float64)
 
+
     def show_points(self, video, roi_size=None):
         """Show points to be analyzed, together with ROI borders.
         """
@@ -166,6 +171,7 @@ class GradientBasedOpticalFlow(IDIMethod):
 
         plt.grid(False)
         plt.show()
+
 
     def _set_roi_size(self, roi_size):
         """Set ROI size for displacement identification.

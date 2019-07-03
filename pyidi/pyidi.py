@@ -2,42 +2,65 @@ import numpy as np
 import collections
 import matplotlib.pyplot as plt
 
-from .methods import SimplifiedOpticalFlow, GradientBasedOpticalFlow, LucasKanade
+from .methods import IDIMethod, SimplifiedOpticalFlow, GradientBasedOpticalFlow, LucasKanade
 from . import tools
 
 __version__ = '0.17'
+
+available_method_shortcuts = [
+    ('sof', SimplifiedOpticalFlow),
+    ('lk', LucasKanade),
+    ('gb', GradientBasedOpticalFlow)
+    ]
+
 
 class pyIDI:
     def __init__(self, cih_file):
         self.cih_file = cih_file
 
-        self.avaliable_methods = {
-            'simplified_optical_flow': SimplifiedOpticalFlow,
-            'sof': SimplifiedOpticalFlow,
-            # 'gradient_based_optical_flow': GradientBasedOpticalFlow,
-            # 'gb': GradientBasedOpticalFlow,
-            'lucas_kanade': LucasKanade,
-            'lk': LucasKanade,
-        }
+        self.available_methods = dict([ 
+            (key, {
+                'IDIMethod': method,
+                'description': method.__doc__,     
+            })
+            for key, method in available_method_shortcuts
+        ])
 
+        # Fill available methods into `set_method` docstring
+        available_methods_doc = '\n' + '\n'.join([
+            f"'{key}' ({method_dict['IDIMethod'].__name__}): {method_dict['description']}"
+            for key, method_dict in self.available_methods.items()
+            ])
+        tools.update_docstring(self.set_method, added_doc=available_methods_doc)
+
+        # Load selected video
         self.mraw, self.info = self.load_video()
 
 
     def set_method(self, method, **kwargs):
         """
         Set displacement identification method on video.
-
         To configure the method, use `method.configure()`
+
+        Available methods:
+        ---
+        [Available method names and descriptions go here.]
+        ---
 
         :param method: the method to be used for displacement identification.
         :type method: IDIMethod or str
         """
-        if method in self.avaliable_methods.keys():
-            self.method = self.avaliable_methods[method](self, **kwargs)
+        if isinstance(method, str) and method in self.available_methods.keys():
+            self.method = self.available_methods[method]['IDIMethod'](self, **kwargs)
+        elif callable(method) and hasattr(method, 'calculate_displacements'):
+            try:
+                self.method = method(self, **kwargs)
+            except:
+                raise ValueError("The input `method` is not a valid `IDIMethod`.")
         else:
-            self.method = method(self, **kwargs)
+            raise ValueError("method must either be a valid name from `available_methods` or an `IDIMethod`.")
         
-        # Update docstring
+        # Update `get_displacements` docstring
         tools.update_docstring(self.get_displacements, self.method.calculate_displacements)
 
 

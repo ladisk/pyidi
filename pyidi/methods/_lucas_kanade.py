@@ -4,6 +4,8 @@ import time
 import scipy.signal
 from scipy.interpolate import interp2d
 import scipy.optimize
+import matplotlib.pyplot as plt
+import matplotlib.patches as patches
 from tqdm import tqdm
 
 from .idi_method import IDIMethod
@@ -11,7 +13,8 @@ from .idi_method import IDIMethod
 
 class LucasKanade(IDIMethod):
     """
-    Displacement identification based on Lucas-Kanade method using least-squares.
+    Translation identification based on the Lucas-Kanade method using least-squares
+    iterative optimization.
     """  
     def configure(
         self, roi_size=9, pad=2, max_nfev=20, tol=1e-8, verbose=1, show_pbar=True
@@ -176,6 +179,28 @@ class LucasKanade(IDIMethod):
                 self.roi_size = np.array(roi_size, dtype=int)
             else:
                 raise Exception(f'given roi_size is not valid. Must be list or tuple of length 2 or int')
+
+    
+    def show_points(self, video, roi_size=None):
+        """Show points to be analyzed, together with ROI borders.
+        """
+        if roi_size is None:
+            if hasattr(self, 'roi_size'):
+                roi_size = self.roi_size
+
+        fig, ax = plt.subplots(figsize=(15, 5))
+        ax.imshow(video.mraw[0].astype(float), cmap='gray')
+        ax.scatter(video.points[:, 1],
+                   video.points[:, 0], marker='.', color='r')
+
+        if roi_size is not None:
+            for point in video.points:
+                roi_border = patches.Rectangle((point - self.roi_size//2)[::-1], self.roi_size[1], self.roi_size[0],
+                                               linewidth=1, edgecolor='r', facecolor='none')
+                ax.add_patch(roi_border)
+
+        plt.grid(False)
+        plt.show()
 
 
     @staticmethod
