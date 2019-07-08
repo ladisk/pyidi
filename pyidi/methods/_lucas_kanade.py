@@ -50,7 +50,7 @@ class LucasKanade(IDIMethod):
         self._set_roi_size(self.roi_size)
 
 
-    def calculate_displacements(self, video, roi_size=None, max_nfev=None, tol=None):
+    def calculate_displacements(self, video, roi_size=None, max_nfev=None, tol=None, **kwargs):
         """
         Calculate displacements for set points and roi size.
         
@@ -64,6 +64,9 @@ class LucasKanade(IDIMethod):
                     (if None, predetermined is used)
         :type tol: float, optional
         """
+        if 'verbose' in kwargs.keys():
+            self.verbose = kwargs['verbose']
+
         if roi_size is not None:
             self._set_roi_size(roi_size)
 
