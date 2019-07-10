@@ -6,6 +6,8 @@ import tkinter as tk
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 from matplotlib.figure import Figure
 
+from multiprocessing import Pool
+from tqdm import tqdm
 
 class RegularROIGrid:
     """
@@ -337,3 +339,40 @@ def update_docstring(target_method, doc_method=None, delimiter='---', added_doc=
         docstring[1] = added_doc.replace('\n', '\n' + ' '*leading_spaces)
 
     target_method.__func__.__doc__ = delimiter.join(docstring)
+
+
+def func_4_multi(video, points):
+    """
+    A function that is called when for each job in multiprocessing.
+    """
+    video.set_points(points)
+    return video.get_displacements(verbose=0)
+
+
+def multi(video, points, processes=2):
+    """
+    Compute the displacements using multiprocessing.
+    
+    :param video: The pyIDI object with defined method
+    :type video: object
+    :param points: 2d array with point indices
+    :type points: ndarray
+    :param processes: number of processes, defaults to 2
+    :type processes: int, optional
+    :return: displacement array (3d array)
+    :rtype: ndarray
+    """
+    def update(a):
+        pbar.update(1)
+
+    pbar = tqdm(total=points.shape[0])
+
+    pool = Pool(processes=processes)
+    results = [pool.apply_async(func_4_multi, args=(video, points[i].reshape(1, 2)), callback=update) for i in range(points.shape[0])]
+    pool.close()
+    pool.join()
+    pbar.close()
+
+    out = np.array([r.get() for r in results]).reshape(points.shape[0], -1, 2)
+    
+    return out
