@@ -6,8 +6,13 @@ import tkinter as tk
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 from matplotlib.figure import Figure
 
+from multiprocessing import Pool
+from tqdm import tqdm
 
 class RegularROIGrid:
+    """
+    Automatic ROI grid generation.
+    """
     def __init__(self, video, roi_size=(7, 7), noverlap=0, sssig_filter=None, verbose=1):
         """
         
@@ -287,7 +292,8 @@ class ManualROI:
     
 
 def inside_polygon(x, y, points):
-    """Return True if a coordinate (x, y) is inside a polygon defined by
+    """
+    Return True if a coordinate (x, y) is inside a polygon defined by
     a list of verticies [(x1, y1), (x2, x2), ... , (xN, yN)].
 
     Reference: http://www.ariel.com.au/a/python-point-int-poly.html
@@ -307,3 +313,66 @@ def inside_polygon(x, y, points):
                         inside = not inside
         p1x, p1y = p2x, p2y
     return inside
+
+
+def update_docstring(target_method, doc_method=None, delimiter='---', added_doc=''):
+    """
+    Update the docstring in target_method with the docstring from doc_method.
+    
+    :param target_method: The method that waits for the docstring
+    :type target_method: method
+    :param doc_method: The method that holds the desired docstring
+    :type doc_method: method
+    :param delimiter: insert the desired docstring between two delimiters, defaults to '---'
+    :type delimiter: str, optional
+    """
+    docstring = target_method.__doc__.split(delimiter)
+    leading_spaces = len(docstring[1].replace('\n', '')) - len(docstring[1].replace('\n', '').lstrip(' '))
+    
+    if doc_method is not None:
+        if doc_method.__doc__:
+            docstring[1] = doc_method.__doc__
+        else:
+            docstring[1] = '\n' + ' '*leading_spaces + \
+                'The selected method does not have a docstring.\n'
+    else:
+        docstring[1] = added_doc.replace('\n', '\n' + ' '*leading_spaces)
+
+    target_method.__func__.__doc__ = delimiter.join(docstring)
+
+
+def func_4_multi(video, points):
+    """
+    A function that is called when for each job in multiprocessing.
+    """
+    video.set_points(points)
+    return video.get_displacements(verbose=0)
+
+
+def multi(video, points, processes=2):
+    """
+    Compute the displacements using multiprocessing.
+    
+    :param video: The pyIDI object with defined method
+    :type video: object
+    :param points: 2d array with point indices
+    :type points: ndarray
+    :param processes: number of processes, defaults to 2
+    :type processes: int, optional
+    :return: displacement array (3d array)
+    :rtype: ndarray
+    """
+    def update(a):
+        pbar.update(1)
+
+    pbar = tqdm(total=points.shape[0])
+
+    pool = Pool(processes=processes)
+    results = [pool.apply_async(func_4_multi, args=(video, points[i].reshape(1, 2)), callback=update) for i in range(points.shape[0])]
+    pool.close()
+    pool.join()
+    pbar.close()
+
+    out = np.array([r.get() for r in results]).reshape(points.shape[0], -1, 2)
+    
+    return out

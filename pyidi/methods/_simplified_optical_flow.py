@@ -13,7 +13,8 @@ from .idi_method import IDIMethod
 
 
 class SimplifiedOpticalFlow(IDIMethod):
-    """Displacmenet computation based on Simplified Optical Flow method [1].
+    """
+    Displacmenet computation based on Simplified Optical Flow method [1].
 
     Literature:
         [1] Javh, J., Slavič, J., & Boltežar, M. (2017). The subpixel resolution 
@@ -25,13 +26,11 @@ class SimplifiedOpticalFlow(IDIMethod):
             Intelligence - Volume 2 (pp. 674–679). San Francisco, CA, 
             USA: Morgan Kaufmann Publishers Inc.
     """
-
-    def __init__(
-        self, video, subset_size=3, pixel_shift=False, convert_from_px=1.,
+    def configure(self, subset_size=3, pixel_shift=False, convert_from_px=1.,
         mraw_range='all', mean_n_neighbours=0, zero_shift=False,
-        progress_bar=True, reference_range=(0, 100)
-    ):
-        """Set the attributes, compute reference image and gradients.
+        progress_bar=True, reference_range=(0, 100)):
+        """
+        Set the attributes, compute reference image and gradients.
 
         :param video: 'parent' object
         :type video: object
@@ -64,7 +63,8 @@ class SimplifiedOpticalFlow(IDIMethod):
 
         # Get reference image and gradients
         self.reference_image, self.gradient_0, self.gradient_1, self.gradient_magnitude = self.reference(
-            video.mraw[self.reference_range[0]: self.reference_range[1]], self.subset_size)
+            self.video.mraw[self.reference_range[0]: self.reference_range[1]], self.subset_size)
+
 
     def calculate_displacements(self, video):
         if not hasattr(video, 'points'):
