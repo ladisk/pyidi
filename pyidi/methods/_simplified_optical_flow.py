@@ -196,10 +196,10 @@ class SimplifiedOpticalFlow(IDIMethod):
             'min_grad': 0.,
         }
 
-        # Change the docstring in `set_points` to show the options
-        docstring = video.set_points.__doc__.split('---')
-        docstring[1] = '- ' + '\n\t- '.join(options) + '\n\t'
-        video.set_points.__func__.__doc__ = '---\n\t'.join(docstring)
+        # # Change the docstring in `set_points` to show the options
+        # docstring = video.set_points.__doc__.split('---')
+        # docstring[1] = '- ' + '\n\t- '.join(options) + '\n\t'
+        # video.set_points.__func__.__doc__ = '---\n\t'.join(docstring)
 
         options.update(kwargs)
 
