@@ -9,7 +9,8 @@ Welcome to pyIDI's documentation!
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
-
+   
+   quick_start/basic_usage
    contributing/documenting
    code/modules
 
