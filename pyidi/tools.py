@@ -8,6 +8,9 @@ from matplotlib.figure import Figure
 
 
 class RegularROIGrid:
+    """
+    Automatic ROI grid generation.
+    """
     def __init__(self, video, roi_size=(7, 7), noverlap=0, sssig_filter=None, verbose=1):
         """
         
@@ -287,7 +290,8 @@ class ManualROI:
     
 
 def inside_polygon(x, y, points):
-    """Return True if a coordinate (x, y) is inside a polygon defined by
+    """
+    Return True if a coordinate (x, y) is inside a polygon defined by
     a list of verticies [(x1, y1), (x2, x2), ... , (xN, yN)].
 
     Reference: http://www.ariel.com.au/a/python-point-int-poly.html

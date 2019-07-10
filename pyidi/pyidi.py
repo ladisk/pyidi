@@ -15,6 +15,9 @@ available_method_shortcuts = [
 
 
 class pyIDI:
+    """
+    The pyIDI base class represents the video to be analysed.
+    """
     def __init__(self, cih_file):
         self.cih_file = cih_file
 
