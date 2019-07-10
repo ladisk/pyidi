@@ -1,6 +1,8 @@
 # pyidi
 Image-based Displacement Identification (IDI) implementation in python.
 
+The documentation for this repository is accessible [here](https://pyidi.readthedocs.io/en/latest/index.html).
+
 # BASIC USAGE:
 Create an instance:
 ```
