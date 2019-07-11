@@ -1,11 +1,12 @@
 import numpy as np
 import collections
 import matplotlib.pyplot as plt
+import pyMRAW
 
 from .methods import IDIMethod, SimplifiedOpticalFlow, GradientBasedOpticalFlow, LucasKanade
 from . import tools
 
-__version__ = '0.17'
+__version__ = '0.18'
 
 available_method_shortcuts = [
     ('sof', SimplifiedOpticalFlow),
@@ -37,7 +38,10 @@ class pyIDI:
         tools.update_docstring(self.set_method, added_doc=available_methods_doc)
 
         # Load selected video
-        self.mraw, self.info = self.load_video()
+        self.mraw, self.info = pyMRAW.load_video(self.cih_file)
+        self.N = self.info['Total Frame']
+        self.image_width = self.info['Image Width']
+        self.image_height = self.info['Image Height']
 
 
     def set_method(self, method, **kwargs):
@@ -138,28 +142,6 @@ class pyIDI:
             raise ValueError('IDI method has not yet been set. Please call `set_method()` first.')
 
 
-    def load_video(self):
-        """
-        Get video and it's information.
-        """
-        info = self.get_CIH_info()
-        self.N = int(info['Total Frame'])
-        self.image_width = int(info['Image Width'])
-        self.image_height = int(info['Image Height'])
-        bit = info['Color Bit']
-
-        if bit == '16':
-            self.bit_dtype = np.uint16
-        elif bit == '8':
-            self.bit_dtype = np.uint8
-        else:
-            raise Exception(f'Unknown bit depth: {bit}. Bit depth of the video must be either 8 or 16.\nPlease use correct export options from Photron software')
-
-        filename = '.'.join(self.cih_file.split('.')[:-1])
-        mraw = np.memmap(filename+'.mraw', dtype=self.bit_dtype, mode='r', shape=(self.N, self.image_height, self.image_width))
-        return mraw, info
-
-
     def close_video(self):
         """
         Close the .mraw video memmap.
@@ -167,36 +149,6 @@ class pyIDI:
         if hasattr(self, 'mraw'):
             self.mraw._mmap.close()
             del self.mraw
-
-
-    def get_CIH_info(self):
-        """
-        Get info from .cih file in path, return it as dict.
-
-        https://github.com/ladisk/pyDIC/blob/master/py_dic/dic_tools.py - Domen Gorjup
-        """
-        wanted_info = ['Date',
-                    'Camera Type',
-                    'Record Rate(fps)',
-                    'Shutter Speed(s)',
-                    'Total Frame',
-                    'Image Width',
-                    'Image Height',
-                    'File Format',
-                    'EffectiveBit Depth',
-                    'Comment Text',
-                    'Color Bit']
-
-        info_dict = collections.OrderedDict([])
-
-        with open(self.cih_file, 'r') as file:
-            for line in file:
-                line = line.rstrip().split(' : ')
-                if line[0] in wanted_info:                
-                    key, value = line[0], line[1]#[:20]
-                    info_dict[key] = bytes(value, "utf-8").decode("unicode_escape") # Evaluate escape characters
-
-        return info_dict
 
 
 

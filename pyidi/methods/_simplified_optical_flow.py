@@ -192,7 +192,7 @@ class SimplifiedOpticalFlow(IDIMethod):
         """
         options = {
             'subset': (20, 20),
-            'axis': None,
+            'axis': 0,
             'min_grad': 0.,
         }
 
