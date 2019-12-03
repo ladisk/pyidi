@@ -291,6 +291,126 @@ class ManualROI:
         root.mainloop()
     
 
+class GridOfROI:
+    """
+    Automatic simple ROI grid generation.
+
+    Different from RegularROIGrid in that it gets a regular grid and only
+    then checks if all points are inside polygon. This yields a more regular
+    and full grid. Does not contain sssig filter.
+    """
+    def __init__(self, video, roi_size=(7, 7), noverlap=0, verbose=0):
+        """
+        
+        :param video: parent object of video
+        :type video: object
+        :param roi_size: Size of the region of interest (y, x), defaults to (7, 7)
+        :type roi_size: tuple, list, optional
+        :param noverlap: number of pixels that overlap between neighbouring ROIs
+        :type noverlap: int, optional
+        :param sssig_filter: minimum value of SSSIG that the roi must have, defaults to None
+        :type sssig_filter: None, float, optional
+        :param verbose: Show text, defaults to 1
+        :type verbose: int, optional
+        """
+        self.roi_size = roi_size
+        self.verbose = verbose
+        if noverlap > np.min(np.asarray(self.roi_size)//2):
+            print('!!!! WARNING: "noverlap" should be smaller than half of "roi_size"')
+
+        self.noverlap = int(noverlap)
+
+        self.cent_dist_0 = self.roi_size[0] - self.noverlap
+        self.cent_dist_1 = self.roi_size[1] - self.noverlap
+
+        self.image = video.mraw[0]
+
+        # Tkinter root and matplotlib figure
+        root = tk.Tk()
+        root.title('Pick points')
+        fig = Figure(figsize=(15, 7))
+        ax = fig.add_subplot(111)
+        ax.grid(False)
+        ax.imshow(self.image, cmap='gray')
+        plt.show()
+
+        # Embed figure in tkinter winodw
+        canvas = FigureCanvasTkAgg(fig, root)
+        canvas.get_tk_widget().pack(side='top', fill='both', expand=1)
+        NavigationToolbar2Tk(canvas, root)
+
+        # Initiate polygon
+        self.polygon = [[], []]
+        line, = ax.plot(self.polygon[1], self.polygon[0], 'r.-')
+
+        if self.verbose:
+            print('SHIFT + LEFT mouse button to pick a pole.\nRIGHT mouse button to erase the last pick.')
+
+        self.shift_is_held = False
+
+        def on_key_press(event):
+            """Function triggered on key press (shift)."""
+            if event.key == 'shift':
+                self.shift_is_held = True
+
+        def on_key_release(event):
+            """Function triggered on key release (shift)."""
+            if event.key == 'shift':
+                self.shift_is_held = False
+
+        def onclick(event):
+            if event.button == 1 and self.shift_is_held:
+                if event.xdata is not None and event.ydata is not None:
+                    self.polygon[1].append(int(np.round(event.xdata)))
+                    self.polygon[0].append(int(np.round(event.ydata)))
+                    if self.verbose:
+                        print(f'y: {np.round(event.ydata):5.0f}, x: {np.round(event.xdata):5.0f}')
+
+            elif event.button == 3 and self.shift_is_held:
+                if self.verbose:
+                    print('Deleted the last point...')
+                del self.polygon[1][-1]
+                del self.polygon[0][-1]
+
+            line.set_xdata(self.polygon[1])
+            line.set_ydata(self.polygon[0])
+            fig.canvas.draw()
+
+        def handle_close(event):
+            """On closing."""
+            self.polygon = np.asarray(self.polygon).T
+            if self.verbose:
+                for i, point in enumerate(self.polygon):
+                    print(f'{i+1}. point: x ={point[1]:5.0f}, y ={point[0]:5.0f}')
+            
+            self.points = self.get_roi_grid()
+
+        # Connecting functions to event manager
+        fig.canvas.mpl_connect('key_press_event', on_key_press)
+        fig.canvas.mpl_connect('key_release_event', on_key_release)
+        fig.canvas.mpl_connect('button_press_event', onclick)
+        # on closing the figure
+        fig.canvas.mpl_connect('close_event', handle_close)
+
+        root.mainloop()
+    
+    def get_roi_grid(self):
+        points = self.polygon
+        
+        low_0 = np.min(points[:, 0])
+        high_0 = np.max(points[:, 0])
+        low_1 = np.min(points[:, 1])
+        high_1 = np.max(points[:, 1])
+        
+        rois = []
+        for i in range(low_0+self.cent_dist_0, high_0-self.cent_dist_0, self.cent_dist_0):
+            for j in range(low_1+self.cent_dist_1, high_1-self.cent_dist_1, self.cent_dist_1):
+                if inside_polygon(i, j, self.polygon):
+                    rois.append([i, j])
+        return np.asarray(rois)
+
+
+
 def inside_polygon(x, y, points):
     """
     Return True if a coordinate (x, y) is inside a polygon defined by
