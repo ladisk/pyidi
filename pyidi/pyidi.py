@@ -1,6 +1,8 @@
+import os
 import numpy as np
 import collections
 import matplotlib.pyplot as plt
+import pickle
 import pyMRAW
 
 from .methods import IDIMethod, SimplifiedOpticalFlow, GradientBasedOpticalFlow, LucasKanade
@@ -151,6 +153,20 @@ class pyIDI:
             del self.mraw
 
 
+    def save(self, filename, root=''):
+        """ Save computed displacements and other basic information.
 
+        :param filename: Name of the file to save in.
+        :param root: Root of the filename, defaults to ''
+        """
+        full_filename = os.path.join(root, filename)
+        out = {
+            'points': self.points,
+            'disp': self.method.displacements,
+            'first_image': self.mraw[0],
+            'info': self.info,
+            'cih_file': self.cih_file
+        }
+        pickle.dump(out, open(full_filename, 'wb'), protocol=-1)
 
     
