@@ -466,7 +466,29 @@ def func_4_multi(video, points):
     A function that is called when for each job in multiprocessing.
     """
     video.set_points(points)
-    return video.get_displacements(verbose=0)
+    return video.get_displacements(verbose=1)
+
+
+def split_points(points, processes):
+    """Split the array of points to different processes.
+    
+    :param points: Array of points (2d)
+    :type points: numpy array
+    :param processes: number of processes
+    :type processes: int
+    """
+    points = np.asarray(points)
+    step = points.shape[0]//processes
+    rest = points.shape[0]%processes
+    points_split = []
+    
+    for i in range(processes):
+        this_step = step
+        if i < rest:
+            this_step += 1
+        points_split.append(points[i*this_step:(i+1)*this_step])
+
+    return points_split
 
 
 def multi(video, points, processes=2):
@@ -482,16 +504,12 @@ def multi(video, points, processes=2):
     :return: displacement array (3d array)
     :rtype: ndarray
     """
-    def update(a):
-        pbar.update(1)
-
-    pbar = tqdm(total=points.shape[0])
+    points_split = split_points(points, processes=processes)
 
     pool = Pool(processes=processes)
-    results = [pool.apply_async(func_4_multi, args=(video, points[i].reshape(1, 2)), callback=update) for i in range(points.shape[0])]
+    results = [pool.apply_async(func_4_multi, args=(video, p)) for p in points_split]
     pool.close()
     pool.join()
-    pbar.close()
 
     out = np.array([r.get() for r in results]).reshape(points.shape[0], -1, 2)
     
