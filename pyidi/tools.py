@@ -8,6 +8,9 @@ from matplotlib.figure import Figure
 
 from multiprocessing import Pool
 from tqdm import tqdm
+from atpbar import register_reporter, find_reporter, flush, atpbar
+
+from . import pyidi
 
 class RegularROIGrid:
     """
@@ -461,14 +464,6 @@ def update_docstring(target_method, doc_method=None, delimiter='---', added_doc=
     target_method.__func__.__doc__ = delimiter.join(docstring)
 
 
-def func_4_multi(video, points):
-    """
-    A function that is called when for each job in multiprocessing.
-    """
-    video.set_points(points)
-    return video.get_displacements(verbose=1)
-
-
 def split_points(points, processes):
     """Split the array of points to different processes.
     
@@ -505,12 +500,27 @@ def multi(video, points, processes=2):
     :rtype: ndarray
     """
     points_split = split_points(points, processes=processes)
-
+    args = (video.cih_file, video.method.roi_size, video.method.pad, video.method.max_nfev, video.method.tol, video.method.verbose, video.method.show_pbar)
+    
     pool = Pool(processes=processes)
-    results = [pool.apply_async(func_4_multi, args=(video, p)) for p in points_split]
+    results = [pool.apply_async(func_4_multi, args=(p, args)) for p in points_split]
     pool.close()
     pool.join()
 
     out = np.array([r.get() for r in results]).reshape(points.shape[0], -1, 2)
     
     return out
+
+
+def func_4_multi(points, args):
+    """
+    A function that is called when for each job in multiprocessing.
+    """
+    _video = pyidi.pyIDI(args[0])
+    _video.set_method('lk')
+    _video.method.configure(roi_size=args[1], 
+                            pad=args[2], 
+                            max_nfev=args[3], tol=args[4], verbose=args[5], show_pbar=args[6])
+    _video.set_points(points)
+    
+    return _video.get_displacements(verbose=0)
