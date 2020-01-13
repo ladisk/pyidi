@@ -131,6 +131,9 @@ class SimplifiedOpticalFlow(IDIMethod):
                 self.displacements[:, :, 0] -= m[:, 0:1]
                 self.displacements[:, :, 1] -= m[:, 1:]
 
+    def calculate_displacements_multiprocessing(self):
+        raise Exception('SimplifiedOpticalFLow method does not contain a multiprocessing option.')
+
     def displacement_averaging(self):
         """Calculate the average of displacements.
         """

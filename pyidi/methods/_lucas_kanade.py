@@ -7,6 +7,9 @@ import scipy.optimize
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 from tqdm import tqdm
+from multiprocessing import Pool
+from .. import pyidi
+from .. import tools
 
 from .idi_method import IDIMethod
 
@@ -130,6 +133,10 @@ class LucasKanade(IDIMethod):
                 print(f'Time to complete: {full_time:.1f} s')
     
 
+    def calculate_displacements_multiprocessing(self):
+        return multi
+
+
     def _pbar(self, x, y):
         """
         Set progress bar range or normal range.
@@ -209,3 +216,67 @@ class LucasKanade(IDIMethod):
     @staticmethod
     def get_points():
         raise Exception('Choose a method from `tools` module.')
+
+
+def multi(video, processes):
+    """Splitting the points to multiple processes and creating a
+    pool of workers.
+    
+    :param video: the video object with defined attributes
+    :type video: object
+    :param processes: number of processes
+    :type processes: int
+    :return: displacements
+    :rtype: ndarray
+    """
+    points = video.points
+    points_split = tools.split_points(points, processes=processes)
+    args = (
+        video.cih_file, 
+        video.method.roi_size, 
+        video.method.pad, 
+        video.method.max_nfev, 
+        video.method.tol, 
+        video.method.verbose, 
+        video.method.show_pbar
+    )
+    
+    pool = Pool(processes=processes)
+    results = [pool.apply_async(worker, args=(p, args)) for p in points_split]
+    pool.close()
+    pool.join()
+
+    out = [r.get() for r in results]
+    out = []
+    for r in results:
+        _r = r.get()
+        for i in _r:
+            out.append(i)
+    
+    return np.asarray(out)
+
+
+def worker(points, args):
+    """
+    A function that is called when for each job in multiprocessing.
+    """
+    _video = pyidi.pyIDI(args[0])
+    _video.set_method('lk')
+    _video.method.configure(roi_size=args[1], 
+                            pad=args[2], 
+                            max_nfev=args[3], tol=args[4], verbose=args[5], show_pbar=args[6])
+    _video.set_points(points)
+    
+    return _video.get_displacements(verbose=0)
+
+
+
+
+
+
+
+
+
+
+
+

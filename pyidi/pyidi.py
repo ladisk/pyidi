@@ -8,12 +8,12 @@ import pyMRAW
 from .methods import IDIMethod, SimplifiedOpticalFlow, GradientBasedOpticalFlow, LucasKanade
 from . import tools
 
-__version__ = '0.18'
+__version__ = '0.19'
 
 available_method_shortcuts = [
     ('sof', SimplifiedOpticalFlow),
     ('lk', LucasKanade),
-    ('gb', GradientBasedOpticalFlow)
+    # ('gb', GradientBasedOpticalFlow)
     ]
 
 
@@ -128,7 +128,7 @@ class pyIDI:
             plt.arrow(ind[1], ind[0], scale*f1, scale*f0, width=width, color='r', alpha=alpha)
 
 
-    def get_displacements(self, **kwargs):
+    def get_displacements(self, processes=1, **kwargs):
         """
         Calculate the displacements based on chosen method.
 
@@ -137,9 +137,18 @@ class pyIDI:
         Method is not set. Please use the `set_method` method.
         ---
         """
+        processes = int(processes)
+
         if hasattr(self, 'method'):
-            self.method.calculate_displacements(self, **kwargs)
-            return self.method.displacements
+            if processes == 1:
+                self.method.calculate_displacements(self, **kwargs)
+                self.displacements = self.method.displacements
+                return self.displacements
+            elif processes > 1:
+                self.displacements = self.method.calculate_displacements_multiprocessing()(self, processes)
+                return self.displacements
+            else:
+                raise ValueError(f'Number of processes must be 1 or greater ({processes})')
         else:
             raise ValueError('IDI method has not yet been set. Please call `set_method()` first.')
 
@@ -162,7 +171,7 @@ class pyIDI:
         full_filename = os.path.join(root, filename)
         out = {
             'points': self.points,
-            'disp': self.method.displacements,
+            'disp': self.displacements,
             'first_image': self.mraw[0],
             'info': self.info,
             'cih_file': self.cih_file

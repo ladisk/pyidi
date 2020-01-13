@@ -59,11 +59,12 @@ Finally, displacements can be identified:
 ::
     displacements = video.get_displacements()
 
+
 Multiprocessing
 ---------------
-In the case of ``lk`` method (Lucas-Kanade translation), the parallel computation of displacements is faster. A ``multi()`` function from ``tools`` module can be used
-to apply multiprocessing:
+In the case of ``lk`` method (Lucas-Kanade translation), the parallel computation of displacements is faster. To access the multiprocessing option, simply input
+the number of processes you wish to run. The points will be automatically equally split:
 ::
-    displacements = pyidi.tools.multi(video, points, processes=2)
+    displacements = video.get_displacements(processes=4)
 
 Note that the ``video`` object must already have set method and attributes.
