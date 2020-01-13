@@ -8,7 +8,6 @@ from matplotlib.figure import Figure
 
 from multiprocessing import Pool
 from tqdm import tqdm
-from atpbar import register_reporter, find_reporter, flush, atpbar
 
 from . import pyidi
 
@@ -507,9 +506,15 @@ def multi(video, points, processes=2):
     pool.close()
     pool.join()
 
-    out = np.array([r.get() for r in results]).reshape(points.shape[0], -1, 2)
+    # out = np.array([r.get() for r in results]).reshape(points.shape[0], -1, 2)
+    out = [r.get() for r in results]
+    out = []
+    for r in results:
+        _r = r.get()
+        for i in _r:
+            out.append(i)
     
-    return out
+    return np.asarray(out)
 
 
 def func_4_multi(points, args):
