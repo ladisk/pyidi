@@ -8,7 +8,7 @@ import pyMRAW
 from .methods import IDIMethod, SimplifiedOpticalFlow, GradientBasedOpticalFlow, LucasKanade
 from . import tools
 
-__version__ = '0.19'
+__version__ = '0.20'
 
 available_method_shortcuts = [
     ('sof', SimplifiedOpticalFlow),
