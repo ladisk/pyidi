@@ -60,11 +60,12 @@ class pyIDI:
             self.points = points
 
 
-    def show_points(self):
-        """Show selected points on image.
+    def show_points(self, **kwargs):
+        """
+        Show selected points on image.
         """
         if hasattr(self, 'method') and hasattr(self.method, 'show_points'):
-            self.method.show_points(self)
+            self.method.show_points(self, **kwargs)
         else:
             fig, ax = plt.subplots(figsize=(15, 5))
             ax.imshow(self.mraw[0].astype(float), cmap='gray')
@@ -74,7 +75,8 @@ class pyIDI:
 
 
     def show_field(self, field, scale=1., width=0.5):
-        """Show displacement field on image.
+        """
+        Show displacement field on image.
         
         :param field: Field of displacements (number_of_points, 2)
         :type field: ndarray
@@ -97,7 +99,8 @@ class pyIDI:
 
 
     def get_displacements(self, **kwargs):
-        """Calculate the displacements based on chosen method.
+        """
+        Calculate the displacements based on chosen method.
         """
         if hasattr(self, 'method'):
             self.method.calculate_displacements(self, **kwargs)
@@ -107,7 +110,8 @@ class pyIDI:
 
 
     def load_video(self):
-        """Get video and it's information.
+        """
+        Get video and it's information.
         """
         info = self.get_CIH_info()
         self.N = int(info['Total Frame'])
@@ -137,7 +141,8 @@ class pyIDI:
 
 
     def get_CIH_info(self):
-        """Get info from .cih file in path, return it as dict.
+        """
+        Get info from .cih file in path, return it as dict.
 
         https://github.com/ladisk/pyDIC/blob/master/py_dic/dic_tools.py - Domen Gorjup
         """
