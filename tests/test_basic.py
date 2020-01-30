@@ -8,7 +8,6 @@ import pyidi
 def test_instance():
     video = pyidi.pyIDI(cih_file='./data/data_showcase.cih')
     video.set_method(method='sof')
-    video.set_method(method='gb')
     video.set_method(method='lk')
     assert True
 

@@ -1,42 +1,83 @@
+import os
 import numpy as np
 import collections
 import matplotlib.pyplot as plt
+import pickle
+import pyMRAW
 
-from .methods import SimplifiedOpticalFlow, GradientBasedOpticalFlow, LucasKanade
+from .methods import IDIMethod, SimplifiedOpticalFlow, GradientBasedOpticalFlow, LucasKanadeSc, LucasKanade
+from . import tools
 
-__version__ = '0.17'
+__version__ = '0.20'
+
+available_method_shortcuts = [
+    ('sof', SimplifiedOpticalFlow),
+    ('lk', LucasKanade),
+    ('lk_scipy', LucasKanadeSc)
+    # ('gb', GradientBasedOpticalFlow)
+    ]
+
 
 class pyIDI:
+    """
+    The pyIDI base class represents the video to be analysed.
+    """
     def __init__(self, cih_file):
         self.cih_file = cih_file
 
-        self.avaliable_methods = {
-            'simplified_optical_flow': SimplifiedOpticalFlow,
-            'sof': SimplifiedOpticalFlow,
-            'gradient_based_optical_flow': GradientBasedOpticalFlow,
-            'gb': GradientBasedOpticalFlow,
-            'lucas_kanade': LucasKanade,
-            'lk': LucasKanade,
-        }
+        self.available_methods = dict([ 
+            (key, {
+                'IDIMethod': method,
+                'description': method.__doc__,     
+            })
+            for key, method in available_method_shortcuts
+        ])
 
-        self.mraw, self.info = self.load_video()
+        # Fill available methods into `set_method` docstring
+        available_methods_doc = '\n' + '\n'.join([
+            f"'{key}' ({method_dict['IDIMethod'].__name__}): {method_dict['description']}"
+            for key, method_dict in self.available_methods.items()
+            ])
+        tools.update_docstring(self.set_method, added_doc=available_methods_doc)
+
+        # Load selected video
+        self.mraw, self.info = pyMRAW.load_video(self.cih_file)
+        self.N = self.info['Total Frame']
+        self.image_width = self.info['Image Width']
+        self.image_height = self.info['Image Height']
 
 
     def set_method(self, method, **kwargs):
-        """Set displacement identification method on video.
+        """
+        Set displacement identification method on video.
+        To configure the method, use `method.configure()`
 
-        kwargs for the chosen method:
+        Available methods:
         ---
-        Will be shown after the method is set.
+        [Available method names and descriptions go here.]
         ---
 
         :param method: the method to be used for displacement identification.
         :type method: IDIMethod or str
         """
-        if method in self.avaliable_methods.keys():
-            self.method = self.avaliable_methods[method](self, **kwargs)
+        if isinstance(method, str) and method in self.available_methods.keys():
+            self.method = self.available_methods[method]['IDIMethod'](self, **kwargs)
+        elif callable(method) and hasattr(method, 'calculate_displacements'):
+            try:
+                self.method = method(self, **kwargs)
+            except:
+                raise ValueError("The input `method` is not a valid `IDIMethod`.")
         else:
-            self.method = method(self, **kwargs)
+            raise ValueError("method must either be a valid name from `available_methods` or an `IDIMethod`.")
+        
+        # Update `get_displacements` docstring
+        tools.update_docstring(self.get_displacements, self.method.calculate_displacements)
+        # Update `show_points` docstring
+        if hasattr(self.method, 'show_points'):
+            try:
+                tools.update_docstring(self.show_points, self.method.show_points)
+            except:
+                pass
 
 
     def set_points(self, points=None, method=None, **kwargs):
@@ -44,10 +85,6 @@ class pyIDI:
         Set points that will be used to calculate displacements.
         If `points` is None and a `method` has aready been set on this `pyIDI` instance, 
         the `method` object's `get_point` is used to get method-appropriate points.
-
-        kwargs:
-        ---
-        ---
         """
         if points is None:
             if not hasattr(self, 'method'):
@@ -64,12 +101,18 @@ class pyIDI:
         """
         Show selected points on image.
         """
+
         if hasattr(self, 'method') and hasattr(self.method, 'show_points'):
             self.method.show_points(self, **kwargs)
         else:
-            fig, ax = plt.subplots(figsize=(15, 5))
-            ax.imshow(self.mraw[0].astype(float), cmap='gray')
-            ax.scatter(self.points[:, 1], self.points[:, 0], marker='.', color='r')
+            figsize = kwargs.get('figsize', (15, 5))
+            cmap = kwargs.get('cmap', 'gray')
+            marker = kwargs.get('marker', '.')
+            color = kwargs.get('color', 'r')
+            fig, ax = plt.subplots(figsize=figsize)
+            ax.imshow(self.mraw[0].astype(float), cmap=cmap)
+            ax.scatter(self.points[:, 1], self.points[:, 0], 
+                marker=marker, color=color)
             plt.grid(False)
             plt.show()
 
@@ -101,34 +144,19 @@ class pyIDI:
     def get_displacements(self, **kwargs):
         """
         Calculate the displacements based on chosen method.
+
+        Method docstring:
+        ---
+        Method is not set. Please use the `set_method` method.
+        ---
         """
+
         if hasattr(self, 'method'):
             self.method.calculate_displacements(self, **kwargs)
-            return self.method.displacements
+            self.displacements = self.method.displacements
+            return self.displacements
         else:
             raise ValueError('IDI method has not yet been set. Please call `set_method()` first.')
-
-
-    def load_video(self):
-        """
-        Get video and it's information.
-        """
-        info = self.get_CIH_info()
-        self.N = int(info['Total Frame'])
-        self.image_width = int(info['Image Width'])
-        self.image_height = int(info['Image Height'])
-        bit = info['Color Bit']
-
-        if bit == '16':
-            self.bit_dtype = np.uint16
-        elif bit == '8':
-            self.bit_dtype = np.uint8
-        else:
-            raise Exception(f'Unknown bit depth: {bit}. Bit depth of the video must be either 8 or 16.\nPlease use correct export options from Photron software')
-
-        filename = '.'.join(self.cih_file.split('.')[:-1])
-        mraw = np.memmap(filename+'.mraw', dtype=self.bit_dtype, mode='r', shape=(self.N, self.image_height, self.image_width))
-        return mraw, info
 
 
     def close_video(self):
@@ -140,36 +168,20 @@ class pyIDI:
             del self.mraw
 
 
-    def get_CIH_info(self):
+    def save(self, filename, root=''):
+        """ Save computed displacements and other basic information.
+
+        :param filename: Name of the file to save in.
+        :param root: Root of the filename, defaults to ''
         """
-        Get info from .cih file in path, return it as dict.
-
-        https://github.com/ladisk/pyDIC/blob/master/py_dic/dic_tools.py - Domen Gorjup
-        """
-        wanted_info = ['Date',
-                    'Camera Type',
-                    'Record Rate(fps)',
-                    'Shutter Speed(s)',
-                    'Total Frame',
-                    'Image Width',
-                    'Image Height',
-                    'File Format',
-                    'EffectiveBit Depth',
-                    'Comment Text',
-                    'Color Bit']
-
-        info_dict = collections.OrderedDict([])
-
-        with open(self.cih_file, 'r') as file:
-            for line in file:
-                line = line.rstrip().split(' : ')
-                if line[0] in wanted_info:                
-                    key, value = line[0], line[1]#[:20]
-                    info_dict[key] = bytes(value, "utf-8").decode("unicode_escape") # Evaluate escape characters
-
-        return info_dict
-
-
-
+        full_filename = os.path.join(root, filename)
+        out = {
+            'points': self.points,
+            'disp': self.displacements,
+            'first_image': self.mraw[0],
+            'info': self.info,
+            'cih_file': self.cih_file
+        }
+        pickle.dump(out, open(full_filename, 'wb'), protocol=-1)
 
     

@@ -1,7 +1,11 @@
 # pyidi
 Image-based Displacement Identification (IDI) implementation in python.
 
+The documentation for this repository is accessible [here](https://pyidi.readthedocs.io/en/latest/index.html).
+
 # BASIC USAGE:
+![Alt Text](usage_gif.gif)
+
 Create an instance:
 ```
 v = pyidi.pyIDI('video.cih')
