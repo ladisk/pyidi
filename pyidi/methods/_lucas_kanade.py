@@ -385,7 +385,7 @@ def multi(video, processes):
                 out.append(i)
     
     elif video.method.multi_type == 'mantichora':
-        with mantichora.mantichora() as mcore:
+        with mantichora.mantichora(nworkers=processes) as mcore:
             for p in points_split:
                 mcore.run(worker, p, idi_kwargs, method_kwargs)
             returns = mcore.returns()
