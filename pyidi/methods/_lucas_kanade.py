@@ -366,6 +366,7 @@ def multi(video, processes):
     }
     if video.method.pbar_type == 'atpbar':
         print(f'Computation start: {datetime.datetime.now()}')
+    t_start = time.time()
 
     if video.method.multi_type == 'multiprocessing':
         if method_kwargs['pbar_type'] == 'atpbar':
@@ -394,6 +395,13 @@ def multi(video, processes):
         for r in returns:
             for i in r:
                 out.append(i)
+
+    t = time.time() - t_start
+    minutes = t//60
+    seconds = t%60
+    hours = minutes//60
+    minutes = minutes%60
+    print(f'Computation duration: {hours:0>2.0f}:{minutes:0>2.0f}:{seconds:.2f}')
     
     return np.asarray(out)
 
