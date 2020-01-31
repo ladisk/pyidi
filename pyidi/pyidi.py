@@ -94,7 +94,7 @@ class pyIDI:
                     raise ValueError("Invalid arguments. Please input points, or set the IDI method first.")
             self.method.get_points(self, **kwargs) # get_points sets the attribute video.points                
         else:
-            self.points = points
+            self.points = np.asarray(points)
 
 
     def show_points(self, **kwargs):
