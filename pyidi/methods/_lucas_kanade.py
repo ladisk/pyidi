@@ -30,7 +30,7 @@ class LucasKanade(IDIMethod):
     def configure(
         self, roi_size=(9, 9), pad=2, max_nfev=20, 
         tol=1e-8, int_order=3, verbose=1, show_pbar=True, 
-        processes=1, pbar_type='tqdm', multi_type='multiprocessing'
+        processes=1, pbar_type='atpbar', multi_type='mantichora'
     ):
         """
         Displacement identification based on Lucas-Kanade method,
@@ -56,11 +56,11 @@ class LucasKanade(IDIMethod):
         :type verbose: int, optional
         :param show_pbar: show progress bar, defaults to True
         :type show_pbar: bool, optional
-        :param processes: number of processes to run with `multiprocessing`
+        :param processes: number of processes to run
         :type processes: int, optional, defaults to 1.
-        :param pbar_type: type of the progress bar ('tqdm' or 'atpbar'), defaults to 'tqdm'
+        :param pbar_type: type of the progress bar ('tqdm' or 'atpbar'), defaults to 'atpbar'
         :type pbar_type: str, optional
-        :param multi_type: type of multiprocessing used ('multiprocessing' or 'mantichora'), defaults to 'multiprocessing'
+        :param multi_type: type of multiprocessing used ('multiprocessing' or 'mantichora'), defaults to 'mantichora'
         :type multi_type: str, optional
         """
 
