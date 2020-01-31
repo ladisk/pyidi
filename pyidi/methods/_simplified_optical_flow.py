@@ -96,10 +96,10 @@ class SimplifiedOpticalFlow(IDIMethod):
         if self.progress_bar:
             p_bar = tqdm
         else:
-            def p_bar(x): return x  # empty function
+            def p_bar(x, **kwargs): return x  # empty function
 
         # calculating the displacements
-        for i, image in enumerate(p_bar(limited_mraw)):
+        for i, image in enumerate(p_bar(limited_mraw, ncols=100)):
             image_filtered = self.subset(image, self.subset_size)
 
             if self.pixel_shift:

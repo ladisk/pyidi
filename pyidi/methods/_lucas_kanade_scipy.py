@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 from tqdm import tqdm
 from multiprocessing import Pool
+from psutil import cpu_count
 from .. import pyidi
 from .. import tools
 
@@ -69,7 +70,7 @@ class LucasKanadeSc(IDIMethod):
                     (if None, predetermined is used)
         :type tol: float, optional
         """
-        if processes > 1:
+        if processes != 1:
             self.displacements = multi(video, processes)
         else:
 
@@ -226,11 +227,17 @@ def multi(video, processes):
     
     :param video: the video object with defined attributes
     :type video: object
-    :param processes: number of processes
+    :param processes: number of processes. If negative, the number
+        of processes is set to `psutil.cpu_count + processes`.
     :type processes: int
     :return: displacements
     :rtype: ndarray
     """
+    if processes < 0:
+        processes = cpu_count() + processes
+    elif processes == 0:
+        raise ValueError('Number of processes must not be zero.')
+
     points = video.points
     points_split = tools.split_points(points, processes=processes)
     
@@ -252,7 +259,6 @@ def multi(video, processes):
     pool.close()
     pool.join()
 
-    out = [r.get() for r in results]
     out = []
     for r in results:
         _r = r.get()
