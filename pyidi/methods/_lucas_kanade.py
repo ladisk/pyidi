@@ -1,5 +1,6 @@
 import numpy as np
 import time
+import datetime
 
 import scipy.signal
 from scipy.linalg import lu_factor, lu_solve
@@ -9,6 +10,10 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 from tqdm import tqdm
 from multiprocessing import Pool
+
+from atpbar import atpbar
+import mantichora
+
 from psutil import cpu_count
 from .. import pyidi
 from .. import tools
@@ -24,7 +29,8 @@ class LucasKanade(IDIMethod):
     """  
     def configure(
         self, roi_size=(9, 9), pad=2, max_nfev=20, 
-        tol=1e-8, int_order=3, verbose=1, show_pbar=True
+        tol=1e-8, int_order=3, verbose=1, show_pbar=True, 
+        processes=1, pbar_type='tqdm', multi_type='multiprocessing'
     ):
         """
         Displacement identification based on Lucas-Kanade method,
@@ -50,58 +56,56 @@ class LucasKanade(IDIMethod):
         :type verbose: int, optional
         :param show_pbar: show progress bar, defaults to True
         :type show_pbar: bool, optional
+        :param processes: number of processes to run with `multiprocessing`
+        :type processes: int, optional, defaults to 1.
+        :param pbar_type: type of the progress bar ('tqdm' or 'atpbar'), defaults to 'tqdm'
+        :type pbar_type: str, optional
+        :param multi_type: type of multiprocessing used ('multiprocessing' or 'mantichora'), defaults to 'multiprocessing'
+        :type multi_type: str, optional
         """
-        self.pad = pad
-        self.max_nfev = max_nfev
-        self.tol = tol
-        self.verbose = verbose
-        self.show_pbar = show_pbar
-        self.roi_size = roi_size
-        self.int_order = int_order
 
+        if pad is not None:
+            self.pad = pad
+        if max_nfev is not None:
+            self.max_nfev = max_nfev
+        if tol is not None:
+            self.tol = tol
+        if verbose is not None:
+            self.verbose = verbose
+        if show_pbar is not None:
+            self.show_pbar = show_pbar
+        if roi_size is not None:
+            self.roi_size = roi_size
+        if int_order is not None:
+            self.int_order = int_order
+        if pbar_type is not None:
+            self.pbar_type = pbar_type
+        if multi_type is not None:
+            self.multi_type = multi_type
+        if processes is not None:
+            self.processes = processes
+        
 
-    def calculate_displacements(self, video, roi_size=None, pad=None, max_nfev=None, 
-        tol=None, int_order=None, processes=1, verbose=None):
+    def calculate_displacements(self, video, **kwargs):
         """
         Calculate displacements for set points and roi size.
-        
-        :param video: parent pyIDI object
-        :type video: `pyidi.pyIDI` object
-        :param roi_size: size of region of interest (if None, the predetermined
-            value is used)
-        :type roi_size: scalar or array_like (h, w), optional, defaults to None
-        :param pad:
-        :type pad:
-        :param max_nfev: Maximum number of iterations in least_squares (if None, 
-            the predetermined value is used)
-        :type max_nfev: int, optional, defaults to None
-        :param tol: tolerance for termination of the iterative optimization loop.
-        :type tol: float, optional, defaults to None.
-        :param int_order: interpolation spline order
-        :type int_order: int, optional
-        :param processes: numebr of processes to run with `multiprocessing`
-        :type processes: int, optional, defaults to 1.
-        """
 
-        if processes != 1:
-            self.displacements = multi(video, processes)
+        kwargs are passed to `configure` method. Pre-set arguments (using configure)
+        are NOT changed!
+        
+        """
+        # Updating the atributes
+        config_kwargs = dict([(var, None) for var in self.configure.__code__.co_varnames])
+        config_kwargs.pop('self', None)
+        config_kwargs.update((k, kwargs[k]) for k in config_kwargs.keys() & kwargs.keys())
+        self.configure(**config_kwargs)
+
+
+        if self.processes != 1:
+            self.displacements = multi(video, self.processes)
             # return?
 
-        else:
-
-            if pad is not None:
-                self.pad = pad
-            if verbose is not None:
-                self.verbose = verbose
-            if roi_size is not None:
-                self.roi_size = roi_size
-            if max_nfev is not None:
-                self.max_nfev = max_nfev
-            if tol is not None:
-                self.tol = tol
-            if int_order is not None:
-                self.int_order = int_order
-            
+        else:            
             self.image_size = video.mraw.shape[-2:]
 
             self.displacements = np.zeros((video.points.shape[0], video.N, 2))
@@ -237,7 +241,10 @@ class LucasKanade(IDIMethod):
         Set progress bar range or normal range.
         """
         if self.show_pbar:
-            return tqdm(range(*args, **kwargs), ncols=100, leave=True)
+            if self.pbar_type == 'tqdm':
+                return tqdm(range(*args, **kwargs), ncols=100, leave=True)
+            elif self.pbar_type == 'atpbar':
+                return atpbar(range(*args, **kwargs), name=f'{self.video.points.shape[0]} points')
         else:
             return range(*args, **kwargs)
 
@@ -354,19 +361,39 @@ def multi(video, processes):
         'tol': video.method.tol, 
         'verbose': video.method.verbose, 
         'show_pbar': video.method.show_pbar,
-        'int_order': video.method.int_order
+        'int_order': video.method.int_order,
+        'pbar_type': video.method.pbar_type,
     }
-    
-    pool = Pool(processes=processes)
-    results = [pool.apply_async(worker, args=(p, idi_kwargs, method_kwargs)) for p in points_split]
-    pool.close()
-    pool.join()
+    if video.method.pbar_type == 'atpbar':
+        print(f'Computation start: {datetime.datetime.now()}')
 
-    out = []
-    for r in results:
-        _r = r.get()
-        for i in _r:
-            out.append(i)
+    if video.method.multi_type == 'multiprocessing':
+        if method_kwargs['pbar_type'] == 'atpbar':
+            method_kwargs['pbar_type'] = 'tqdm'
+            print(f'!!! WARNING: "atpbar" pbar_type was used with "multiprocessing". This is not supported. Changed pbar_type to "tqdm"')
+
+        pool = Pool(processes=processes)
+        results = [pool.apply_async(worker, args=(p, idi_kwargs, method_kwargs)) for p in points_split]
+        pool.close()
+        pool.join()
+
+        out = []
+        for r in results:
+            _r = r.get()
+            for i in _r:
+
+                out.append(i)
+    
+    elif video.method.multi_type == 'mantichora':
+        with mantichora.mantichora() as mcore:
+            for p in points_split:
+                mcore.run(worker, p, idi_kwargs, method_kwargs)
+            returns = mcore.returns()
+        
+        out = []
+        for r in returns:
+            for i in r:
+                out.append(i)
     
     return np.asarray(out)
 
