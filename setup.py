@@ -27,8 +27,16 @@ with open(init_file, 'r') as f:
         raise RuntimeError(
             'Cannot find __version__ in {}'.format(init_file))
 
-with open('README.md', 'r') as f:
-    readme = f.read()
+# with open('README.md', 'r') as f:
+#     readme = f.read()
+
+readme = """
+pyidi
+=====
+Image-based Displacement Identification (IDI) implementation in python.
+
+The documentation for this repository is accessible `here <https://pyidi.readthedocs.io/en/latest/index.html>`_.
+"""
 
 
 def parse_requirements(filename):
@@ -42,8 +50,6 @@ def parse_requirements(filename):
     return lines
 
 requirements = parse_requirements('requirements.txt')
-
-print(version, requirements, readme)
 
 setup(name='pyidi',
       version=version,
