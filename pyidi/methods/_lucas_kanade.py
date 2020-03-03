@@ -244,7 +244,10 @@ class LucasKanade(IDIMethod):
             if self.pbar_type == 'tqdm':
                 return tqdm(range(*args, **kwargs), ncols=100, leave=True)
             elif self.pbar_type == 'atpbar':
-                return atpbar(range(*args, **kwargs), name=f'{self.video.points.shape[0]} points')
+                try:
+                    return atpbar(range(*args, **kwargs), name=f'{self.video.points.shape[0]} points', time_track=True)
+                except:
+                    return atpbar(range(*args, **kwargs), name=f'{self.video.points.shape[0]} points')
         else:
             return range(*args, **kwargs)
 
@@ -380,21 +383,24 @@ def multi(video, processes):
 
         out = []
         for r in results:
-            _r = r.get()
-            for i in _r:
+            out.append(r.get())
 
-                out.append(i)
+        out1 = sorted(out, key=lambda x: x[1])
+        out1 = np.concatenate([d[0] for d in out1])
     
     elif video.method.multi_type == 'mantichora':
         with mantichora.mantichora(nworkers=processes) as mcore:
-            for p in points_split:
-                mcore.run(worker, p, idi_kwargs, method_kwargs)
+            for i, p in enumerate(points_split):
+                mcore.run(worker, p, idi_kwargs, method_kwargs, i)
             returns = mcore.returns()
         
         out = []
         for r in returns:
-            for i in r:
-                out.append(i)
+            out.append(r)
+        
+        out1 = sorted(out, key=lambda x: x[1])
+        out1 = np.concatenate([d[0] for d in out1])
+
 
     t = time.time() - t_start
     minutes = t//60
@@ -403,10 +409,10 @@ def multi(video, processes):
     minutes = minutes%60
     print(f'Computation duration: {hours:0>2.0f}:{minutes:0>2.0f}:{seconds:.2f}')
     
-    return np.asarray(out)
+    return out1
 
 
-def worker(points, idi_kwargs, method_kwargs):
+def worker(points, idi_kwargs, method_kwargs, i):
     """
     A function that is called when for each job in multiprocessing.
     """
@@ -415,4 +421,5 @@ def worker(points, idi_kwargs, method_kwargs):
     _video.method.configure(**method_kwargs)
     _video.set_points(points)
     
-    return _video.get_displacements(verbose=0)
+    return _video.get_displacements(verbose=0), i
+
