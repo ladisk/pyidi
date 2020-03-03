@@ -40,11 +40,22 @@ class pyIDI:
             ])
         tools.update_docstring(self.set_method, added_doc=available_methods_doc)
 
-        # Load selected video
-        self.mraw, self.info = pyMRAW.load_video(self.cih_file)
-        self.N = self.info['Total Frame']
-        self.image_width = self.info['Image Width']
-        self.image_height = self.info['Image Height']
+        if type(cih_file) == str:
+            # Load selected video
+            self.mraw, self.info = pyMRAW.load_video(self.cih_file)
+            self.N = self.info['Total Frame']
+            self.image_width = self.info['Image Width']
+            self.image_height = self.info['Image Height']
+        
+        elif type(cih_file) == np.ndarray:
+            self.mraw = cih_file
+            self.N = cih_file.shape[0]
+            self.image_height = cih_file.shape[1]
+            self.image_width = cih_file.shape[2]
+            self.info = {}
+        
+        else:
+            raise ValueError('`cih_file` must be either a cih filename or a 3D array (N_time, height, width)')
 
 
     def set_method(self, method, **kwargs):
