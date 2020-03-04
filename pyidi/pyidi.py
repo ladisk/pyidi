@@ -4,6 +4,7 @@ import collections
 import matplotlib.pyplot as plt
 import pickle
 import pyMRAW
+import datetime
 
 from .methods import IDIMethod, SimplifiedOpticalFlow, GradientBasedOpticalFlow, LucasKanadeSc, LucasKanade
 from . import tools
@@ -24,6 +25,10 @@ class pyIDI:
     """
     def __init__(self, cih_file):
         self.cih_file = cih_file
+        if type(cih_file) == str:
+            self.root = os.path.split(self.cih_file)[0]
+        else:
+            self.root = ''
 
         self.available_methods = dict([ 
             (key, {
@@ -165,6 +170,11 @@ class pyIDI:
         if hasattr(self, 'method'):
             self.method.calculate_displacements(self, **kwargs)
             self.displacements = self.method.displacements
+            
+            self.save(f'{datetime.datetime.now().strftime("%Y%m%d_%H%M%S")}_displacements.pkl', root=self.root)
+            if hasattr(self.method, 'process_number'):
+                if self.method.process_number == 0:
+                    self.method.clear_temp_files()
             return self.displacements
         else:
             raise ValueError('IDI method has not yet been set. Please call `set_method()` first.')
@@ -191,7 +201,7 @@ class pyIDI:
             'disp': self.displacements,
             'first_image': self.mraw[0],
             'info': self.info,
-            'cih_file': self.cih_file
+            'cih_file': self.cih_file,
         }
         pickle.dump(out, open(full_filename, 'wb'), protocol=-1)
 
