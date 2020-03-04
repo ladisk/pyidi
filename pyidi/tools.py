@@ -296,10 +296,12 @@ def split_points(points, processes):
     rest = points.shape[0]%processes
     points_split = []
     
+    last_point = 0
     for i in range(processes):
         this_step = step
         if i < rest:
             this_step += 1
-        points_split.append(points[i*this_step:(i+1)*this_step])
+        points_split.append(points[last_point:last_point+this_step])
+        last_point += this_step
 
     return points_split
