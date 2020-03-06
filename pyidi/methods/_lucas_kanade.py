@@ -392,7 +392,7 @@ class LucasKanade(IDIMethod):
             self.points_filename = os.path.join(temp_dir, 'points_' + token + '.pkl')
             self.disp_filename = os.path.join(temp_dir, 'disp_' + token + '.pkl')
 
-            with open(self.process_log, 'w') as f:
+            with open(self.process_log, 'w', encoding='utf8') as f:
                 f.writelines([
                     f'cih_file: {self.video.cih_file}\n',
                     f'token: {token}\n',
@@ -432,7 +432,7 @@ class LucasKanade(IDIMethod):
         self.points_filename = os.path.join(temp_dir, 'points_' + token + '.pkl')
         self.disp_filename = os.path.join(temp_dir, 'disp_' + token + '.pkl')
 
-        with open(self.process_log, 'r') as f:
+        with open(self.process_log, 'r', encoding='utf8') as f:
             log = f.readlines()
 
         shape = tuple([int(_) for _ in log[4].replace(' ', '').split(':')[1].replace('(', '').replace(')', '').split(',')])

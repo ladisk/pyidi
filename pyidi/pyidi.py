@@ -172,8 +172,9 @@ class pyIDI:
             self.displacements = self.method.displacements
             
             self.save(f'{datetime.datetime.now().strftime("%Y%m%d_%H%M%S")}_displacements.pkl', root=self.root)
-            if self.method.process_number == 0:
-                self.method.clear_temp_files()
+            if hasattr(self.method, 'process_number'):
+                if self.method.process_number == 0:
+                    self.method.clear_temp_files()
             return self.displacements
         else:
             raise ValueError('IDI method has not yet been set. Please call `set_method()` first.')
