@@ -170,6 +170,7 @@ class pyIDI:
             self.method.calculate_displacements(self, **kwargs)
             self.displacements = self.method.displacements
             
+            # auto-save and clearing temp files
             if hasattr(self.method, 'process_number'):
                 if self.method.process_number == 0:
                     if type(self.cih_file) == str:
@@ -180,6 +181,7 @@ class pyIDI:
                     
                     self.save(auto_filename, root=self.root)
                     self.method.clear_temp_files()
+                    
             return self.displacements
         else:
             raise ValueError('IDI method has not yet been set. Please call `set_method()` first.')

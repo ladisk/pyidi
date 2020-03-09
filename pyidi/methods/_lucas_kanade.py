@@ -124,11 +124,13 @@ class LucasKanade(IDIMethod):
             if self.temp_files_check():
                 self.resume_analysis = True
                 if self.verbose:
-                    print('Resuming last analysis...')
+                    print('-- Resuming last analysis ---')
+                    print(' ')
             else:
                 self.resume_analysis = False
                 if self.verbose:
-                    print('New analysis...')
+                    print('--- Starting new analysis ---')
+                    print(' ')
 
         if self.processes != 1:
             if not self.resume_analysis:
@@ -371,6 +373,14 @@ class LucasKanade(IDIMethod):
 
 
     def create_temp_files(self, init_multi=False):
+        """Temporary files to track the solving process.
+
+        This is done in case some error occures. In this eventuality the calculation
+        can be resumed from the last computed time point.
+        
+        :param init_multi: when initialization multiprocessing, defaults to False
+        :type init_multi: bool, optional
+        """
         temp_dir = self.temp_dir
         
         if not os.path.exists(temp_dir):
@@ -384,12 +394,14 @@ class LucasKanade(IDIMethod):
             # Write all the settings of the analysis
             settings = self._make_comparison_dict()
             pickle.dump(settings, open(self.settings_filename, 'wb'))
+            self.points_filename = os.path.join(temp_dir, 'points.pkl')
+            pickle.dump(self.video.points, open(self.points_filename, 'wb'))
 
         if not init_multi:
             token = f'{self.process_number:0>3.0f}'
 
             self.process_log = os.path.join(temp_dir, 'process_log_' + token + '.txt')
-            self.points_filename = os.path.join(temp_dir, 'points_' + token + '.pkl')
+            self.points_filename = os.path.join(temp_dir, 'points.pkl')
             self.disp_filename = os.path.join(temp_dir, 'disp_' + token + '.pkl')
 
             with open(self.process_log, 'w', encoding='utf-8') as f:
@@ -403,14 +415,23 @@ class LucasKanade(IDIMethod):
                 ])
 
             self.temp_disp = np.memmap(self.disp_filename, dtype=np.float, mode='w+', shape=(self.video.points.shape[0], self.video.mraw.shape[0], 2))
-            pickle.dump(self.video.points, open(self.points_filename, 'wb'))
-
+            
 
     def clear_temp_files(self):
+        """Clearing the temporary files.
+        """
         shutil.rmtree(self.temp_dir)
 
 
     def update_log(self, last_time):
+        """Updating the log file. 
+
+        A new last time is written in the log file in order to
+        track the solution process.
+        
+        :param last_time: Last computed time point (index)
+        :type last_time: int
+        """
         with open(self.process_log, 'r', encoding='utf-8') as f:
             log = f.readlines()
         
@@ -425,11 +446,15 @@ class LucasKanade(IDIMethod):
 
 
     def resume_temp_files(self):
+        """Reload the settings written in the temporary files.
+
+        When resuming the computation of displacement, the settings are
+        loaded from the previously created temporary files.
+        """
         temp_dir = self.temp_dir
         token = f'{self.process_number:0>3.0f}'
 
         self.process_log = os.path.join(temp_dir, 'process_log_' + token + '.txt')
-        self.points_filename = os.path.join(temp_dir, 'points_' + token + '.pkl')
         self.disp_filename = os.path.join(temp_dir, 'disp_' + token + '.pkl')
 
         with open(self.process_log, 'r', encoding='utf-8') as f:
@@ -445,6 +470,19 @@ class LucasKanade(IDIMethod):
 
 
     def temp_files_check(self):
+        """Checking the settings of computation.
+
+        The computation can only be resumed if all the settings and data
+        are the same as with the original analysis.
+        This function checks that (writing all the setting to dict and
+        comparing the json dump of the dicts).
+
+        If the settings are the same but the points are not, a new analysis is
+        also started. To set the same points, check the `temp_pyidi` folder.
+        
+        :return: Whether to resume analysis or not
+        :rtype: bool
+        """
         # if settings file exists
         if os.path.exists(self.settings_filename):
             settings_old = pickle.load(open(self.settings_filename, 'rb'))
@@ -457,20 +495,28 @@ class LucasKanade(IDIMethod):
             if json_new != json_old:
                 return False
             
-            # if points are the same
-            points_files = glob.glob(os.path.join(self.temp_dir, 'points_*.pkl'))
-            points = []
-            for pf in points_files:
-                points.append(pickle.load(open(pf, 'rb')))
-            points = np.concatenate(points)
-            if np.array_equal(points, self.video.points):
-                return True
-
+            # if points file exists and points are the same
+            if os.path.exists(os.path.join(self.temp_dir, 'points.pkl')):
+                points = pickle.load(open(os.path.join(self.temp_dir, 'points.pkl'), 'rb'))
+                if np.array_equal(points, self.video.points):
+                    return True
+                else:
+                    return False
+            else:
+                return False
         else:
             return False
 
 
     def _make_comparison_dict(self):
+        """Make a dictionary for comparing the original settings with the
+        current settings.
+
+        Used for finding out if the analysis should be resumed or not.
+        
+        :return: Settings
+        :rtype: dict
+        """
         settings = {
             'configure': dict([(var, None) for var in self.configure.__code__.co_varnames]),
             'info': self.video.info
