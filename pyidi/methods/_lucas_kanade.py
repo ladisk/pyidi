@@ -392,7 +392,7 @@ class LucasKanade(IDIMethod):
             self.points_filename = os.path.join(temp_dir, 'points_' + token + '.pkl')
             self.disp_filename = os.path.join(temp_dir, 'disp_' + token + '.pkl')
 
-            with open(self.process_log, 'w', encoding='utf8') as f:
+            with open(self.process_log, 'w', encoding='utf-8') as f:
                 f.writelines([
                     f'cih_file: {self.video.cih_file}\n',
                     f'token: {token}\n',
@@ -411,7 +411,7 @@ class LucasKanade(IDIMethod):
 
 
     def update_log(self, last_time):
-        with open(self.process_log, 'r') as f:
+        with open(self.process_log, 'r', encoding='utf-8') as f:
             log = f.readlines()
         
         log_entry = f'analysis_run <{self.analysis_run}>: finished: {datetime.datetime.now()}\tlast time point: {last_time}'
@@ -420,7 +420,7 @@ class LucasKanade(IDIMethod):
         else:
             log.append('\n' + log_entry)
 
-        with open(self.process_log, 'w') as f:
+        with open(self.process_log, 'w', encoding='utf-8') as f:
             f.writelines(log)
 
 
@@ -432,7 +432,7 @@ class LucasKanade(IDIMethod):
         self.points_filename = os.path.join(temp_dir, 'points_' + token + '.pkl')
         self.disp_filename = os.path.join(temp_dir, 'disp_' + token + '.pkl')
 
-        with open(self.process_log, 'r', encoding='utf8') as f:
+        with open(self.process_log, 'r', encoding='utf-8') as f:
             log = f.readlines()
 
         shape = tuple([int(_) for _ in log[4].replace(' ', '').split(':')[1].replace('(', '').replace(')', '').split(',')])
