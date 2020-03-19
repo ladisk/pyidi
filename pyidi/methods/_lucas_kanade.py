@@ -508,6 +508,30 @@ class LucasKanade(IDIMethod):
             return False
 
 
+    def create_settings_dict(self):
+        """Make a dictionary of the chosen settings.
+        """
+        EXCLUDE_KEYS = ['settings_filename', 'points_filename', 
+            'temp_dir', 'verbose', 'analysis_run', 
+            'process_number', 'start_time']
+
+        settings = dict()
+        data = self.__dict__
+        for k, v in data.items():
+            if k not in EXCLUDE_KEYS:
+                if k == '_roi_size':
+                    k = 'roi_size'
+                if type(v) in [int, float, str]:
+                    settings[k] = v
+                elif type(v) in [list, tuple]:
+                    if len(v) < 10:
+                        settings[k] = v
+                elif type(v) == np.ndarray:
+                    if v.size < 10:
+                        settings[k] = v.tolist()
+        return settings
+
+
     def _make_comparison_dict(self):
         """Make a dictionary for comparing the original settings with the
         current settings.
@@ -518,7 +542,8 @@ class LucasKanade(IDIMethod):
         :rtype: dict
         """
         settings = {
-            'configure': dict([(var, None) for var in self.configure.__code__.co_varnames]),
+            # 'configure': dict([(var, None) for var in self.configure.__code__.co_varnames]),
+            'configure': self.create_settings_dict(),
             'info': self.video.info
         }
         return settings

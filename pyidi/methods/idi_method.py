@@ -34,3 +34,7 @@ class IDIMethod:
     
     def clear_temp_files(self):
         pass
+
+    def create_settings_dict(self):
+        settings = dict()
+        return settings

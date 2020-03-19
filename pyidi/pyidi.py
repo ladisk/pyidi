@@ -209,6 +209,7 @@ class pyIDI:
             'first_image': self.mraw[0],
             'info': self.info,
             'cih_file': self.cih_file,
+            'settings': self.method.create_settings_dict()
         }
         pickle.dump(out, open(full_filename, 'wb'), protocol=-1)
 
