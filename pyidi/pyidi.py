@@ -4,6 +4,7 @@ import collections
 import matplotlib.pyplot as plt
 import pickle
 import pyMRAW
+import datetime
 
 from .methods import IDIMethod, SimplifiedOpticalFlow, GradientBasedOpticalFlow, LucasKanadeSc, LucasKanade
 from . import tools
@@ -24,6 +25,10 @@ class pyIDI:
     """
     def __init__(self, cih_file):
         self.cih_file = cih_file
+        if type(cih_file) == str:
+            self.root = os.path.split(self.cih_file)[0]
+        else:
+            self.root = ''
 
         self.available_methods = dict([ 
             (key, {
@@ -161,10 +166,22 @@ class pyIDI:
         Method is not set. Please use the `set_method` method.
         ---
         """
-
         if hasattr(self, 'method'):
             self.method.calculate_displacements(self, **kwargs)
             self.displacements = self.method.displacements
+            
+            # auto-save and clearing temp files
+            if hasattr(self.method, 'process_number'):
+                if self.method.process_number == 0:
+                    if type(self.cih_file) == str:
+                        cih_file_ = os.path.split(self.cih_file)[-1].split('.')[0]
+                        auto_filename = f'{datetime.datetime.now().strftime("%Y%m%d_%H%M%S")}_{cih_file_}.pkl'
+                    else:
+                        auto_filename = f'{datetime.datetime.now().strftime("%Y%m%d_%H%M%S")}_displacements.pkl'
+                    
+                    self.save(auto_filename, root=self.root)
+                    self.method.clear_temp_files()
+                    
             return self.displacements
         else:
             raise ValueError('IDI method has not yet been set. Please call `set_method()` first.')
@@ -191,7 +208,8 @@ class pyIDI:
             'disp': self.displacements,
             'first_image': self.mraw[0],
             'info': self.info,
-            'cih_file': self.cih_file
+            'cih_file': self.cih_file,
+            'settings': self.method.create_settings_dict()
         }
         pickle.dump(out, open(full_filename, 'wb'), protocol=-1)
 

@@ -28,3 +28,13 @@ class IDIMethod:
         The result should be saved into the `self.displacements` attribute.
         """
         pass
+    
+    def create_temp_files(self):
+        pass
+    
+    def clear_temp_files(self):
+        pass
+
+    def create_settings_dict(self):
+        settings = dict()
+        return settings

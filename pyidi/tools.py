@@ -123,7 +123,7 @@ class GridOfROI:
     then checks if all points are inside polygon. This yields a more regular
     and full grid. Does not contain sssig filter.
     """
-    def __init__(self, video, roi_size=(7, 7), noverlap=0, verbose=0):
+    def __init__(self, video=None, roi_size=(7, 7), noverlap=0, verbose=0):
         """
         
         :param video: parent object of video
@@ -144,9 +144,14 @@ class GridOfROI:
 
         self.cent_dist_0 = self.roi_size[0] - self.noverlap
         self.cent_dist_1 = self.roi_size[1] - self.noverlap
+        
+        if video is not None:
+            self.image = video.mraw[0]
+            self.pick_window()
+        else:
+            print('set the polygon points in self.polygon and call the `get_roi_grid` method')
 
-        self.image = video.mraw[0]
-
+    def pick_window(self):
         # Tkinter root and matplotlib figure
         root = tk.Tk()
         root.title('Pick points')
