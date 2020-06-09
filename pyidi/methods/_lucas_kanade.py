@@ -36,7 +36,7 @@ class LucasKanade(IDIMethod):
         self, roi_size=(9, 9), pad=2, max_nfev=20, 
         tol=1e-8, int_order=3, verbose=1, show_pbar=True, 
         processes=1, pbar_type='atpbar', multi_type='mantichora',
-        resume_analysis=True, process_number=0
+        resume_analysis=True, process_number=0, reference_image=0
     ):
         """
         Displacement identification based on Lucas-Kanade method,
@@ -72,6 +72,9 @@ class LucasKanade(IDIMethod):
         :type resum_analysis: bool, optional
         :param process_number: User should not change this (for multiprocessing purposes - to indicate the process number)
         :type process_number: int, optional
+        :param reference_image: The reference image for computation. Can be index of a frame, tuple (slice) or numpy.ndarray that
+            is taken as a reference.
+        :type reference_image: int or tuple or ndarray
         """
 
         if pad is not None:
@@ -98,6 +101,8 @@ class LucasKanade(IDIMethod):
             self.resume_analysis = resume_analysis
         if process_number is not None:
             self.process_number = process_number
+        if reference_image is not None:
+            self.reference_image = reference_image
         
         self.start_time = 1
         self.temp_dir = os.path.join(os.path.split(self.video.cih_file)[0], 'temp_file')
@@ -297,6 +302,22 @@ class LucasKanade(IDIMethod):
             return range(*args, **kwargs)
 
 
+    def _set_reference_image(self, video, reference_image):
+        """Set the reference image.
+        """
+        if type(reference_image) == int:
+            ref = video.mraw[reference_image].copy().astype(float)
+        elif type(reference_image) == tuple:
+            if len(reference_image) == 2:
+                ref = np.mean(video.mraw[reference_image[0]:reference_image[1]].copy().astype(float), axis=0)
+        elif type(reference_image) == np.ndarray:
+            ref = reference_image
+        else:
+            raise Exception('reference_image must be index of frame, tuple (slice) or ndarray.')
+        
+        return ref
+
+
     def _interpolate_reference(self, video):
         """
         Interpolate the reference image.
@@ -309,7 +330,7 @@ class LucasKanade(IDIMethod):
         :type video: object
         """
         pad = self.pad
-        f = video.mraw[0].copy().astype(float)
+        f = self._set_reference_image(video, self.reference_image)
         splines = []
         for point in video.points:
             yslice, xslice = self._padded_slice(point, self.roi_size, pad)
@@ -589,6 +610,7 @@ def multi(video, processes):
         'int_order': video.method.int_order,
         'pbar_type': video.method.pbar_type,
         'resume_analysis': video.method.resume_analysis,
+        'reference_image': video.method.reference_image
     }
     if video.method.pbar_type == 'atpbar':
         print(f'Computation start: {datetime.datetime.now()}')
