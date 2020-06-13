@@ -175,11 +175,11 @@ class pyIDI:
                 if self.method.process_number == 0:
                     if type(self.cih_file) == str:
                         cih_file_ = os.path.split(self.cih_file)[-1].split('.')[0]
-                        auto_filename = f'{datetime.datetime.now().strftime("%Y%m%d_%H%M%S")}_{cih_file_}.pkl'
+                        self.auto_filename = f'{datetime.datetime.now().strftime("%Y%m%d_%H%M%S")}_{cih_file_}.pkl'
                     else:
-                        auto_filename = f'{datetime.datetime.now().strftime("%Y%m%d_%H%M%S")}_displacements.pkl'
+                        self.auto_filename = f'{datetime.datetime.now().strftime("%Y%m%d_%H%M%S")}_displacements.pkl'
                     
-                    self.save(auto_filename, root=self.root)
+                    self.save(self.auto_filename, root=self.root)
                     self.method.clear_temp_files()
                     
             return self.displacements
