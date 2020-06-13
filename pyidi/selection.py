@@ -8,7 +8,7 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolb
 from matplotlib.figure import Figure
 
 class Select:
-    def __init__(self, video=None, roi_size=(11, 11), noverlap=0):
+    def __init__(self, video=None, roi_size=(11, 11), noverlap=0, polygon=None):
         self.verbose = 0
         self.shift_is_held = False
         
@@ -17,7 +17,10 @@ class Select:
         self.cent_dist_0 = self.roi_size[0] - self.noverlap
         self.cent_dist_1 = self.roi_size[1] - self.noverlap
 
-        self.polygon = [[], []]
+        if polygon is None:
+            self.polygon = [[], []]
+        else:
+            self.polygon = polygon
         self.deselect_polygon = [[], []]
 
         root = tk.Tk()
@@ -37,7 +40,7 @@ class Select:
         self.ax.imshow(video.mraw[0], cmap='gray')
 
         # Initiate polygon
-        self.line, = self.ax.plot([], [], 'r.-')
+        self.line, = self.ax.plot(self.polygon[1], self.polygon[0], 'r.-')
         self.line2, = self.ax.plot([], [], 'bo')
 
         plt.show(block=False)
@@ -181,12 +184,6 @@ class SelectOptions:
         tk.Label(root1, text='Overlap pixels').grid(row=row, column=0, sticky='E')
         self.noverlap_entry = tk.Entry(root1, textvariable=noverlap)
         self.noverlap_entry.grid(row=row, column=1, padx=5, pady=5, sticky='W')
-
-        # row = 4
-        # self.canvas = tk.Canvas(root1, width=int(0.18*parent.screen_width))
-        # self.canvas.grid(row=row, column=0, columnspan=2)
-
-        # self.canvas.create_text(100, 100, text='Teset', font="Times 12")
 
         row = 4
         apply_button = tk.Button(root1, text='Apply', command=parent.update_variables)
