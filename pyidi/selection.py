@@ -7,7 +7,7 @@ from tkinter import ttk
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 from matplotlib.figure import Figure
 
-class Select:
+class ROISelect:
     def __init__(self, video=None, roi_size=(11, 11), noverlap=0, polygon=None):
         self.verbose = 0
         self.shift_is_held = False
@@ -33,6 +33,9 @@ class Select:
         self.options = SelectOptions(root, self)
         button1 = tk.Button(root, text='Open options', command=lambda: self.open_options(root))
         button1.pack(side='top')
+
+        button2 = tk.Button(root, text='Confirm selection', command=root.destroy)
+        button2.pack(side='top')
 
         self.fig = Figure(figsize=(10, 7))
         self.ax = self.fig.add_subplot(111)
@@ -149,21 +152,27 @@ class Select:
         self.fig.canvas.draw()
 
     def open_options(self, root):
-        self.options = SelectOptions(root, self)
+        if not self.options.running_options:
+            self.options = SelectOptions(root, self)
+        else:
+            self.options.root1.lift()
 
 class SelectOptions:
     def __init__(self, root, parent):
-        root1 = tk.Toplevel(root)
-        root1.title('Selection options')
-        root1.geometry(f'{int(0.2*parent.screen_width)}x{int(0.5*parent.screen_height)}')
+        self.running_options = True
+        self.parent = parent
 
-        roi_x = tk.StringVar(root1, value=str(parent.roi_size[1]))
-        roi_y = tk.StringVar(root1, value=str(parent.roi_size[0]))
-        noverlap = tk.StringVar(root1, value=str(parent.noverlap))
+        self.root1 = tk.Toplevel(root)
+        self.root1.title('Selection options')
+        self.root1.geometry(f'{int(0.2*parent.screen_width)}x{int(0.5*parent.screen_height)}')
+
+        roi_x = tk.StringVar(self.root1, value=str(parent.roi_size[1]))
+        roi_y = tk.StringVar(self.root1, value=str(parent.roi_size[0]))
+        noverlap = tk.StringVar(self.root1, value=str(parent.noverlap))
 
         row = 0
-        tk.Label(root1, text='Selection mode:').grid(row=row, column=0)
-        self.combobox = ttk.Combobox(root1, values = [
+        tk.Label(self.root1, text='Selection mode:').grid(row=row, column=0)
+        self.combobox = ttk.Combobox(self.root1, values = [
             'ROI grid',
             'Only polygon', 
             ])
@@ -171,26 +180,34 @@ class SelectOptions:
         self.combobox.grid(row=row, column=1, sticky='wens', padx=5, pady=5)
 
         row = 1
-        tk.Label(root1, text='Horizontal ROI size').grid(row=row, column=0, sticky='E')
-        self.roi_entry_x = tk.Entry(root1, textvariable=roi_x)
+        tk.Label(self.root1, text='Horizontal ROI size').grid(row=row, column=0, sticky='E')
+        self.roi_entry_x = tk.Entry(self.root1, textvariable=roi_x)
         self.roi_entry_x.grid(row=row, column=1, padx=5, pady=5, sticky='W')
 
         row = 2
-        tk.Label(root1, text='Vertical ROI size').grid(row=row, column=0, sticky='E')
-        self.roi_entry_y = tk.Entry(root1, textvariable=roi_y)
+        tk.Label(self.root1, text='Vertical ROI size').grid(row=row, column=0, sticky='E')
+        self.roi_entry_y = tk.Entry(self.root1, textvariable=roi_y)
         self.roi_entry_y.grid(row=row, column=1, padx=5, pady=5, sticky='W')
 
         row = 3
-        tk.Label(root1, text='Overlap pixels').grid(row=row, column=0, sticky='E')
-        self.noverlap_entry = tk.Entry(root1, textvariable=noverlap)
+        tk.Label(self.root1, text='Overlap pixels').grid(row=row, column=0, sticky='E')
+        self.noverlap_entry = tk.Entry(self.root1, textvariable=noverlap)
         self.noverlap_entry.grid(row=row, column=1, padx=5, pady=5, sticky='W')
 
         row = 4
-        apply_button = tk.Button(root1, text='Apply', command=parent.update_variables)
+        apply_button = tk.Button(self.root1, text='Apply', command=parent.update_variables)
         apply_button.grid(row=row, column=0, sticky='we', padx=5, pady=5)
 
-        clear_button = tk.Button(root1, text='Clear', command=parent.clear_selection)
+        clear_button = tk.Button(self.root1, text='Clear', command=parent.clear_selection)
         clear_button.grid(row=row, column=1, sticky='w', padx=5, pady=5)
+
+        self.root1.protocol("WM_DELETE_WINDOW", self.on_closing)
+    
+    def on_closing(self):
+        self.running_options = False
+        self.parent.update_variables()
+        self.root1.destroy()
+
 
 
 def get_roi_grid(polygon_points, roi_size, noverlap):
