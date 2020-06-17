@@ -5,5 +5,5 @@ scipy>=1.0.0
 pyMRAW>=0.30
 psutil
 tqdm
-mantichora
+mantichora==0.9.7
 atpbar
