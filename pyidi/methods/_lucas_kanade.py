@@ -126,8 +126,7 @@ class LucasKanade(IDIMethod):
 
         if self.process_number == 0:
             # Happens only once per analysis
-            if self.temp_files_check():
-                self.resume_analysis = True
+            if self.temp_files_check() and self.resume_analysis:
                 if self.verbose:
                     print('-- Resuming last analysis ---')
                     print(' ')
@@ -622,7 +621,7 @@ def multi(video, processes):
             print(f'!!! WARNING: "atpbar" pbar_type was used with "multiprocessing". This is not supported. Changed pbar_type to "tqdm"')
 
         pool = Pool(processes=processes)
-        results = [pool.apply_async(worker, args=(p, idi_kwargs, method_kwargs)) for p in points_split]
+        results = [pool.apply_async(worker, args=(p, idi_kwargs, method_kwargs, i)) for i, p in enumerate(points_split)]
         pool.close()
         pool.join()
 
