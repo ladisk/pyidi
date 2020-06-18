@@ -5,6 +5,7 @@ import os
 import shutil
 import json
 import glob
+import warnings
 
 import scipy.signal
 from scipy.linalg import lu_factor, lu_solve
@@ -173,14 +174,15 @@ class LucasKanade(IDIMethod):
                     # start optimization with previous optimal parameter values
                     d_init = np.round(self.displacements[p, i-1, :]).astype(int)
 
-                    yslice, xslice = self._padded_slice(point+d_init, self.roi_size, 0)
+                    yslice, xslice = self._padded_slice(point+d_init, self.roi_size, self.image_size, 0)
                     G = video.mraw[i, yslice, xslice]
+
                     displacements = self.optimize_translations(
                         G=G, 
                         F_spline=self.interpolation_splines[p], 
                         maxiter=self.max_nfev,
                         tol=self.tol
-                        ) # input difference bwtween d_init and last d as d_subpixel_init??
+                        )
 
                     self.displacements[p, i, :] = displacements + d_init
 
@@ -221,6 +223,7 @@ class LucasKanade(IDIMethod):
         :rtype: array of size 2
         """
         Gy, Gx = np.gradient(G.astype(np.float64), edge_order=2)
+
         Gx2 = np.sum(Gx**2)
         Gy2 = np.sum(Gy**2)
         GxGy = np.sum(Gx * Gy)
@@ -252,19 +255,23 @@ class LucasKanade(IDIMethod):
             if error < tol:
                 return -displacement # roles of F and G are switched
 
-        # max_iter wa reached before the convergence criterium
+        # max_iter was reached before the convergence criterium
         return -displacement
 
 
-    def _padded_slice(self, point, roi_size, pad=None):
+    def _padded_slice(self, point, roi_size, image_shape, pad=None):
         '''
         Returns a slice that crops an image around a given `point` center, 
-        `roi_size` and `pad` size.
+        `roi_size` and `pad` size. If the resulting slice would be out of
+        bounds of the image to be sliced (given by `image_shape`), the
+        slice is snifted to be on the image edge and a warning is issued.
 
         :param point: The center point coordiante of the desired ROI.
         :type point: array_like of size 2, (y, x)
         :param roi_size: Size of desired cropped image (y, x).
         type roi_size: array_like of size 2, (h, w)
+        :param image_shape: Shape of the image to be sliced, (h, w).
+        type image_shape: array_like of size 2, (h, w)
         :param pad: Pad border size in pixels. If None, the video.pad
             attribute is read.
         :type pad: int, optional, defaults to None
@@ -273,12 +280,17 @@ class LucasKanade(IDIMethod):
 
         if pad is None:
             pad = self.pad
-        y, x = np.array(point).astype(int)
+        y_, x_ = np.array(point).astype(int)
         h, w = np.array(roi_size).astype(int)
 
-        # CLIP ON EDGES!
-        # y_range = np.array([y-h//2-pad, y+h//2+pad+1], dtype=int)
-        # x_range = np.array([x-w//2-pad, x+w//2+pad+1], dtype=int)
+        # Bounds checking
+        y = np.clip(y_, h//2+pad, image_shape[0]-(h//2+pad+1))
+        x = np.clip(x_, w//2+pad, image_shape[1]-(w//2+pad+1))
+
+        if x != x_ or y != y_:
+            warnings.warn('Reached image edge. The displacement optimization ' +
+                'algorithm may not converge, or selected points might be too close ' + 
+                'to image border. Please check analysis settings.')
 
         yslice = slice(y-h//2-pad, y+h//2+pad+1)
         xslice = slice(x-w//2-pad, x+w//2+pad+1)
@@ -332,9 +344,8 @@ class LucasKanade(IDIMethod):
         f = self._set_reference_image(video, self.reference_image)
         splines = []
         for point in video.points:
-            yslice, xslice = self._padded_slice(point, self.roi_size, pad)
+            yslice, xslice = self._padded_slice(point, self.roi_size, self.image_size, pad)
 
-            # debug
             spl = RectBivariateSpline(
                x=np.arange(-pad, self.roi_size[0]+pad),
                y=np.arange(-pad, self.roi_size[1]+pad),
@@ -618,7 +629,7 @@ def multi(video, processes):
     if video.method.multi_type == 'multiprocessing':
         if method_kwargs['pbar_type'] == 'atpbar':
             method_kwargs['pbar_type'] = 'tqdm'
-            print(f'!!! WARNING: "atpbar" pbar_type was used with "multiprocessing". This is not supported. Changed pbar_type to "tqdm"')
+            warnings.warn('"atpbar" pbar_type was used with "multiprocessing". This is not supported. Changed pbar_type to "tqdm"')
 
         pool = Pool(processes=processes)
         results = [pool.apply_async(worker, args=(p, idi_kwargs, method_kwargs, i)) for i, p in enumerate(points_split)]
