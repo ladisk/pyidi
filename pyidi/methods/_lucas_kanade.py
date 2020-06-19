@@ -209,7 +209,7 @@ class LucasKanade(IDIMethod):
                     # start optimization with previous optimal parameter values
                     d_init = np.round(self.displacements[p, ii-1, :]).astype(int)
 
-                    yslice, xslice = self._padded_slice(point+d_init, self.roi_size, 0)
+                    yslice, xslice = self._padded_slice(point+d_init, self.roi_size, self.pad, apply_pad=False)
                     G = video.mraw[i, yslice, xslice]
 
                     displacements = self.optimize_translations(
@@ -293,7 +293,7 @@ class LucasKanade(IDIMethod):
         return -displacement
 
 
-    def _padded_slice(self, point, roi_size, pad=None):
+    def _padded_slice(self, point, roi_size, pad=None, apply_pad=True):
         '''
         Returns a slice that crops an image around a given `point` center, 
         `roi_size` and `pad` size.
@@ -310,6 +310,13 @@ class LucasKanade(IDIMethod):
 
         if pad is None:
             pad = self.pad
+        
+        pad_base = pad
+        if not apply_pad:
+            pad = 0
+        
+        expected_displacement = 1
+
         y, x = np.array(point).astype(int)
         h, w = np.array(roi_size).astype(int)
 
@@ -317,8 +324,23 @@ class LucasKanade(IDIMethod):
         # y_range = np.array([y-h//2-pad, y+h//2+pad+1], dtype=int)
         # x_range = np.array([x-w//2-pad, x+w//2+pad+1], dtype=int)
 
-        yslice = slice(y-h//2-pad, y+h//2+pad+1)
-        xslice = slice(x-w//2-pad, x+w//2+pad+1)
+        if y + h//2 >= self.video.image_height:
+            roi_offset_y = self.video.image_height - (y + h//2) - pad_base - expected_displacement
+        elif y - h//2 <= 0:
+            roi_offset_y = -(y - h//2) + pad_base + expected_displacement
+        else:
+            roi_offset_y = 0
+
+        if x + w//2 >= self.video.image_width:
+            roi_offset_x = self.video.image_width - (x + w//2) - pad_base - expected_displacement
+        elif x - w//2 <= 0:
+            roi_offset_x = -(x - w//2) + pad_base + expected_displacement
+        else:
+            roi_offset_x = 0
+        
+        yslice = slice(y-h//2-pad + roi_offset_y, y+h//2+pad+1 + roi_offset_y) 
+        xslice = slice(x-w//2-pad + roi_offset_x, x+w//2+pad+1 + roi_offset_x)
+
         return yslice, xslice
 
 
