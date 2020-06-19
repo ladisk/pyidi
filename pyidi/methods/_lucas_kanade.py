@@ -76,7 +76,8 @@ class LucasKanade(IDIMethod):
         :param reference_image: The reference image for computation. Can be index of a frame, tuple (slice) or numpy.ndarray that
             is taken as a reference.
         :type reference_image: int or tuple or ndarray
-        :param mraw_range: Part of the video to process. If "full", a full video is processed.
+        :param mraw_range: Part of the video to process. If "full", a full video is processed. If first element of tuple is not 0,
+            a appropriate reference image should be chosen.
         :type mraw_range: tuple or "full"
         """
 
@@ -119,14 +120,16 @@ class LucasKanade(IDIMethod):
     def _set_mraw_range(self):
         """Set the range of the video to be processed.
         """
+        self.step_time = 1
+
         if self.mraw_range == 'full':
             self.start_time = 1
             self.stop_time = self.video.mraw.shape[0]
-
+            
         elif type(self.mraw_range) == tuple:
-            if len(self.mraw_range) == 2:
+            if len(self.mraw_range) >= 2:
                 if self.mraw_range[0] < self.mraw_range[1] and self.mraw_range[0] > 0:
-                    self.start_time = self.mraw_range[0] + 1
+                    self.start_time = self.mraw_range[0] + self.step_time
                     
                     if self.mraw_range[1] <= self.video.mraw.shape[0]:
                         self.stop_time = self.mraw_range[1]
@@ -134,14 +137,16 @@ class LucasKanade(IDIMethod):
                         raise ValueError(f'mraw_range can only go to end of video - index {self.video.mraw.shape[0]}')
                 else:
                     raise ValueError(f'Wrong mraw_range definition.')
-            elif len(self.mraw_range) == 3:
-                raise Exception('mraw_range of length 3 is not supproted yet (step)')
+
+            if len(self.mraw_range) == 3:
+                self.step_time = self.mraw_range[2]
+
             else:
                 raise Exception('Wrong definition of mraw_range.')
         else:
             raise TypeError(f'mraw_range must be a tuple of start and stop index or "full" ({type(self.mraw_range)}')
             
-        self.N_time_points = self.stop_time - self.start_time + 1
+        self.N_time_points = len(range(self.start_time-self.step_time, self.stop_time, self.step_time))
 
 
     def calculate_displacements(self, video, **kwargs):
@@ -200,7 +205,7 @@ class LucasKanade(IDIMethod):
                 print(f'...done in {time.time() - t:.2f} s')
 
             # Time iteration.
-            for ii, i in enumerate(self._pbar_range(self.start_time, self.stop_time)):
+            for ii, i in enumerate(self._pbar_range(self.start_time, self.stop_time, self.step_time)):
                 ii = ii + 1
 
                 # Iterate over points.
@@ -273,7 +278,7 @@ class LucasKanade(IDIMethod):
         delta = displacement.copy()
 
         # optimization loop
-        for i in range(maxiter):
+        for _ in range(maxiter):
             y_f = np.arange(self.roi_size[0], dtype=np.float64) + displacement[0]
             x_f = np.arange(self.roi_size[1], dtype=np.float64) + displacement[1]
             F = F_spline(y_f, x_f)
