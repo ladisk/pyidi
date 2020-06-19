@@ -6,7 +6,7 @@ import pickle
 import pyMRAW
 import datetime
 
-from .methods import IDIMethod, SimplifiedOpticalFlow, GradientBasedOpticalFlow, LucasKanadeSc, LucasKanade
+from .methods import IDIMethod, SimplifiedOpticalFlow, GradientBasedOpticalFlow, LucasKanadeSc, LucasKanade, LucasKanadeSc2
 from . import tools
 
 __version__ = '0.20'
@@ -14,7 +14,8 @@ __version__ = '0.20'
 available_method_shortcuts = [
     ('sof', SimplifiedOpticalFlow),
     ('lk', LucasKanade),
-    ('lk_scipy', LucasKanadeSc)
+    ('lk_scipy', LucasKanadeSc),
+    ('lk_scipy2', LucasKanadeSc2)
     # ('gb', GradientBasedOpticalFlow)
     ]
 
