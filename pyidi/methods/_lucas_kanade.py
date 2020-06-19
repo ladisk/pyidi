@@ -36,7 +36,8 @@ class LucasKanade(IDIMethod):
         self, roi_size=(9, 9), pad=2, max_nfev=20, 
         tol=1e-8, int_order=3, verbose=1, show_pbar=True, 
         processes=1, pbar_type='atpbar', multi_type='mantichora',
-        resume_analysis=True, process_number=0, reference_image=0
+        resume_analysis=True, process_number=0, reference_image=0,
+        mraw_range='full'
     ):
         """
         Displacement identification based on Lucas-Kanade method,
@@ -75,6 +76,8 @@ class LucasKanade(IDIMethod):
         :param reference_image: The reference image for computation. Can be index of a frame, tuple (slice) or numpy.ndarray that
             is taken as a reference.
         :type reference_image: int or tuple or ndarray
+        :param mraw_range: Part of the video to process. If "full", a full video is processed.
+        :type mraw_range: tuple or "full"
         """
 
         if pad is not None:
@@ -103,12 +106,43 @@ class LucasKanade(IDIMethod):
             self.process_number = process_number
         if reference_image is not None:
             self.reference_image = reference_image
+        if mraw_range is not None:
+            self.mraw_range = mraw_range
         
-        self.start_time = 1
+        self._set_mraw_range()
+
         self.temp_dir = os.path.join(os.path.split(self.video.cih_file)[0], 'temp_file')
         self.settings_filename = os.path.join(self.temp_dir, 'settings.pkl')
         self.analysis_run = 0
         
+
+    def _set_mraw_range(self):
+        """Set the range of the video to be processed.
+        """
+        if self.mraw_range == 'full':
+            self.start_time = 1
+            self.stop_time = self.video.mraw.shape[0]
+
+        elif type(self.mraw_range) == tuple:
+            if len(self.mraw_range) == 2:
+                if self.mraw_range[0] < self.mraw_range[1] and self.mraw_range[0] > 0:
+                    self.start_time = self.mraw_range[0] + 1
+                    
+                    if self.mraw_range[1] <= self.video.mraw.shape[0]:
+                        self.stop_time = self.mraw_range[1]
+                    else:
+                        raise ValueError(f'mraw_range can only go to end of video - index {self.video.mraw.shape[0]}')
+                else:
+                    raise ValueError(f'Wrong mraw_range definition.')
+            elif len(self.mraw_range) == 3:
+                raise Exception('mraw_range of length 3 is not supproted yet (step)')
+            else:
+                raise Exception('Wrong definition of mraw_range.')
+        else:
+            raise TypeError(f'mraw_range must be a tuple of start and stop index or "full" ({type(self.mraw_range)}')
+            
+        self.N_time_points = self.stop_time - self.start_time + 1
+
 
     def calculate_displacements(self, video, **kwargs):
         """
@@ -150,7 +184,7 @@ class LucasKanade(IDIMethod):
             if self.resume_analysis:
                 self.resume_temp_files()
             else:
-                self.displacements = np.zeros((video.points.shape[0], video.N, 2))
+                self.displacements = np.zeros((video.points.shape[0], self.N_time_points, 2))
                 self.create_temp_files(init_multi=False)
 
             self.warnings = []
@@ -166,16 +200,18 @@ class LucasKanade(IDIMethod):
                 print(f'...done in {time.time() - t:.2f} s')
 
             # Time iteration.
-            for i in self._pbar_range(self.start_time, video.mraw.shape[0]):
+            for ii, i in enumerate(self._pbar_range(self.start_time, self.stop_time)):
+                ii = ii + 1
 
                 # Iterate over points.
                 for p, point in enumerate(video.points):
                     
                     # start optimization with previous optimal parameter values
-                    d_init = np.round(self.displacements[p, i-1, :]).astype(int)
+                    d_init = np.round(self.displacements[p, ii-1, :]).astype(int)
 
                     yslice, xslice = self._padded_slice(point+d_init, self.roi_size, 0)
                     G = video.mraw[i, yslice, xslice]
+
                     displacements = self.optimize_translations(
                         G=G, 
                         F_spline=self.interpolation_splines[p], 
@@ -183,11 +219,11 @@ class LucasKanade(IDIMethod):
                         tol=self.tol
                         ) # input difference bwtween d_init and last d as d_subpixel_init??
 
-                    self.displacements[p, i, :] = displacements + d_init
+                    self.displacements[p, ii, :] = displacements + d_init
 
                 # temp
-                self.temp_disp[:, i, :] = self.displacements[:, i, :]
-                self.update_log(i)
+                self.temp_disp[:, ii, :] = self.displacements[:, ii, :]
+                self.update_log(ii)
                     
             del self.temp_disp
 
@@ -431,11 +467,11 @@ class LucasKanade(IDIMethod):
                     f'token: {token}\n',
                     f'points_filename: {self.points_filename}\n',
                     f'disp_filename: {self.disp_filename}\n',
-                    f'disp_shape: {(self.video.points.shape[0], self.video.mraw.shape[0], 2)}\n',
+                    f'disp_shape: {(self.video.points.shape[0], self.N_time_points, 2)}\n',
                     f'analysis_run <{self.analysis_run}>:'
                 ])
 
-            self.temp_disp = np.memmap(self.disp_filename, dtype=np.float, mode='w+', shape=(self.video.points.shape[0], self.video.mraw.shape[0], 2))
+            self.temp_disp = np.memmap(self.disp_filename, dtype=np.float, mode='w+', shape=(self.video.points.shape[0], self.N_time_points, 2))
             
 
     def clear_temp_files(self):
@@ -610,7 +646,8 @@ def multi(video, processes):
         'int_order': video.method.int_order,
         'pbar_type': video.method.pbar_type,
         'resume_analysis': video.method.resume_analysis,
-        'reference_image': video.method.reference_image
+        'reference_image': video.method.reference_image,
+        'mraw_range': video.method.mraw_range,
     }
     if video.method.pbar_type == 'atpbar':
         print(f'Computation start: {datetime.datetime.now()}')
