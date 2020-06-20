@@ -267,10 +267,12 @@ class LucasKanade(IDIMethod):
         Gy2 = np.sum(Gy**2)
         GxGy = np.sum(Gx * Gy)
 
-        A_inv = np.linalg.inv(
-            np.array([[GxGy, Gx2],  # switched columns, to reverse variable order to (dy, dx)
-                      [Gy2, GxGy]])
-                      )
+        # A_inv = np.linalg.inv(
+        #     np.array([[GxGy, Gx2],  # switched columns, to reverse variable order to (dy, dx)
+        #               [Gy2, GxGy]])
+        #               )
+
+        A_inv = 1/(GxGy**2 - Gx2*Gy2) * np.array([[GxGy, -Gx2], [-Gy2, GxGy]])
 
         # initialize values
         error = 1.
@@ -289,7 +291,7 @@ class LucasKanade(IDIMethod):
                 ])
             delta = np.dot(A_inv, b)
 
-            error = np.linalg.norm(delta)
+            error = np.sqrt(np.sum(delta**2))
             displacement += delta
             if error < tol:
                 return -displacement # roles of F and G are switched
