@@ -8,6 +8,12 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolb
 from matplotlib.figure import Figure
 from matplotlib.path import Path
 
+SELECTION_MODES = {
+    'ROI grid': 0,
+    'Deselect ROI polygon': 1,
+    'Only polygon': 2, 
+    }
+
 class ROISelect:
     def __init__(self, video=None, roi_size=(11, 11), noverlap=0, polygon=None):
         self.verbose = 0
@@ -23,6 +29,7 @@ class ROISelect:
         else:
             self.polygon = polygon
         self.deselect_polygon = [[], []]
+        self.points = [[], []]
 
         root = tk.Tk()
         root.title('Selection')
@@ -45,6 +52,7 @@ class ROISelect:
 
         # Initiate polygon
         self.line, = self.ax.plot(self.polygon[1], self.polygon[0], 'r.-')
+        self.line_deselect, = self.ax.plot(self.deselect_polygon[1], self.deselect_polygon[0], 'k.-')
         self.line2, = self.ax.plot([], [], 'bo')
 
         plt.show(block=False)
@@ -98,7 +106,41 @@ class ROISelect:
             if get_rois:
                 self.plot_selection()
         
-        self.fig.canvas.mpl_connect('button_press_event', onclick)
+        self.cid = self.fig.canvas.mpl_connect('button_press_event', onclick)
+
+    def _mode_selection_deselect_polygon(self):
+        """Select polygon to compute the points based on ROI size and
+        ROI overlap."""
+        def onclick(event):
+            if event.button == 1 and self.shift_is_held:
+                if event.xdata is not None and event.ydata is not None:
+                    if self.deselect_polygon[0]:
+                        del self.deselect_polygon[1][-1]
+                        del self.deselect_polygon[0][-1]
+
+                    self.deselect_polygon[1].append(int(np.round(event.xdata)))
+                    self.deselect_polygon[0].append(int(np.round(event.ydata)))
+
+                    if self.deselect_polygon[0]:
+                        self.deselect_polygon[1].append(self.deselect_polygon[1][0])
+                        self.deselect_polygon[0].append(self.deselect_polygon[0][0])
+                        
+                    if self.verbose:
+                        print(f'y: {np.round(event.ydata):5.0f}, x: {np.round(event.xdata):5.0f}')
+
+            elif event.button == 3 and self.shift_is_held:
+                if self.verbose:
+                    print('Deleted the last point...')
+                del self.deselect_polygon[1][-2]
+                del self.deselect_polygon[0][-2]
+
+            self.line_deselect.set_xdata(self.deselect_polygon[1])
+            self.line_deselect.set_ydata(self.deselect_polygon[0])
+            self.fig.canvas.draw()
+
+            self.plot_selection()
+
+        self.cid = self.fig.canvas.mpl_connect('button_press_event', onclick)
 
     def on_key_press(self, event):
         """Function triggered on key press (shift)."""
@@ -116,7 +158,9 @@ class ROISelect:
         self.fig.canvas.draw()
 
         self.mode = self.options.combobox.get()
-        if self.mode == 'ROI grid':
+        if SELECTION_MODES[self.mode] == 0:
+            self._disconnect_mpl_onclick()
+
             self._mode_selection_polygon()
 
             self.roi_size = [int(self.options.roi_entry_y.get()), int(self.options.roi_entry_x.get())]
@@ -126,15 +170,34 @@ class ROISelect:
             self.cent_dist_1 = self.roi_size[1] - self.noverlap
 
             self.plot_selection()
+        
+        elif SELECTION_MODES[self.mode] == 1:
+            if len(self.points[0]) == 0:
+                tk.messagebox.showwarning("Warning", "No points have been selected yet.")
+            else:
+                self._disconnect_mpl_onclick()
 
-        elif self.mode == 'Only polygon':
+                self._mode_selection_deselect_polygon()
+                self.plot_selection()
+
+        elif SELECTION_MODES[self.mode] == 2:
+            self._disconnect_mpl_onclick()
             self._mode_selection_polygon(get_rois=False)
+
         else:
             raise Exception('Non existing mode...')
-        
+    
+    def _disconnect_mpl_onclick(self):
+        try:
+            self.fig.canvas.mpl_disconnect(self.cid)
+        except:
+            pass
+
     def plot_selection(self):
         if len(self.polygon[0]) > 2 and len(self.polygon[1]) > 2:
-            self.points = get_roi_grid(self.polygon, self.roi_size, self.noverlap)
+
+            self.points = get_roi_grid(self.polygon, self.roi_size, self.noverlap, self.deselect_polygon)
+
             if len(self.points):
                 self.line2.set_xdata(self.points[:, 1])
                 self.line2.set_ydata(self.points[:, 0])
@@ -142,12 +205,15 @@ class ROISelect:
 
     def clear_selection(self):
         self.polygon = [[], []]
+        self.deselect_polygon = [[], []]
         self.points = [[], []]
         self.clear_plot()
     
     def clear_plot(self):
         self.line.set_xdata([])
         self.line.set_ydata([])
+        self.line_deselect.set_xdata([])
+        self.line_deselect.set_ydata([])
         self.line2.set_xdata([])
         self.line2.set_ydata([])
         self.fig.canvas.draw()
@@ -173,10 +239,7 @@ class SelectOptions:
 
         row = 0
         tk.Label(self.root1, text='Selection mode:').grid(row=row, column=0)
-        self.combobox = ttk.Combobox(self.root1, values = [
-            'ROI grid',
-            'Only polygon', 
-            ])
+        self.combobox = ttk.Combobox(self.root1, values=list(SELECTION_MODES.keys()))
         self.combobox.current(0)
         self.combobox.grid(row=row, column=1, sticky='wens', padx=5, pady=5)
 
@@ -210,7 +273,7 @@ class SelectOptions:
         self.root1.destroy()
 
 
-def get_roi_grid(polygon_points, roi_size, noverlap):
+def get_roi_grid(polygon_points, roi_size, noverlap, deselect_polygon):
     if len(roi_size) != 2:
         raise Exception(f'roi_size must be a tuple of length 2')
 
@@ -232,6 +295,12 @@ def get_roi_grid(polygon_points, roi_size, noverlap):
 
     path = Path(points)
     mask = path.contains_points(candidates)
+
+    if deselect_polygon[0] and deselect_polygon[1]:
+        path_deselect = Path(np.array(deselect_polygon).T)
+        mask_deselect = path_deselect.contains_points(candidates)
+        mask = np.logical_and(mask, np.logical_not(mask_deselect))
+
     return candidates[mask]
 
 
