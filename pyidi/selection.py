@@ -6,6 +6,7 @@ import tkinter as tk
 from tkinter import ttk
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 from matplotlib.figure import Figure
+from matplotlib.path import Path
 
 class ROISelect:
     def __init__(self, video=None, roi_size=(11, 11), noverlap=0, polygon=None):
@@ -209,7 +210,6 @@ class SelectOptions:
         self.root1.destroy()
 
 
-
 def get_roi_grid(polygon_points, roi_size, noverlap):
     if len(roi_size) != 2:
         raise Exception(f'roi_size must be a tuple of length 2')
@@ -220,39 +220,19 @@ def get_roi_grid(polygon_points, roi_size, noverlap):
     points = np.array(polygon_points)
     if points.shape[0] == 2:
         points = points.T
-    
+
     low_0 = np.min(points[:, 0])
     high_0 = np.max(points[:, 0])
     low_1 = np.min(points[:, 1])
     high_1 = np.max(points[:, 1])
-    
-    rois = []
-    for i in range(low_0+cent_dist_0, high_0, cent_dist_0):
-        for j in range(low_1+cent_dist_1, high_1, cent_dist_1):
-            if inside_polygon(i, j, points):
-                rois.append([i, j])
-    return np.asarray(rois)
+
+    candidates_0 = np.arange(low_0, high_0, cent_dist_0)
+    candidates_1 = np.arange(low_1, high_1, cent_dist_1)
+    candidates = np.concatenate([_.flatten()[:, None] for _ in np.meshgrid(candidates_0, candidates_1)], axis=1)
+
+    path = Path(points)
+    mask = path.contains_points(candidates)
+    return candidates[mask]
 
 
-def inside_polygon(x, y, points):
-    """
-    Return True if a coordinate (x, y) is inside a polygon defined by
-    a list of verticies [(x1, y1), (x2, x2), ... , (xN, yN)].
 
-    Reference: http://www.ariel.com.au/a/python-point-int-poly.html
-    """
-    n = len(points)
-    inside = False
-    p1x, p1y = points[0]
-    for i in range(1, n + 1):
-        p2x, p2y = points[i % n]
-        if y > min(p1y, p2y):
-            if y <= max(p1y, p2y):
-                if x <= max(p1x, p2x):
-                    if p1y != p2y:
-                        xinters = (y - p1y) * (p2x - p1x) / \
-                            (p2y - p1y) + p1x
-                    if p1x == p2x or x <= xinters:
-                        inside = not inside
-        p1x, p1y = p2x, p2y
-    return inside
