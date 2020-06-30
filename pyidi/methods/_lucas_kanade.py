@@ -240,10 +240,14 @@ class LucasKanade(IDIMethod):
         displacement = np.array(d_subpixel_init, dtype=np.float64)
         delta = displacement.copy()
 
+        y_f = np.arange(self.roi_size[0], dtype=np.float64)
+        x_f = np.arange(self.roi_size[1], dtype=np.float64)
+
         # optimization loop
-        for i in range(maxiter):
-            y_f = np.arange(self.roi_size[0], dtype=np.float64) + displacement[0]
-            x_f = np.arange(self.roi_size[1], dtype=np.float64) + displacement[1]
+        for _ in range(maxiter):
+            y_f += delta[0]
+            x_f += delta[1]
+
             F = F_spline(y_f, x_f)
 
             F_G = G_float_clipped - F
