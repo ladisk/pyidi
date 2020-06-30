@@ -310,3 +310,28 @@ def split_points(points, processes):
         last_point += this_step
 
     return points_split
+
+
+def get_gradient(image):
+    """Fast gradient computation.
+    
+    Compute the gradient of image in both directions using central
+    difference weights over 3 points.
+    
+    !!! WARNING:
+    The edges are excluded from the analysis and the returned image
+    is smaller then original.
+
+    :param image: 2d numpy array
+    :return: gradient in x and y direction
+    """
+    im1 = image[2:]
+    im2 = image[:-2]
+    Gy = (im1 - im2)/2
+
+    im1 = image[:, 2:]
+    im2 = image[:, :-2]
+    Gx = (im1 - im2)/2
+        
+    return Gx[1:-1], Gy[:, 1:-1]
+

@@ -27,16 +27,17 @@ with open(init_file, 'r') as f:
         raise RuntimeError(
             'Cannot find __version__ in {}'.format(init_file))
 
-# with open('README.md', 'r') as f:
-#     readme = f.read()
 
-readme = """
-pyidi
-=====
-Image-based Displacement Identification (IDI) implementation in python.
+with open(os.path.join(base_path, 'README.md'), encoding='utf-8') as f:
+    long_description = f.read()
 
-The documentation for this repository is accessible `here <https://pyidi.readthedocs.io/en/latest/index.html>`_.
-"""
+# readme = """
+# pyidi
+# =====
+# Image-based Displacement Identification (IDI) implementation in python.
+
+# The documentation for this repository is accessible `here <https://pyidi.readthedocs.io/en/latest/index.html>`_.
+# """
 
 
 def parse_requirements(filename):
@@ -58,7 +59,8 @@ setup(name='pyidi',
       description='Python Image Displacement Identification.',
       url='https://github.com/ladisk/pyidi',
       packages=['pyidi', 'pyidi.methods'],
-      long_description=readme,
+      long_description=long_description,
+      long_description_content_type='text/markdown',
       install_requires=requirements,
       keywords='computer vision dic gradient-based image identification',
       )
