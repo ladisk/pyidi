@@ -15,6 +15,7 @@ import matplotlib.patches as patches
 from tqdm import tqdm
 from multiprocessing import Pool
 import pickle
+import numba as nb
 
 from atpbar import atpbar
 import mantichora
@@ -24,6 +25,37 @@ from .. import pyidi
 from .. import tools
 
 from .idi_method import IDIMethod
+
+@nb.njit
+def compute_inverse_numba(Gx, Gy):
+    Gx2 = np.sum(Gx**2)
+    Gy2 = np.sum(Gy**2)
+    GxGy = np.sum(Gx * Gy)
+
+    A_inv = 1/(GxGy**2 - Gx2*Gy2) * np.array([[GxGy, -Gx2], [-Gy2, GxGy]])
+
+    return A_inv
+
+@nb.njit
+def compute_delta_numba(F, G, Gx, Gy, A_inv):
+    F_G = G - F
+    b = np.array([np.sum(Gx*F_G), np.sum(Gy*F_G)])
+    delta = np.dot(A_inv, b)
+
+    error = np.sqrt(np.sum(delta**2))
+    return delta, error
+
+@nb.njit
+def get_gradient(image):
+    im1 = image[2:]
+    im2 = image[:-2]
+    Gy = (im1 - im2)/2
+
+    im1 = image[:, 2:]
+    im2 = image[:, :-2]
+    Gx = (im1 - im2)/2
+        
+    return Gx[1:-1], Gy[:, 1:-1]
 
 
 class LucasKanade(IDIMethod):
@@ -214,7 +246,7 @@ class LucasKanade(IDIMethod):
                     # start optimization with previous optimal parameter values
                     d_init = np.round(self.displacements[p, ii-1, :]).astype(int)
 
-                    yslice, xslice = self._padded_slice(point+d_init, self.roi_size, self.pad, apply_pad=False)
+                    yslice, xslice = self._padded_slice(point+d_init, self.roi_size, pad=1, apply_pad=True)
                     G = video.mraw[i, yslice, xslice]
 
                     displacements = self.optimize_translations(
@@ -262,36 +294,45 @@ class LucasKanade(IDIMethod):
             image, relative to the position of input subset `G`.
         :rtype: array of size 2
         """
-        Gy, Gx = np.gradient(G.astype(np.float64), edge_order=2)
-        Gx2 = np.sum(Gx**2)
-        Gy2 = np.sum(Gy**2)
-        GxGy = np.sum(Gx * Gy)
+        G_float = G.astype(np.float64)
+        # Gy, Gx = np.gradient(G_float, edge_order=2)
+        Gx, Gy = get_gradient(G_float)
+        G_float_clipped = G_float[1:-1, 1:-1]
+
+        # Gx2 = np.sum(Gx**2)
+        # Gy2 = np.sum(Gy**2)
+        # GxGy = np.sum(Gx * Gy)
+        A_inv = compute_inverse_numba(Gx, Gy)
 
         # A_inv = np.linalg.inv(
         #     np.array([[GxGy, Gx2],  # switched columns, to reverse variable order to (dy, dx)
         #               [Gy2, GxGy]])
         #               )
 
-        A_inv = 1/(GxGy**2 - Gx2*Gy2) * np.array([[GxGy, -Gx2], [-Gy2, GxGy]])
+        # A_inv = 1/(GxGy**2 - Gx2*Gy2) * np.array([[GxGy, -Gx2], [-Gy2, GxGy]])
 
         # initialize values
         error = 1.
         displacement = np.array(d_subpixel_init, dtype=np.float64)
         delta = displacement.copy()
 
+        y_f = np.arange(self.roi_size[0], dtype=np.float64)
+        x_f = np.arange(self.roi_size[1], dtype=np.float64)
+
         # optimization loop
         for _ in range(maxiter):
-            y_f = np.arange(self.roi_size[0], dtype=np.float64) + displacement[0]
-            x_f = np.arange(self.roi_size[1], dtype=np.float64) + displacement[1]
+            y_f += delta[0]
+            x_f += delta[1]
+
             F = F_spline(y_f, x_f)
+            delta, error = compute_delta_numba(F, G_float_clipped, Gx, Gy, A_inv)
+            # F_G = G - F
+            # b = np.array([np.sum(Gx*F_G),
+            #               np.sum(Gy*F_G)
+            #     ])
+            # delta = np.dot(A_inv, b)
 
-            F_G = G - F
-            b = np.array([np.sum(Gx*F_G),
-                          np.sum(Gy*F_G)
-                ])
-            delta = np.dot(A_inv, b)
-
-            error = np.sqrt(np.sum(delta**2))
+            # error = np.sqrt(np.sum(delta**2))
             displacement += delta
             if error < tol:
                 return -displacement # roles of F and G are switched
