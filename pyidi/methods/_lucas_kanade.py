@@ -174,7 +174,7 @@ class LucasKanade(IDIMethod):
                     # start optimization with previous optimal parameter values
                     d_init = np.round(self.displacements[p, i-1, :]).astype(int)
 
-                    yslice, xslice = self._padded_slice(point+d_init, self.roi_size, self.image_size, 0)
+                    yslice, xslice = self._padded_slice(point+d_init, self.roi_size, self.image_size, 1)
                     G = video.mraw[i, yslice, xslice]
 
                     displacements = self.optimize_translations(
@@ -222,7 +222,9 @@ class LucasKanade(IDIMethod):
             image, relative to the position of input subset `G`.
         :rtype: array of size 2
         """
-        Gy, Gx = np.gradient(G.astype(np.float64), edge_order=2)
+        G_float = G.astype(np.float64)
+        Gx, Gy = tools.get_gradient(G_float)
+        G_float_clipped = G_float[1:-1, 1:-1]
 
         Gx2 = np.sum(Gx**2)
         Gy2 = np.sum(Gy**2)
@@ -244,7 +246,7 @@ class LucasKanade(IDIMethod):
             x_f = np.arange(self.roi_size[1], dtype=np.float64) + displacement[1]
             F = F_spline(y_f, x_f)
 
-            F_G = G - F
+            F_G = G_float_clipped - F
             b = np.array([np.sum(Gx*F_G),
                           np.sum(Gy*F_G)
                 ])
