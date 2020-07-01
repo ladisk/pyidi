@@ -27,37 +27,6 @@ from .. import tools
 
 from .idi_method import IDIMethod
 
-@nb.njit
-def compute_inverse_numba(Gx, Gy):
-    Gx2 = np.sum(Gx**2)
-    Gy2 = np.sum(Gy**2)
-    GxGy = np.sum(Gx * Gy)
-
-    A_inv = 1/(GxGy**2 - Gx2*Gy2) * np.array([[GxGy, -Gx2], [-Gy2, GxGy]])
-
-    return A_inv
-
-@nb.njit
-def compute_delta_numba(F, G, Gx, Gy, A_inv):
-    F_G = G - F
-    b = np.array([np.sum(Gx*F_G), np.sum(Gy*F_G)])
-    delta = np.dot(A_inv, b)
-
-    error = np.sqrt(np.sum(delta**2))
-    return delta, error
-
-@nb.njit
-def get_gradient(image):
-    im1 = image[2:]
-    im2 = image[:-2]
-    Gy = (im1 - im2)/2
-
-    im1 = image[:, 2:]
-    im2 = image[:, :-2]
-    Gx = (im1 - im2)/2
-        
-    return Gx[1:-1], Gy[:, 1:-1]
-
 
 class LucasKanade(IDIMethod):
     """
@@ -295,21 +264,10 @@ class LucasKanade(IDIMethod):
         :rtype: array of size 2
         """
         G_float = G.astype(np.float64)
-        # Gy, Gx = np.gradient(G_float, edge_order=2)
-        Gx, Gy = get_gradient(G_float)
+        Gx, Gy = tools.get_gradient(G_float)
         G_float_clipped = G_float[1:-1, 1:-1]
 
-        # Gx2 = np.sum(Gx**2)
-        # Gy2 = np.sum(Gy**2)
-        # GxGy = np.sum(Gx * Gy)
         A_inv = compute_inverse_numba(Gx, Gy)
-
-        # A_inv = np.linalg.inv(
-        #     np.array([[GxGy, Gx2],  # switched columns, to reverse variable order to (dy, dx)
-        #               [Gy2, GxGy]])
-        #               )
-
-        # A_inv = 1/(GxGy**2 - Gx2*Gy2) * np.array([[GxGy, -Gx2], [-Gy2, GxGy]])
 
         # initialize values
         error = 1.
@@ -326,13 +284,7 @@ class LucasKanade(IDIMethod):
 
             F = F_spline(y_f, x_f)
             delta, error = compute_delta_numba(F, G_float_clipped, Gx, Gy, A_inv)
-            # F_G = G - F
-            # b = np.array([np.sum(Gx*F_G),
-            #               np.sum(Gy*F_G)
-            #     ])
-            # delta = np.dot(A_inv, b)
 
-            # error = np.sqrt(np.sum(delta**2))
             displacement += delta
             if error < tol:
                 return -displacement # roles of F and G are switched
@@ -347,7 +299,6 @@ class LucasKanade(IDIMethod):
         `roi_size` and `pad` size. If the resulting slice would be out of
         bounds of the image to be sliced (given by `image_shape`), the
         slice is snifted to be on the image edge and a warning is issued.
-
         :param point: The center point coordiante of the desired ROI.
         :type point: array_like of size 2, (y, x)
         :param roi_size: Size of desired cropped image (y, x).
@@ -374,23 +325,8 @@ class LucasKanade(IDIMethod):
                 'algorithm may not converge, or selected points might be too close ' + 
                 'to image border. Please check analysis settings.')
 
-        if y + h//2 >= self.video.image_height:
-            roi_offset_y = self.video.image_height - (y + h//2) - pad_base - expected_displacement
-        elif y - h//2 <= 0:
-            roi_offset_y = -(y - h//2) + pad_base + expected_displacement
-        else:
-            roi_offset_y = 0
-
-        if x + w//2 >= self.video.image_width:
-            roi_offset_x = self.video.image_width - (x + w//2) - pad_base - expected_displacement
-        elif x - w//2 <= 0:
-            roi_offset_x = -(x - w//2) + pad_base + expected_displacement
-        else:
-            roi_offset_x = 0
-        
-        yslice = slice(y-h//2-pad + roi_offset_y, y+h//2+pad+1 + roi_offset_y) 
-        xslice = slice(x-w//2-pad + roi_offset_x, x+w//2+pad+1 + roi_offset_x)
-
+        yslice = slice(y-h//2-pad, y+h//2+pad+1)
+        xslice = slice(x-w//2-pad, x+w//2+pad+1)
         return yslice, xslice
 
 
@@ -776,4 +712,24 @@ def worker(points, idi_kwargs, method_kwargs, i):
     _video.set_points(points)
     
     return _video.get_displacements(verbose=0), i
+
+
+@nb.njit
+def compute_inverse_numba(Gx, Gy):
+    Gx2 = np.sum(Gx**2)
+    Gy2 = np.sum(Gy**2)
+    GxGy = np.sum(Gx * Gy)
+
+    A_inv = 1/(GxGy**2 - Gx2*Gy2) * np.array([[GxGy, -Gx2], [-Gy2, GxGy]])
+
+    return A_inv
+
+@nb.njit
+def compute_delta_numba(F, G, Gx, Gy, A_inv):
+    F_G = G - F
+    b = np.array([np.sum(Gx*F_G), np.sum(Gy*F_G)])
+    delta = np.dot(A_inv, b)
+
+    error = np.sqrt(np.sum(delta**2))
+    return delta, error
 
