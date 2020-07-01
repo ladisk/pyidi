@@ -5,6 +5,8 @@ import matplotlib.pyplot as plt
 import pickle
 import pyMRAW
 import datetime
+import json
+import glob
 
 from .methods import IDIMethod, SimplifiedOpticalFlow, GradientBasedOpticalFlow, LucasKanadeSc, LucasKanade, LucasKanadeSc2
 from . import tools
@@ -158,7 +160,7 @@ class pyIDI:
             plt.arrow(ind[1], ind[0], scale*f1, scale*f0, width=width, color='r', alpha=alpha)
 
 
-    def get_displacements(self, **kwargs):
+    def get_displacements(self, autosave=True, **kwargs):
         """
         Calculate the displacements based on chosen method.
 
@@ -174,13 +176,16 @@ class pyIDI:
             # auto-save and clearing temp files
             if hasattr(self.method, 'process_number'):
                 if self.method.process_number == 0:
-                    if type(self.cih_file) == str:
-                        cih_file_ = os.path.split(self.cih_file)[-1].split('.')[0]
-                        self.auto_filename = f'{datetime.datetime.now().strftime("%Y%m%d_%H%M%S")}_{cih_file_}.pkl'
-                    else:
-                        self.auto_filename = f'{datetime.datetime.now().strftime("%Y%m%d_%H%M%S")}_displacements.pkl'
-                    
-                    self.save(self.auto_filename, root=self.root)
+                    if autosave:
+                        if type(self.cih_file) == str:
+                            cih_file_ = os.path.split(self.cih_file)[-1].split('.')[0]
+                            self.auto_filename = f'{datetime.datetime.now().strftime("%Y%m%d_%H%M%S")}_{cih_file_}.pkl'
+                        else:
+                            self.auto_filename = f'{datetime.datetime.now().strftime("%Y%m%d_%H%M%S")}_displacements.pkl'
+                        
+                        self.create_analysis_directory()
+                        self.save(self.auto_filename, root=self.root_this_analysis)
+
                     self.method.clear_temp_files()
                     
             return self.displacements
@@ -195,23 +200,39 @@ class pyIDI:
         if hasattr(self, 'mraw'):
             self.mraw._mmap.close()
             del self.mraw
+    
+
+    def create_analysis_directory(self):
+        cih_file_ = os.path.split(self.cih_file)[-1].split('.')[0]
+        self.root_analysis = os.path.join(self.root, f'{cih_file_}_pyidi_analysis')
+        if not os.path.exists(self.root_analysis):
+            os.mkdir(self.root_analysis)
+        
+        analyses = glob.glob(os.path.join(self.root_analysis, 'analysis_*/'))
+        if analyses:
+            last_an = sorted(analyses)[-1]
+            print(last_an, last_an.split('\\')[-2])
+            n = int(last_an.split('\\')[-2].split('_')[-1])
+        else:
+            n = 0
+        self.root_this_analysis = os.path.join(self.root_analysis, f'analysis_{n+1:0>3.0f}')
+        
+        os.mkdir(self.root_this_analysis)
 
 
     def save(self, filename, root=''):
-        """ Save computed displacements and other basic information.
+        pickle.dump(self.displacements, open(os.path.join(root, 'results.pkl'), 'wb'))
+        pickle.dump(self.points, open(os.path.join(root, 'points.pkl'), 'wb'))
 
-        :param filename: Name of the file to save in.
-        :param root: Root of the filename, defaults to ''
-        """
-        full_filename = os.path.join(root, filename)
         out = {
-            'points': self.points,
-            'disp': self.displacements,
-            'first_image': self.mraw[0],
             'info': self.info,
+            'createdate': datetime.datetime.now().strftime("%Y %m %d    %H:%M:%S"),
             'cih_file': self.cih_file,
             'settings': self.method.create_settings_dict()
         }
-        pickle.dump(out, open(full_filename, 'wb'), protocol=-1)
 
-    
+        with open(os.path.join(root, 'settings.txt'), 'w') as f:
+            json.dump(out, f, sort_keys=True, indent=2)
+
+
+
