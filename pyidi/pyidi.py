@@ -80,8 +80,10 @@ class pyIDI:
         :type method: IDIMethod or str
         """
         if isinstance(method, str) and method in self.available_methods.keys():
+            self.method_name = method
             self.method = self.available_methods[method]['IDIMethod'](self, **kwargs)
         elif callable(method) and hasattr(method, 'calculate_displacements'):
+            self.method_name = 'external_method'
             try:
                 self.method = method(self, **kwargs)
             except:
@@ -179,7 +181,7 @@ class pyIDI:
                     
                     if autosave:
                         self.create_analysis_directory()
-                        self.save(self.auto_filename, root=self.root_this_analysis)
+                        self.save(root=self.root_this_analysis)
 
                     self.method.clear_temp_files()
                     
@@ -215,7 +217,7 @@ class pyIDI:
         os.mkdir(self.root_this_analysis)
 
 
-    def save(self, filename, root=''):
+    def save(self, root=''):
         pickle.dump(self.displacements, open(os.path.join(root, 'results.pkl'), 'wb'))
         pickle.dump(self.points, open(os.path.join(root, 'points.pkl'), 'wb'))
 
@@ -223,11 +225,11 @@ class pyIDI:
             'info': self.info,
             'createdate': datetime.datetime.now().strftime("%Y %m %d    %H:%M:%S"),
             'cih_file': self.cih_file,
-            'settings': self.method.create_settings_dict()
+            'settings': self.method.create_settings_dict(),
+            'method': self.method_name
         }
 
         with open(os.path.join(root, 'settings.txt'), 'w') as f:
             json.dump(out, f, sort_keys=True, indent=2)
-
-
-
+        
+        

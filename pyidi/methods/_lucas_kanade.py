@@ -575,20 +575,19 @@ class LucasKanade(IDIMethod):
     def create_settings_dict(self):
         """Make a dictionary of the chosen settings.
         """
-        INCLUDE_KEYS = ['pad',
-                        'max_nfev',
-                        'tol',
-                        '_roi_size',
-                        'int_order',
-                        'pbar_type',
-                        'multi_type',
-                        'processes',
-                        'resume_analysis',
-                        'reference_image',
-                        'mraw_range',
-                        'step_time',
-                        'stop_time',
-                        'N_time_points']
+        INCLUDE_KEYS = [
+            '_roi_size',
+            'pad',
+            'max_nfev',
+            'tol',
+            'int_order',
+            'show_pbar',
+            'processes',
+            'pbar_type',
+            'multi_type',
+            'reference_image',
+            'mraw_range',
+        ]
 
         settings = dict()
         data = self.__dict__
