@@ -176,13 +176,8 @@ class pyIDI:
             # auto-save and clearing temp files
             if hasattr(self.method, 'process_number'):
                 if self.method.process_number == 0:
+                    
                     if autosave:
-                        if type(self.cih_file) == str:
-                            cih_file_ = os.path.split(self.cih_file)[-1].split('.')[0]
-                            self.auto_filename = f'{datetime.datetime.now().strftime("%Y%m%d_%H%M%S")}_{cih_file_}.pkl'
-                        else:
-                            self.auto_filename = f'{datetime.datetime.now().strftime("%Y%m%d_%H%M%S")}_displacements.pkl'
-                        
                         self.create_analysis_directory()
                         self.save(self.auto_filename, root=self.root_this_analysis)
 
