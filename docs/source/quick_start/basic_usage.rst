@@ -2,6 +2,8 @@
 
 Basic usage
 ===========
+Currently the pyIDI method works with Photron ``.cih`` and ``.cihx`` files, however, ``numpy.ndarray`` can
+also be passed as ``cih_file`` argument. If an array is passed, it must have a shape of: ``(n time points, image height, image width)``.
 
 Loading the video
 -----------------

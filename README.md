@@ -8,8 +8,11 @@ The documentation for this repository is accessible [here](https://pyidi.readthe
 
 Create an instance:
 ```
-v = pyidi.pyIDI('video.cih')
+v = pyidi.pyIDI(cih_file='video.cih')
 ```
+Currently the pyIDI method works with Photron ``.cih`` and ``.cihx`` files, however, ``numpy.ndarray`` can
+also be passed as ``cih_file`` argument. If an array is passed, it must have a shape of: ``(n time points, image height, image width)``.
+
 Set the points where displacements will be determined. In this step the method of identification is specified.
 
 If `points` is given, these are the ones used:
@@ -19,16 +22,20 @@ v.set_points(points=p)
 ```
 The method of identification has to be specified:
 ```
-v.set_method(method='simplified_optical_flow', **method_kwargs)
+v.set_method(method='sof', **method_kwargs)
 ```
-If the `points` argument is not given and the `method` is supplied to `set_points`, the `get_points` method is triggered:
+To further configure the method parameters, use:
 ```
-v.set_points(method='simplified_optical_flow', **set_points_kwargs)
-v.set_method(method='simplified_optical_flow', **method_kwargs)
+v.method.configure(*args, **kwargs)
 ```
-After points are set, displacements can be calculated (using method, set in `set_method`):
+
+After the points are set, displacements can be calculated (using method, set in `set_method`):
 ```
 displacements = v.get_displacements()
+```
+Multiprocessing can also be used by passing the `processes` argument:
+```
+displacements = v.get_displacements(processes=4)
 ```
 
 # DEVELOPER GUIDELINES:
