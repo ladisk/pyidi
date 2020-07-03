@@ -216,10 +216,10 @@ class pyIDI:
         
         os.mkdir(self.root_this_analysis)
 
-
+    
     def save(self, root=''):
-        pickle.dump(self.displacements, open(os.path.join(root, 'results.pkl'), 'wb'))
-        pickle.dump(self.points, open(os.path.join(root, 'points.pkl'), 'wb'))
+        pickle.dump(self.displacements, open(os.path.join(root, 'results.pkl'), 'wb'), protocol=-1)
+        pickle.dump(self.points, open(os.path.join(root, 'points.pkl'), 'wb'), protocol=-1)
 
         out = {
             'info': self.info,
@@ -231,5 +231,4 @@ class pyIDI:
 
         with open(os.path.join(root, 'settings.txt'), 'w') as f:
             json.dump(out, f, sort_keys=True, indent=2)
-        
         
