@@ -45,4 +45,7 @@ displacements = v.get_displacements(processes=4)
 	* `get_points` (static method - sets attribute video.points)
 * In `pyIDI` add a new method of identification in `avaliable_methods` dictionary.
 
+
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.4017153.svg)](https://doi.org/10.5281/zenodo.4017153)
 [![Build Status](https://travis-ci.com/ladisk/pyidi.svg?branch=master)](https://travis-ci.com/ladisk/pyidi)
+
