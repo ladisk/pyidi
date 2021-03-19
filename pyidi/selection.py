@@ -202,6 +202,7 @@ class ROISelect:
                 self.line2.set_xdata(self.points[:, 1])
                 self.line2.set_ydata(self.points[:, 0])
                 self.fig.canvas.draw()
+                self.options.nr_points_label.configure(text=f'{len(self.points)}')
 
     def clear_selection(self):
         self.polygon = [[], []]
@@ -264,6 +265,11 @@ class SelectOptions:
 
         clear_button = tk.Button(self.root1, text='Clear', command=parent.clear_selection)
         clear_button.grid(row=row, column=1, sticky='w', padx=5, pady=5)
+
+        row = 5
+        tk.Label(self.root1, text='Number of selected points:').grid(row=row, column=0, sticky='E')
+        self.nr_points_label = tk.Label(self.root1, text='0')
+        self.nr_points_label.grid(row=row, column=1, sticky='W')
 
         self.root1.protocol("WM_DELETE_WINDOW", self.on_closing)
     
