@@ -11,6 +11,7 @@ Welcome to pyIDI's documentation!
    :caption: Contents:
    
    quick_start/basic_usage
+   quick_start/points_selection
    contributing/documenting
    code/modules
 
