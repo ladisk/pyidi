@@ -5,7 +5,6 @@ import os
 import shutil
 import json
 import glob
-import warnings
 
 import scipy.signal
 from scipy.linalg import lu_factor, lu_solve
@@ -16,7 +15,6 @@ import matplotlib.patches as patches
 from tqdm import tqdm
 from multiprocessing import Pool
 import pickle
-import numba as nb
 
 from atpbar import atpbar
 import mantichora
@@ -28,7 +26,7 @@ from .. import tools
 from .idi_method import IDIMethod
 
 
-class LucasKanade(IDIMethod):
+class LucasKanadeSc2(IDIMethod):
     """
     Translation identification based on the Lucas-Kanade method using least-squares
     iterative optimization with the Zero Normalized Cross Correlation optimization
@@ -38,8 +36,7 @@ class LucasKanade(IDIMethod):
         self, roi_size=(9, 9), pad=2, max_nfev=20, 
         tol=1e-8, int_order=3, verbose=1, show_pbar=True, 
         processes=1, pbar_type='atpbar', multi_type='mantichora',
-        resume_analysis=True, process_number=0, reference_image=0,
-        mraw_range='full', use_numba=False
+        resume_analysis=True, process_number=0, reference_image=0
     ):
         """
         Displacement identification based on Lucas-Kanade method,
@@ -78,11 +75,6 @@ class LucasKanade(IDIMethod):
         :param reference_image: The reference image for computation. Can be index of a frame, tuple (slice) or numpy.ndarray that
             is taken as a reference.
         :type reference_image: int or tuple or ndarray
-        :param mraw_range: Part of the video to process. If "full", a full video is processed. If first element of tuple is not 0,
-            a appropriate reference image should be chosen.
-        :type mraw_range: tuple or "full"
-        :param use_numba: Use numba.njit for computation speedup. Currently not implemented.
-        :type use_numba: bool
         """
 
         if pad is not None:
@@ -111,49 +103,12 @@ class LucasKanade(IDIMethod):
             self.process_number = process_number
         if reference_image is not None:
             self.reference_image = reference_image
-        if mraw_range is not None:
-            self.mraw_range = mraw_range
-        if use_numba is not None:
-            self.use_numba = use_numba
         
-        self._set_mraw_range()
-
+        self.start_time = 1
         self.temp_dir = os.path.join(os.path.split(self.video.cih_file)[0], 'temp_file')
         self.settings_filename = os.path.join(self.temp_dir, 'settings.pkl')
         self.analysis_run = 0
         
-
-    def _set_mraw_range(self):
-        """Set the range of the video to be processed.
-        """
-        self.step_time = 1
-
-        if self.mraw_range == 'full':
-            self.start_time = 1
-            self.stop_time = self.video.mraw.shape[0]
-            
-        elif type(self.mraw_range) == tuple:
-            if len(self.mraw_range) >= 2:
-                if self.mraw_range[0] < self.mraw_range[1] and self.mraw_range[0] > 0:
-                    self.start_time = self.mraw_range[0] + self.step_time
-                    
-                    if self.mraw_range[1] <= self.video.mraw.shape[0]:
-                        self.stop_time = self.mraw_range[1]
-                    else:
-                        raise ValueError(f'mraw_range can only go to end of video - index {self.video.mraw.shape[0]}')
-                else:
-                    raise ValueError(f'Wrong mraw_range definition.')
-
-            if len(self.mraw_range) == 3:
-                self.step_time = self.mraw_range[2]
-
-            else:
-                raise Exception('Wrong definition of mraw_range.')
-        else:
-            raise TypeError(f'mraw_range must be a tuple of start and stop index or "full" ({type(self.mraw_range)}')
-            
-        self.N_time_points = len(range(self.start_time-self.step_time, self.stop_time, self.step_time))
-
 
     def calculate_displacements(self, video, **kwargs):
         """
@@ -171,7 +126,8 @@ class LucasKanade(IDIMethod):
 
         if self.process_number == 0:
             # Happens only once per analysis
-            if self.temp_files_check() and self.resume_analysis:
+            if self.temp_files_check():
+                self.resume_analysis = True
                 if self.verbose:
                     print('-- Resuming last analysis ---')
                     print(' ')
@@ -194,7 +150,7 @@ class LucasKanade(IDIMethod):
             if self.resume_analysis:
                 self.resume_temp_files()
             else:
-                self.displacements = np.zeros((video.points.shape[0], self.N_time_points, 2))
+                self.displacements = np.zeros((video.points.shape[0], video.N, 2))
                 self.create_temp_files(init_multi=False)
 
             self.warnings = []
@@ -210,30 +166,31 @@ class LucasKanade(IDIMethod):
                 print(f'...done in {time.time() - t:.2f} s')
 
             # Time iteration.
-            for ii, i in enumerate(self._pbar_range(self.start_time, self.stop_time, self.step_time)):
-                ii = ii + 1
+            for i in self._pbar_range(self.start_time, video.mraw.shape[0]):
 
                 # Iterate over points.
                 for p, point in enumerate(video.points):
                     
                     # start optimization with previous optimal parameter values
-                    d_init = np.round(self.displacements[p, ii-1, :]).astype(int)
+                    d_init = np.round(self.displacements[p, i-1, :]).astype(int)
 
-                    yslice, xslice = self._padded_slice(point+d_init, self.roi_size, self.image_size, 1)
+                    yslice, xslice = self._padded_slice(point+d_init, self.roi_size, 0)
                     G = video.mraw[i, yslice, xslice]
 
-                    displacements = self.optimize_translations(
-                        G=G, 
-                        F_spline=self.interpolation_splines[p], 
-                        maxiter=self.max_nfev,
-                        tol=self.tol
-                        )
+                    sol = scipy.optimize.least_squares(
+                        lambda x: self.opt_function(x, G, self.interpolation_splines[p]),
+                        x0=d_init,
+                        max_nfev=self.max_nfev,
+                        xtol=self.tol,
+                        ftol=self.tol,
+                        gtol=self.tol
+                    )
 
-                    self.displacements[p, ii, :] = displacements + d_init
+                    self.displacements[p, i, :] = sol.x
 
                 # temp
-                self.temp_disp[:, ii, :] = self.displacements[:, ii, :]
-                self.update_log(ii)
+                self.temp_disp[:, i, :] = self.displacements[:, i, :]
+                self.update_log(i)
                     
             del self.temp_disp
 
@@ -245,6 +202,13 @@ class LucasKanade(IDIMethod):
                     print(f'Time to complete: {full_time_m:.0f} min, {full_time_s:.1f} s')
                 else:
                     print(f'Time to complete: {full_time:.1f} s')
+
+    def opt_function(self, d, G, F_spline):
+        y_f = np.arange(self.roi_size[0], dtype=np.float64) - d[0]
+        x_f = np.arange(self.roi_size[1], dtype=np.float64) - d[1]
+        F = F_spline(y_f, x_f)
+
+        return (F - G).flatten()
 
 
     def optimize_translations(self, G, F_spline, maxiter, tol, d_subpixel_init=(0, 0)):
@@ -267,48 +231,51 @@ class LucasKanade(IDIMethod):
             image, relative to the position of input subset `G`.
         :rtype: array of size 2
         """
-        G_float = G.astype(np.float64)
-        Gx, Gy = tools.get_gradient(G_float)
-        G_float_clipped = G_float[1:-1, 1:-1]
+        Gy, Gx = np.gradient(G.astype(np.float64), edge_order=2)
+        Gx2 = np.sum(Gx**2)
+        Gy2 = np.sum(Gy**2)
+        GxGy = np.sum(Gx * Gy)
 
-        A_inv = compute_inverse_numba(Gx, Gy)
+        A_inv = np.linalg.inv(
+            np.array([[GxGy, Gx2],  # switched columns, to reverse variable order to (dy, dx)
+                      [Gy2, GxGy]])
+                      )
 
         # initialize values
         error = 1.
         displacement = np.array(d_subpixel_init, dtype=np.float64)
         delta = displacement.copy()
 
-        y_f = np.arange(self.roi_size[0], dtype=np.float64)
-        x_f = np.arange(self.roi_size[1], dtype=np.float64)
-
         # optimization loop
-        for _ in range(maxiter):
-            y_f += delta[0]
-            x_f += delta[1]
-
+        for i in range(maxiter):
+            y_f = np.arange(self.roi_size[0], dtype=np.float64) + displacement[0]
+            x_f = np.arange(self.roi_size[1], dtype=np.float64) + displacement[1]
             F = F_spline(y_f, x_f)
-            delta, error = compute_delta_numba(F, G_float_clipped, Gx, Gy, A_inv)
 
+            F_G = G - F
+            b = np.array([np.sum(Gx*F_G),
+                          np.sum(Gy*F_G)
+                ])
+            delta = np.dot(A_inv, b)
+
+            error = np.linalg.norm(delta)
             displacement += delta
             if error < tol:
                 return -displacement # roles of F and G are switched
 
-        # max_iter was reached before the convergence criterium
+        # max_iter wa reached before the convergence criterium
         return -displacement
 
 
-    def _padded_slice(self, point, roi_size, image_shape, pad=None):
+    def _padded_slice(self, point, roi_size, pad=None):
         '''
         Returns a slice that crops an image around a given `point` center, 
-        `roi_size` and `pad` size. If the resulting slice would be out of
-        bounds of the image to be sliced (given by `image_shape`), the
-        slice is snifted to be on the image edge and a warning is issued.
+        `roi_size` and `pad` size.
+
         :param point: The center point coordiante of the desired ROI.
         :type point: array_like of size 2, (y, x)
         :param roi_size: Size of desired cropped image (y, x).
         type roi_size: array_like of size 2, (h, w)
-        :param image_shape: Shape of the image to be sliced, (h, w).
-        type image_shape: array_like of size 2, (h, w)
         :param pad: Pad border size in pixels. If None, the video.pad
             attribute is read.
         :type pad: int, optional, defaults to None
@@ -317,17 +284,12 @@ class LucasKanade(IDIMethod):
 
         if pad is None:
             pad = self.pad
-        y_, x_ = np.array(point).astype(int)
+        y, x = np.array(point).astype(int)
         h, w = np.array(roi_size).astype(int)
 
-        # Bounds checking
-        y = np.clip(y_, h//2+pad, image_shape[0]-(h//2+pad+1))
-        x = np.clip(x_, w//2+pad, image_shape[1]-(w//2+pad+1))
-
-        if x != x_ or y != y_:
-            warnings.warn('Reached image edge. The displacement optimization ' +
-                'algorithm may not converge, or selected points might be too close ' + 
-                'to image border. Please check analysis settings.')
+        # CLIP ON EDGES!
+        # y_range = np.array([y-h//2-pad, y+h//2+pad+1], dtype=int)
+        # x_range = np.array([x-w//2-pad, x+w//2+pad+1], dtype=int)
 
         yslice = slice(y-h//2-pad, y+h//2+pad+1)
         xslice = slice(x-w//2-pad, x+w//2+pad+1)
@@ -381,8 +343,9 @@ class LucasKanade(IDIMethod):
         f = self._set_reference_image(video, self.reference_image)
         splines = []
         for point in video.points:
-            yslice, xslice = self._padded_slice(point, self.roi_size, self.image_size, pad)
+            yslice, xslice = self._padded_slice(point, self.roi_size, pad)
 
+            # debug
             spl = RectBivariateSpline(
                x=np.arange(-pad, self.roi_size[0]+pad),
                y=np.arange(-pad, self.roi_size[1]+pad),
@@ -478,11 +441,11 @@ class LucasKanade(IDIMethod):
                     f'token: {token}\n',
                     f'points_filename: {self.points_filename}\n',
                     f'disp_filename: {self.disp_filename}\n',
-                    f'disp_shape: {(self.video.points.shape[0], self.N_time_points, 2)}\n',
+                    f'disp_shape: {(self.video.points.shape[0], self.video.mraw.shape[0], 2)}\n',
                     f'analysis_run <{self.analysis_run}>:'
                 ])
 
-            self.temp_disp = np.memmap(self.disp_filename, dtype=np.float, mode='w+', shape=(self.video.points.shape[0], self.N_time_points, 2))
+            self.temp_disp = np.memmap(self.disp_filename, dtype=np.float, mode='w+', shape=(self.video.points.shape[0], self.video.mraw.shape[0], 2))
             
 
     def clear_temp_files(self):
@@ -579,24 +542,14 @@ class LucasKanade(IDIMethod):
     def create_settings_dict(self):
         """Make a dictionary of the chosen settings.
         """
-        INCLUDE_KEYS = [
-            '_roi_size',
-            'pad',
-            'max_nfev',
-            'tol',
-            'int_order',
-            'show_pbar',
-            'processes',
-            'pbar_type',
-            'multi_type',
-            'reference_image',
-            'mraw_range',
-        ]
+        EXCLUDE_KEYS = ['settings_filename', 'points_filename', 
+            'temp_dir', 'verbose', 'analysis_run', 
+            'process_number', 'start_time']
 
         settings = dict()
         data = self.__dict__
         for k, v in data.items():
-            if k in INCLUDE_KEYS:
+            if k not in EXCLUDE_KEYS:
                 if k == '_roi_size':
                     k = 'roi_size'
                 if type(v) in [int, float, str]:
@@ -667,8 +620,7 @@ def multi(video, processes):
         'int_order': video.method.int_order,
         'pbar_type': video.method.pbar_type,
         'resume_analysis': video.method.resume_analysis,
-        'reference_image': video.method.reference_image,
-        'mraw_range': video.method.mraw_range,
+        'reference_image': video.method.reference_image
     }
     if video.method.pbar_type == 'atpbar':
         print(f'Computation start: {datetime.datetime.now()}')
@@ -677,10 +629,10 @@ def multi(video, processes):
     if video.method.multi_type == 'multiprocessing':
         if method_kwargs['pbar_type'] == 'atpbar':
             method_kwargs['pbar_type'] = 'tqdm'
-            warnings.warn('"atpbar" pbar_type was used with "multiprocessing". This is not supported. Changed pbar_type to "tqdm"')
+            print(f'!!! WARNING: "atpbar" pbar_type was used with "multiprocessing". This is not supported. Changed pbar_type to "tqdm"')
 
         pool = Pool(processes=processes)
-        results = [pool.apply_async(worker, args=(p, idi_kwargs, method_kwargs, i)) for i, p in enumerate(points_split)]
+        results = [pool.apply_async(worker, args=(p, idi_kwargs, method_kwargs)) for p in points_split]
         pool.close()
         pool.join()
 
@@ -721,29 +673,9 @@ def worker(points, idi_kwargs, method_kwargs, i):
     """
     method_kwargs['process_number'] = i+1
     _video = pyidi.pyIDI(**idi_kwargs)
-    _video.set_method(LucasKanade)
+    _video.set_method(LucasKanadeSc2)
     _video.method.configure(**method_kwargs)
     _video.set_points(points)
     
     return _video.get_displacements(verbose=0), i
-
-
-# @nb.njit
-def compute_inverse_numba(Gx, Gy):
-    Gx2 = np.sum(Gx**2)
-    Gy2 = np.sum(Gy**2)
-    GxGy = np.sum(Gx * Gy)
-
-    A_inv = 1/(GxGy**2 - Gx2*Gy2) * np.array([[GxGy, -Gx2], [-Gy2, GxGy]])
-
-    return A_inv
-
-# @nb.njit
-def compute_delta_numba(F, G, Gx, Gy, A_inv):
-    F_G = G - F
-    b = np.array([np.sum(Gx*F_G), np.sum(Gy*F_G)])
-    delta = np.dot(A_inv, b)
-
-    error = np.sqrt(np.sum(delta**2))
-    return delta, error
 

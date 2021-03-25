@@ -8,6 +8,7 @@ from matplotlib.figure import Figure
 
 from multiprocessing import Pool
 from tqdm import tqdm
+import numba as nb
 
 from . import pyidi
 
@@ -311,7 +312,7 @@ def split_points(points, processes):
 
     return points_split
 
-
+# @nb.njit
 def get_gradient(image):
     """Fast gradient computation.
     

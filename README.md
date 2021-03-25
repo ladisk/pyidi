@@ -1,11 +1,9 @@
 # pyidi
 Image-based Displacement Identification (IDI) implementation in python.
 
-The documentation for this repository is accessible [here](https://pyidi.readthedocs.io/en/latest/index.html).
+See the [documentation](https://pyidi.readthedocs.io/en/latest/index.html) for `pyIDI`.
 
 # BASIC USAGE:
-![Showcase GIF](usage_gif.gif)
-
 Create an instance:
 ```
 v = pyidi.pyIDI(cih_file='video.cih')
@@ -13,9 +11,7 @@ v = pyidi.pyIDI(cih_file='video.cih')
 Currently the pyIDI method works with Photron ``.cih`` and ``.cihx`` files, however, ``numpy.ndarray`` can
 also be passed as ``cih_file`` argument. If an array is passed, it must have a shape of: ``(n time points, image height, image width)``.
 
-Set the points where displacements will be determined. In this step the method of identification is specified.
-
-If `points` is given, these are the ones used:
+Set the points where displacements will be determined:
 ```
 p = np.array([[0, 1], [1, 1], [2, 1]]) # example of points
 v.set_points(points=p)
@@ -24,12 +20,7 @@ The method of identification has to be specified:
 ```
 v.set_method(method='sof', **method_kwargs)
 ```
-To further configure the method parameters, use:
-```
-v.method.configure(*args, **kwargs)
-```
-
-After the points are set, displacements can be calculated (using method, set in `set_method`):
+After points are set, displacements can be calculated (using method, set in `set_method`):
 ```
 displacements = v.get_displacements()
 ```

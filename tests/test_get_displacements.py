@@ -18,9 +18,9 @@ def test_multiprocessing():
     ])
     video.set_points(points)
     video.method.configure(pbar_type='tqdm', multi_type='multiprocessing')
-    res_1 = video.get_displacements(processes=2, resume_analysis=False)
+    res_1 = video.get_displacements(processes=2, resume_analysis=False, autosave=False)
 
     video.method.configure(pbar_type='atpbar', multi_type='mantichora')
-    res_2 = video.get_displacements(processes=2, resume_analysis=False)
+    res_2 = video.get_displacements(processes=2, resume_analysis=False, autosave=False)
 
     assert_array_equal(res_1, res_2)
