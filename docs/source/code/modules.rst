@@ -25,8 +25,3 @@ The Lucas-Kanade algorithm for translations
 .. automodule:: pyidi.methods._lucas_kanade
     :members:
 
-
-Tools
------
-.. automodule:: pyidi.tools
-    :members:
