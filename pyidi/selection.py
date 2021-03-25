@@ -11,8 +11,16 @@ from matplotlib.path import Path
 SELECTION_MODES = {
     'ROI grid': 0,
     'Deselect ROI polygon': 1,
-    'Only polygon': 2, 
+    'Only polygon': 2,
+    'Manual ROI select': 3
     }
+
+MODE_DESCRIPTION = {
+    0: 'Use SHIFT + LEFT CLICK\nto select a polygon where\na regular grid of ROIs will\nbe generated.',
+    1: 'Use SHIFT + LEFT CLICK\nto select a polygon where\nthe ROIs will be removed.',
+    2: 'Use SHIFT + LEFT CLICK\nto select a polygon.',
+    3: 'Use SHIFT + LEFT CLICK\nto manually position ROIs.'
+}
 
 class ROISelect:
     def __init__(self, video=None, roi_size=(11, 11), noverlap=0, polygon=None):
@@ -34,6 +42,8 @@ class ROISelect:
         root = tk.Tk()
         root.title('Selection')
 
+        self.show_box = tk.IntVar()
+
         self.screen_width = root.winfo_screenwidth()
         self.screen_height = root.winfo_screenheight()
         root.geometry(f'{int(0.9*self.screen_width)}x{int(0.9*self.screen_height)}')
@@ -51,9 +61,9 @@ class ROISelect:
         self.ax.imshow(video.mraw[0], cmap='gray')
 
         # Initiate polygon
-        self.line, = self.ax.plot(self.polygon[1], self.polygon[0], 'r.-')
+        self.line, = self.ax.plot(self.polygon[1], self.polygon[0], 'C1.-')
         self.line_deselect, = self.ax.plot(self.deselect_polygon[1], self.deselect_polygon[0], 'k.-')
-        self.line2, = self.ax.plot([], [], 'bo')
+        self.line2, = self.ax.plot([], [], 'C0x')
 
         plt.show(block=False)
 
@@ -142,6 +152,24 @@ class ROISelect:
 
         self.cid = self.fig.canvas.mpl_connect('button_press_event', onclick)
 
+    def _mode_selection_manual_roi(self):
+        """Select polygon to compute the points based on ROI size and
+        ROI overlap."""
+        def onclick(event):
+            if event.button == 1 and self.shift_is_held:
+                if event.xdata is not None and event.ydata is not None:
+                    self.points[0].append(int(np.round(event.ydata)))
+                    self.points[1].append(int(np.round(event.xdata)))
+
+            elif event.button == 3 and self.shift_is_held:
+                del self.points[1][-1]
+                del self.points[0][-1]
+
+            self.fig.canvas.draw()
+            self.plot_selection()
+
+        self.cid = self.fig.canvas.mpl_connect('button_press_event', onclick)
+
     def on_key_press(self, event):
         """Function triggered on key press (shift)."""
         if event.key == 'shift':
@@ -184,8 +212,16 @@ class ROISelect:
             self._disconnect_mpl_onclick()
             self._mode_selection_polygon(get_rois=False)
 
+        elif SELECTION_MODES[self.mode] == 3:
+            self._disconnect_mpl_onclick()
+            self._mode_selection_manual_roi()
+            self.roi_size = [int(self.options.roi_entry_y.get()), int(self.options.roi_entry_x.get())]
+            self.plot_selection()
+        
         else:
             raise Exception('Non existing mode...')
+
+        self.options.description.configure(text=MODE_DESCRIPTION[SELECTION_MODES[self.mode]])
     
     def _disconnect_mpl_onclick(self):
         try:
@@ -196,17 +232,32 @@ class ROISelect:
     def plot_selection(self):
         if len(self.polygon[0]) > 2 and len(self.polygon[1]) > 2:
 
-            self.points = get_roi_grid(self.polygon, self.roi_size, self.noverlap, self.deselect_polygon)
+            self.points = get_roi_grid(self.polygon, self.roi_size, self.noverlap, self.deselect_polygon).T
 
-            if len(self.points):
-                self.line2.set_xdata(self.points[:, 1])
-                self.line2.set_ydata(self.points[:, 0])
-                self.fig.canvas.draw()
+        if len(self.points[0]) >= 1 and len(self.points[1]) >= 1:
+            self.line2.set_xdata(np.array(self.points).T[:, 1])
+            self.line2.set_ydata(np.array(self.points).T[:, 0])
+            
+            self.options.nr_points_label.configure(text=f'{len(np.array(self.points).T)}')
+
+            # if SELECTION_MODES[self.mode] == 3:
+            if self.show_box.get():
+                [p.remove() for p in reversed(self.ax.patches)]
+                self.rectangles = []
+                for i, (p0, p1) in enumerate(zip(self.points[0], self.points[1])):
+                    self.rectangles.append(patches.Rectangle((p1 - self.roi_size[1]/2, p0 - self.roi_size[0]/2), 
+                                                    self.roi_size[1], self.roi_size[0], fill=False, color='C2', linewidth=2))
+                    self.ax.add_patch(self.rectangles[-1])
+            else:
+                [p.remove() for p in reversed(self.ax.patches)]
+
+            self.fig.canvas.draw()
 
     def clear_selection(self):
         self.polygon = [[], []]
         self.deselect_polygon = [[], []]
         self.points = [[], []]
+        self.options.nr_points_label.configure(text='0')
         self.clear_plot()
     
     def clear_plot(self):
@@ -216,6 +267,7 @@ class ROISelect:
         self.line_deselect.set_ydata([])
         self.line2.set_xdata([])
         self.line2.set_ydata([])
+        [p.remove() for p in reversed(self.ax.patches)]
         self.fig.canvas.draw()
 
     def open_options(self, root):
@@ -259,11 +311,28 @@ class SelectOptions:
         self.noverlap_entry.grid(row=row, column=1, padx=5, pady=5, sticky='W')
 
         row = 4
+        tk.Label(self.root1, text='Show ROI box').grid(row=row, column=0, sticky='E')
+        self.show_box_checkbox = tk.Checkbutton(self.root1, text='', variable=self.parent.show_box)
+        self.show_box_checkbox.grid(row=row, column=1, padx=5, pady=5, sticky='W')
+
+        row = 5
         apply_button = tk.Button(self.root1, text='Apply', command=parent.update_variables)
         apply_button.grid(row=row, column=0, sticky='we', padx=5, pady=5)
 
         clear_button = tk.Button(self.root1, text='Clear', command=parent.clear_selection)
         clear_button.grid(row=row, column=1, sticky='w', padx=5, pady=5)
+
+        row = 6
+        tk.Label(self.root1, text='Number of selected points:').grid(row=row, column=0, sticky='E')
+        self.nr_points_label = tk.Label(self.root1, text='0')
+        self.nr_points_label.grid(row=row, column=1, sticky='W')
+
+        row = 7
+        tk.Label(self.root1, text=' ').grid(row=row, column=0)
+
+        row = 8
+        self.description = tk.Label(self.root1, text='Description')
+        self.description.grid(row=row, column=0)
 
         self.root1.protocol("WM_DELETE_WINDOW", self.on_closing)
     
