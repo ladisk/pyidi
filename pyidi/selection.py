@@ -52,7 +52,7 @@ class ROISelect:
         button1 = tk.Button(root, text='Open options', command=lambda: self.open_options(root))
         button1.pack(side='top')
 
-        button2 = tk.Button(root, text='Confirm selection', command=root.destroy)
+        button2 = tk.Button(root, text='Confirm selection', command=lambda : self.on_closing(root))
         button2.pack(side='top')
 
         self.fig = Figure(figsize=(10, 7))
@@ -78,9 +78,9 @@ class ROISelect:
         # Connecting functions to event manager
         self.fig.canvas.mpl_connect('key_press_event', self.on_key_press)
         self.fig.canvas.mpl_connect('key_release_event', self.on_key_release)
-
+        
         self.update_variables()
-
+        root.protocol("WM_DELETE_WINDOW", lambda : self.on_closing(root))
         tk.mainloop()
 
     def _mode_selection_polygon(self, get_rois=True):
@@ -275,6 +275,12 @@ class ROISelect:
             self.options = SelectOptions(root, self)
         else:
             self.options.root1.lift()
+
+    def on_closing(self, root):
+        self.points = np.array(self.points)
+        if self.points.shape[0] == 2:
+            self.points = self.points.T
+        root.destroy()
 
 class SelectOptions:
     def __init__(self, root, parent):
