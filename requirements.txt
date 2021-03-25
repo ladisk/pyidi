@@ -7,3 +7,4 @@ psutil
 tqdm
 mantichora==0.9.7
 atpbar
+numba
