@@ -312,7 +312,7 @@ def split_points(points, processes):
 
     return points_split
 
-@nb.njit
+# @nb.njit
 def get_gradient(image):
     """Fast gradient computation.
     

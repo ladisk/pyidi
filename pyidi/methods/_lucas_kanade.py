@@ -39,7 +39,7 @@ class LucasKanade(IDIMethod):
         tol=1e-8, int_order=3, verbose=1, show_pbar=True, 
         processes=1, pbar_type='atpbar', multi_type='mantichora',
         resume_analysis=True, process_number=0, reference_image=0,
-        mraw_range='full'
+        mraw_range='full', use_numba=False
     ):
         """
         Displacement identification based on Lucas-Kanade method,
@@ -81,6 +81,8 @@ class LucasKanade(IDIMethod):
         :param mraw_range: Part of the video to process. If "full", a full video is processed. If first element of tuple is not 0,
             a appropriate reference image should be chosen.
         :type mraw_range: tuple or "full"
+        :param use_numba: Use numba.njit for computation speedup. Currently not implemented.
+        :type use_numba: bool
         """
 
         if pad is not None:
@@ -111,6 +113,8 @@ class LucasKanade(IDIMethod):
             self.reference_image = reference_image
         if mraw_range is not None:
             self.mraw_range = mraw_range
+        if use_numba is not None:
+            self.use_numba = use_numba
         
         self._set_mraw_range()
 
@@ -724,7 +728,7 @@ def worker(points, idi_kwargs, method_kwargs, i):
     return _video.get_displacements(verbose=0), i
 
 
-@nb.njit
+# @nb.njit
 def compute_inverse_numba(Gx, Gy):
     Gx2 = np.sum(Gx**2)
     Gy2 = np.sum(Gy**2)
@@ -734,7 +738,7 @@ def compute_inverse_numba(Gx, Gy):
 
     return A_inv
 
-@nb.njit
+# @nb.njit
 def compute_delta_numba(F, G, Gx, Gy, A_inv):
     F_G = G - F
     b = np.array([np.sum(Gx*F_G), np.sum(Gy*F_G)])
