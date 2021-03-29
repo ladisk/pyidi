@@ -11,8 +11,6 @@ import glob
 from .methods import IDIMethod, SimplifiedOpticalFlow, GradientBasedOpticalFlow, LucasKanadeSc, LucasKanade, LucasKanadeSc2
 from . import tools
 
-__version__ = '0.20'
-
 available_method_shortcuts = [
     ('sof', SimplifiedOpticalFlow),
     ('lk', LucasKanade),
