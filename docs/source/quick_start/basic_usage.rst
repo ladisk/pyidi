@@ -55,6 +55,8 @@ showing the required arguments for the selected method.
 
     video.method.configure(*args, **kwargs)
 
+For more details on the available methods, see the currently implemented :ref:`implemented_disp_id_methods`.
+
 Get displacement
 ----------------
 Finally, displacements can be identified:
@@ -62,3 +64,41 @@ Finally, displacements can be identified:
 .. code:: python
 
     displacements = video.get_displacements()
+
+Saved analysis
+--------------
+
+The settings of the analysis and the identified displacements are saved in a directory next
+to the loaded ``cih_file``.
+
+Directory content before the analysis:
+
+- video_to_analyze.cih
+
+Directory content after the analysis:
+
+* video_to_analyze.cih
+* video_to_analyze_pyidi_analysis
+
+    * analysis_001
+    
+        * points.pkl
+        * results.pkl
+        * settings.txt
+
+Loading saved analysis
+----------------------
+
+The saved analysis can be loaded using the ``load_analysis`` function:
+
+.. code:: python
+
+    analysis_path = 'video_to_analyze_pyidi_analysis/analysis_001'
+
+    video_loaded, info_dict = pyidi.load_analysis(analysis_path)
+
+Now we can access the ``video_loaded`` attributes, e.g.:
+
+.. code:: python
+
+    video_loaded.displacements

@@ -32,4 +32,11 @@ supported:
   are available.
 - ``Manual ROI select``: Manually select the ROIs at desired locations.
 
+Once the selection in the UI is complete, the points can be retrieved:
+
+.. code:: python
+
+  points = Points.points
+
+
 .. image:: selection.gif
