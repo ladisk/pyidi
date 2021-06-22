@@ -8,6 +8,8 @@ import tkinter as tk
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 from matplotlib.figure import Figure
 
+import warnings
+warnings.simplefilter("default")
 
 from .idi_method import IDIMethod
 
@@ -130,6 +132,10 @@ class SimplifiedOpticalFlow(IDIMethod):
                 m = np.mean(self.displacements, axis=1)
                 self.displacements[:, :, 0] -= m[:, 0:1]
                 self.displacements[:, :, 1] -= m[:, 1:]
+
+        #check for large displacements
+        if np.max(self.displacements)/self.convert_from_px>0.5 and self.pixel_shift is False:
+            warnings.warn('Displacement larger than 0.5 pixel')
 
     def calculate_displacements_multiprocessing(self):
         raise Exception('SimplifiedOpticalFLow method does not contain a multiprocessing option.')
