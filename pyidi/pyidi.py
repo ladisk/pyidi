@@ -7,6 +7,7 @@ import pyMRAW
 import datetime
 import json
 import glob
+import napari
 
 from .methods import IDIMethod, SimplifiedOpticalFlow, GradientBasedOpticalFlow, LucasKanadeSc, LucasKanade, LucasKanadeSc2
 from . import tools
@@ -253,3 +254,39 @@ class pyIDI:
              rep +=',\n' + 'Number of points: ' + str(len(self.points))
 
         return rep
+
+    def __call__(self): #napari image viewer
+        viewer = napari.view_image(self.mraw) #image layer
+
+        if hasattr(self, 'points'): #points layer
+            points_layer = viewer.add_points(self.points,size=2,edge_color='coral', face_color='royalblue', symbol='cross')
+        
+            if hasattr(self.method, 'subset_size') or hasattr(self.method, 'roi_size'): #subset/roi layer
+                viewer.layers['Points'].visible=False
+
+                if hasattr(self.method, 'subset_size'):
+                    half_subset=self.method.subset_size/2
+                elif hasattr(self.method, 'roi_size'):
+                    half_subset=self.method.roi_size/2
+
+
+                rectangles=np.empty(shape=(len(self.points),4,2))
+                for i in range(len(self.points)):
+                    rectangle=np.array([[self.points[i,0]-half_subset, self.points[i,1]-half_subset], \
+                    [self.points[i,0]-half_subset, self.points[i,1]+half_subset], \
+                    [self.points[i,0]+half_subset, self.points[i,1]+half_subset], \
+                    [self.points[i,0]+half_subset, self.points[i,1]-half_subset]])
+                    
+                    rectangles[i,:,:]=rectangle
+    
+                shapes_layer = viewer.add_shapes(rectangles, shape_type='rectangle', edge_width=0.1, edge_color='coral', face_color='royalblue', opacity=0.5,name='Subset/ROI')
+            
+    def napari(self):
+        viewer = napari.Viewer()
+        layer = viewer.add_image(np.random.random((512, 512)))
+
+        @layer.mouse_drag_callbacks.append
+        def add_layer(layer, event):
+            points_layer=viewer.add_points(np.array([100,100]),size=10)
+            print(layer.data[0,0])
+        napari.run()
