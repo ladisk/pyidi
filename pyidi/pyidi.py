@@ -229,4 +229,27 @@ class pyIDI:
 
         with open(os.path.join(root, 'settings.txt'), 'w') as f:
             json.dump(out, f, sort_keys=True, indent=2)
+
+    
+    def __repr__(self):
         
+        rep = 'File name: ' + self.cih_file + ',\n' + \
+        'Image width: ' + str(self.image_width) + ',\n' + \
+        'Image height: ' + str(self.image_height) + ',\n' + \
+        'Total frame: ' + str(self.N) + ',\n' + \
+        'Record Rate(fps): ' + str(self.info['Record Rate(fps)'])
+        
+        if hasattr(self, 'method_name'):
+            rep +=',\n' +  'Method: ' + self.method_name
+                
+            if hasattr(self.method, 'subset_size'):
+                rep += ',\n' + 'Subset size: ' + str(self.method.subset_size)
+                
+            elif hasattr(self.method, 'roi_size'):
+                 rep += ',\n' + 'ROI size: ' + str(self.method.roi_size)
+
+        
+        if hasattr(self, 'points'):
+             rep +=',\n' + 'Number of points: ' + str(len(self.points))
+
+        return rep
