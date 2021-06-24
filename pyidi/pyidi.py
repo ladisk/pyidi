@@ -8,9 +8,11 @@ import datetime
 import json
 import glob
 import napari
+from magicgui import magicgui
 
 from .methods import IDIMethod, SimplifiedOpticalFlow, GradientBasedOpticalFlow, LucasKanadeSc, LucasKanade, LucasKanadeSc2
 from . import tools
+from . import selection
 
 available_method_shortcuts = [
     ('sof', SimplifiedOpticalFlow),
@@ -256,18 +258,17 @@ class pyIDI:
         return rep
 
     def __call__(self): #napari image viewer
-        viewer = napari.view_image(self.mraw) #image layer
+        viewer = napari.Viewer()
+        layer = viewer.add_image(self.mraw) #image layer
 
-        if hasattr(self, 'points'): #points layer
-            points_layer = viewer.add_points(self.points,size=2,edge_color='coral', face_color='royalblue', symbol='cross')
-        
+        def view_ROI(self): # view ROI boxes
             if hasattr(self.method, 'subset_size') or hasattr(self.method, 'roi_size'): #subset/roi layer
-                viewer.layers['Points'].visible=False
+                
 
                 if hasattr(self.method, 'subset_size'):
-                    half_subset=self.method.subset_size/2
+                   half_subset=self.method.subset_size/2
                 elif hasattr(self.method, 'roi_size'):
-                    half_subset=self.method.roi_size/2
+                   half_subset=self.method.roi_size/2
 
 
                 rectangles=np.empty(shape=(len(self.points),4,2))
@@ -276,17 +277,51 @@ class pyIDI:
                     [self.points[i,0]-half_subset, self.points[i,1]+half_subset], \
                     [self.points[i,0]+half_subset, self.points[i,1]+half_subset], \
                     [self.points[i,0]+half_subset, self.points[i,1]-half_subset]])
-                    
+                   
                     rectangles[i,:,:]=rectangle
     
-                shapes_layer = viewer.add_shapes(rectangles, shape_type='rectangle', edge_width=0.1, edge_color='coral', face_color='royalblue', opacity=0.5,name='Subset/ROI')
-            
-    def napari(self):
-        viewer = napari.Viewer()
-        layer = viewer.add_image(np.random.random((512, 512)))
+                shapes_layer = viewer.add_shapes(rectangles, shape_type='rectangle', edge_width=0.1, edge_color='coral', face_color='royalblue', opacity=0.5,name='ROI box')
+        
+        if hasattr(self, 'points'): #if points are given, add points layer
+            points_layer = viewer.add_points(self.points,size=1,edge_color='white', face_color='red', symbol='cross')
 
-        @layer.mouse_drag_callbacks.append
-        def add_layer(layer, event):
-            points_layer=viewer.add_points(np.array([100,100]),size=10)
-            print(layer.data[0,0])
-        napari.run()
+            view_ROI(self)
+            viewer.layers['Points'].visible=False 
+
+        else: #if there are no points given, launch point selector
+            grid_layer=viewer.add_points(name='grid')
+            shapes_deselect= viewer.add_shapes(name='Area Deselection')
+            shapes= viewer.add_shapes(name='Area Selection')
+
+            @magicgui( 
+                call_button="Get grid",
+                Overlap_pixels={'min': -100 })
+            def widget_grid(
+                Horizontal_ROI_size: int=5,
+                Vertical_ROI_size: int=5,
+                Overlap_pixels: int=0,
+                Show_ROI_box: bool=False):
+
+                border=viewer.layers['Area Selection'].data[0].T #shape data
+                    
+                if viewer.layers['Area Deselection'].data == []:
+                    deselect_border=[[],[]]
+                else:     
+                    deselect_border=viewer.layers['Area Deselection'].data[0].T #deselection shape data
+                
+                grid=selection.get_roi_grid(polygon_points=border,roi_size=(Vertical_ROI_size,Horizontal_ROI_size),noverlap=Overlap_pixels,deselect_polygon=deselect_border) #get grid points
+                
+                
+                
+                viewer.layers.pop('grid') #refresh grid layer
+                if 'ROI box' in viewer.layers:
+                    viewer.layers.pop('ROI box') # refresh ROI layer
+
+                self.points=grid #export points data
+                if Show_ROI_box is True:
+                    view_ROI(self)
+            
+                return viewer.add_points(grid,size=1,face_color='red',symbol='cross')
+            viewer.window.add_dock_widget(widget_grid)
+            
+            
