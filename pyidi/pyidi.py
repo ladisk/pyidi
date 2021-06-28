@@ -280,21 +280,21 @@ class pyIDI:
                    
                     rectangles[i,:,:]=rectangle
     
-                shapes_layer = viewer.add_shapes(rectangles, shape_type='rectangle', edge_width=0.1, edge_color='coral', face_color='royalblue', opacity=0.5,name='ROI box')
+                shapes_layer = viewer.add_shapes(rectangles, shape_type='rectangle', edge_width=0.1, edge_color='coral', face_color='#4169e164', opacity=0.8,name='ROI box')
         
         if hasattr(self, 'points'): #if points are given, add points layer
-            points_layer = viewer.add_points(self.points,size=1,edge_color='white', face_color='red', symbol='cross')
+            points_layer = viewer.add_points(self.points,size=1,edge_color='white', face_color='coral', symbol='cross')
 
-            view_ROI(self)
+            view_ROI(self) #add ROI layer
             viewer.layers['Points'].visible=False 
 
         else: #if there are no points given, launch point selector
-            grid_layer=viewer.add_points(name='grid')
-            shapes_deselect= viewer.add_shapes(name='Area Deselection')
-            shapes= viewer.add_shapes(name='Area Selection')
+            grid_layer=viewer.add_points(name='Points',size=1,face_color='coral',symbol='cross')
+            shapes_deselect= viewer.add_shapes(name='Area Deselection',edge_color='white',face_color='#ffffff00')
+            shapes= viewer.add_shapes(name='Area Selection',edge_color='white',face_color='#ffffff00')
 
             @magicgui( 
-                call_button="Get grid",
+                call_button="Confirm selection",
                 Overlap_pixels={'min': -100 })
             def widget_grid(
                 Horizontal_ROI_size: int=5,
@@ -302,26 +302,29 @@ class pyIDI:
                 Overlap_pixels: int=0,
                 Show_ROI_box: bool=False):
 
-                border=viewer.layers['Area Selection'].data[0].T #shape data
+                if  viewer.layers['Area Selection'].data == []: #individual points selection
+                    grid_points=np.round(viewer.layers['Points'].data).astype(int)
+                
+                else: #area selection
+                    border=viewer.layers['Area Selection'].data[0].T #shape data
+                        
+                    if viewer.layers['Area Deselection'].data == []:
+                        deselect_border=[[],[]]
+                    else:     
+                        deselect_border=viewer.layers['Area Deselection'].data[0].T #deselection shape data
                     
-                if viewer.layers['Area Deselection'].data == []:
-                    deselect_border=[[],[]]
-                else:     
-                    deselect_border=viewer.layers['Area Deselection'].data[0].T #deselection shape data
-                
-                grid=selection.get_roi_grid(polygon_points=border,roi_size=(Vertical_ROI_size,Horizontal_ROI_size),noverlap=Overlap_pixels,deselect_polygon=deselect_border) #get grid points
-                
-                
-                
-                viewer.layers.pop('grid') #refresh grid layer
+                    grid_points=selection.get_roi_grid(polygon_points=border,roi_size=(Vertical_ROI_size,Horizontal_ROI_size),noverlap=Overlap_pixels,deselect_polygon=deselect_border) #get grid points
+                        
+                self.points=grid_points #export points data
                 if 'ROI box' in viewer.layers:
                     viewer.layers.pop('ROI box') # refresh ROI layer
-
-                self.points=grid #export points data
+                
                 if Show_ROI_box is True:
-                    view_ROI(self)
+                    view_ROI(self) #Show ROI
+                
+                viewer.layers.pop('Points') #refresh grid layer
+                viewer.add_points(grid_points,size=1,face_color='coral',symbol='cross',name='Points')
             
-                return viewer.add_points(grid,size=1,face_color='red',symbol='cross')
             viewer.window.add_dock_widget(widget_grid)
             
             
