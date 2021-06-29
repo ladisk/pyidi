@@ -16,6 +16,12 @@ Set the points where displacements will be determined:
 p = np.array([[0, 1], [1, 1], [2, 1]]) # example of points
 v.set_points(points=p)
 ```
+Or use point selection UI to set individual points or grid inside selected area. for more information about UI see [documentation](https://pyidi.readthedocs.io/en/quick_start/napari.html) Launch viewer with:
+
+```
+v()
+```
+
 The method of identification has to be specified:
 ```
 v.set_method(method='sof', **method_kwargs)
