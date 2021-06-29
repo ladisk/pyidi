@@ -314,7 +314,7 @@ class pyIDI:
                         deselect_border=viewer.layers['Area Deselection'].data[0].T #deselection shape data
                     
                     grid_points=selection.get_roi_grid(polygon_points=border,roi_size=(Vertical_ROI_size,Horizontal_ROI_size),noverlap=Overlap_pixels,deselect_polygon=deselect_border) #get grid points
-                        
+                                    
                 self.points=grid_points #export points data
                 if 'ROI box' in viewer.layers:
                     viewer.layers.pop('ROI box') # refresh ROI layer
@@ -324,7 +324,10 @@ class pyIDI:
                 
                 viewer.layers.pop('Points') #refresh grid layer
                 viewer.add_points(grid_points,size=1,face_color='coral',symbol='cross',name='Points')
-            
+
+                if len(self.points)==0:
+                    del self.points
+                    
             viewer.window.add_dock_widget(widget_grid)
             
             
