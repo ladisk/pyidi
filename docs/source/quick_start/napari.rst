@@ -1,24 +1,9 @@
+.. _napari:
+
 Napari image viewer
 =====================
 
 Interactive image viewer **napari** is implemented and can be used for viewing video and selecting points. More information about napari can be obtained `here <https://napari.org/>`_.
-
-Installation
--------------
-
-Napari can be installed on most systems using pip:
-
-.. code:: python
-
-    pip install napari
-
-
-For using points selection UI, `magicgui <https://github.com/napari/magicgui>`_ is required. It can be installed using pip:
-
-.. code:: python
-
-    pip install magicgui
-
 
 Basic usage
 ------------
@@ -36,11 +21,11 @@ Image viewer is launched by calling ``pyIDI`` object as a function:
 
     video()
 
-If points in ``video.points`` are already given, image viewer with shown points will launch.
+If points in ``video.points`` are already set, image viewer with show the points.
 
-If no points are set in ``video.points``, point selection UI will launch. 
+If no points are set in ``video.points``, they can be selected with point selection UI. 
 
-Viewer is divided in few key areas. On the left side from main canvas there are: layer controls (editing layer colors, brightness), layer buttons, layer list and viewer buttons. On the right side there is a dock widget used for point selection. Slider below the canvas can be used for playing and scrolling through video. By selecting image layer from layer list you can toggle layer visibility and adjust video colors or lightning.
+Viewer is divided in few key areas. On the left side from main canvas there are: layer controls (editing layer colors, brightness), layer buttons, layer list and viewer buttons. On the right side there is a dock widget used for point selection. Slider below the canvas can be used for scrolling through video. By selecting image layer from layer list you can toggle layer visibility and adjust video colors or lightning.
 
 .. image:: viewer_controls.gif
      :width: 800

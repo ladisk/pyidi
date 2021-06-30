@@ -8,3 +8,5 @@ tqdm
 mantichora==0.9.7
 atpbar
 numba
+napari>=0.4.10
+magicgui
