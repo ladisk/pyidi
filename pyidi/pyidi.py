@@ -9,6 +9,8 @@ import json
 import glob
 import napari
 from magicgui import magicgui
+import warnings
+warnings.simplefilter("default")
 
 from .methods import IDIMethod, SimplifiedOpticalFlow, GradientBasedOpticalFlow, LucasKanadeSc, LucasKanade, LucasKanadeSc2
 from . import tools
@@ -258,64 +260,161 @@ class pyIDI:
         return rep
 
     def __call__(self): #napari image viewer
+        self.displacement_widget_shown = False
+        self.points_widget_shown = False
+
         viewer = napari.Viewer()
         layer = viewer.add_image(self.mraw) #image layer
-
         
         if hasattr(self, 'points'): #if points are given, add points layer
-            points_layer = viewer.add_points(self.points,size=1,edge_color='white', face_color='coral', symbol='cross',name='Points')
-            grid_points=self.points
-            #add ROI layer
-            #shapes_layer = viewer.add_shapes(tools.view_ROI(self), shape_type='rectangle', edge_width=0.1, edge_color='coral', face_color='#4169e164', opacity=0.8,name='ROI box')
-            #viewer.layers['Points'].visible=False 
+            points_layer = viewer.add_points(self.points,size=1, edge_color='white', face_color='coral', symbol='cross', name='Points')
+            grid_points = self.points
+            
+            if hasattr(self.method, 'roi_size') or hasattr(self.method, 'subset_size'):
+                shapes_layer = viewer.add_shapes(tools.view_ROI(self), shape_type='rectangle', edge_width=0.1, edge_color='coral', face_color='#4169e164', opacity=0.8,name='ROI box')
 
         else: #if there are no points given, launch point selector
-            points_layer=viewer.add_points(name='Points',size=1,face_color='coral',symbol='cross')
+            points_layer=viewer.add_points(name='Points', size=1, face_color='coral', symbol='cross')
             
-        shapes_deselect= viewer.add_shapes(name='Area Deselection',edge_color='white',face_color='#ffffff00')
-        shapes= viewer.add_shapes(name='Area Selection',edge_color='white',face_color='#ffffff00')
+        shapes_deselect = viewer.add_shapes(name='Area Deselection', edge_color='white', face_color='#ffffff00')
+        shapes = viewer.add_shapes(name='Area Selection', edge_color='white', face_color='#ffffff00')
 
+        #Method selection widget
+        @magicgui(
+            call_button="Confirm method",
+            Method={"choices": ['---','Simplified optical flow', 'Lucas-Kanade',]})
+        
+        def method_widget(Method='---'):
+            if Method ==  'Simplified optical flow':
+                self.set_method('sof')
+                print('Simplified optical flow method selected')
+            elif  Method ==  'Lucas-Kanade':
+                self.set_method('lk')
+                print('Lucas-Kanade method selected')
+            else:
+                warnings.warn('Select one of the methods first')
+            
+            if not self.points_widget_shown and Method != '---':
+                viewer.window.add_dock_widget(points_widget, name='Points selection')
+                self.points_widget_shown = True
+
+        #@magicgui(
+        #    call_button='Confirm parameters',
+        #    
+        #)
+        #def sof_configure_widget(
+        #    pixel_shift: bool=False, 
+        #    convert_from_px: float=1.,
+        #    mean_n_neighbours: int=0,
+        #    zero_shift=False,
+        #    progress_bar: bool=True, 
+        #    reference_range_from: int=0,
+        #    reference_range_to: int=100):
+#
+        #    self.method.configure()
+        #    
+
+        
+        #Points selection widget
         @magicgui( 
             call_button="Confirm selection",
             Overlap_pixels={'min': -100 })
-        def widget_grid(
+
+        def points_widget(
             Horizontal_ROI_size: int=5,
             Vertical_ROI_size: int=5,
             Overlap_pixels: int=0,
             Show_ROI_box: bool=False):
 
             if  viewer.layers['Area Selection'].data == []: #individual points selection
-                grid_points=np.round(viewer.layers['Points'].data).astype(int)
+                grid_points = np.round(viewer.layers['Points'].data).astype(int)
             
             else: #area selection
-                border=viewer.layers['Area Selection'].data[0].T #shape data
+                border = viewer.layers['Area Selection'].data[0].T #shape data
                     
                 if viewer.layers['Area Deselection'].data == []:
-                    deselect_border=[[],[]]
+                    deselect_border = [[],[]]
                 else:     
-                    deselect_border=viewer.layers['Area Deselection'].data[0].T #deselection shape data
+                    deselect_border = viewer.layers['Area Deselection'].data[0].T #deselection shape data
                 
-                grid_points=selection.get_roi_grid(polygon_points=border,roi_size=(Vertical_ROI_size,Horizontal_ROI_size),noverlap=Overlap_pixels,deselect_polygon=deselect_border) #get grid points
+                grid_points = selection.get_roi_grid(polygon_points=border, roi_size=(Vertical_ROI_size,Horizontal_ROI_size), noverlap=Overlap_pixels, deselect_polygon=deselect_border) #get grid points
                 
-                
-            if self.method_name=='lk':
-                self.method.roi_size=(Vertical_ROI_size,Horizontal_ROI_size)
-            elif self.method_name=='sof':
-                self.method.subset_size=(Horizontal_ROI_size)
+            if self.method_name == 'lk':
+                self.method.roi_size = (Vertical_ROI_size,Horizontal_ROI_size)
+            elif self.method_name == 'sof':
+                self.method.configure(subset_size=Horizontal_ROI_size)
 
-            self.points=grid_points #export points data
+            self.points = grid_points #export points data
             if 'ROI box' in viewer.layers:
                 viewer.layers.pop('ROI box') # refresh ROI layer
-            
+
             if Show_ROI_box is True: #Show ROI
                 shapes_layer = viewer.add_shapes(tools.view_ROI(self), shape_type='rectangle', edge_width=0.1, edge_color='coral', face_color='#4169e164', opacity=0.8,name='ROI box')
-            
-            viewer.layers.pop('Points') #refresh grid layer
-            viewer.add_points(grid_points,size=1,face_color='coral',symbol='cross',name='Points')
 
-            if len(self.points)==0:
+            viewer.layers.pop('Points') #refresh grid layer
+            viewer.add_points(grid_points, size=1, face_color='coral', symbol='cross', name='Points')
+
+            if len(self.points) == 0:
                 del self.points
+            
+            if not self.displacement_widget_shown:
+                viewer.window.add_dock_widget(displacement_widget, name='Displacements')
+                self.displacement_widget_shown = True
+
+
+        #Calculate displacement widget
+        @magicgui(
+            call_button="Calculate displacements")
+
+        def displacement_widget( ):
+            
+            self.get_displacements()
+            
+            if hasattr(self, 'displacements'):
+                vectors_all = np.empty((0,2,3))
+                for i in range(len(self.points)):
+                    vectors = np.zeros((len(self.mraw),2,3), dtype=float)
+                    vectors[:,0,0] = np.arange(len(self.mraw))
+                    vectors[:,1,0] = np.arange(len(self.mraw))
+                    vectors[:,0,1:] = self.points[i]
+                    vectors[:,1,1:] = self.displacements[i]
+
+                    vectors_all = np.append(vectors_all, vectors, axis=0)
+                
+                if self.method_name == 'lk':
+                        scale = self.method.roi_size[0]/(2*np.max(self.displacements))
+
+                elif self.method_name == 'sof':
+                        scale = self.method.subset_size/(2*np.max(self.displacements))
+                
+                if 'Displacement Field' in viewer.layers:
+                    viewer.layers.pop('Displacement Field') # refresh Displacement Field layer
                     
-        viewer.window.add_dock_widget(widget_grid)
+                viewer.add_vectors(vectors_all, edge_colormap='viridis', length=0, name='Displacement Field')
+                viewer.layers['Displacement Field'].length = scale
+            
+        if hasattr(self, 'displacements'):
+            vectors_all = np.empty((0,2,3))
+            for i in range(len(self.points)):
+                vectors = np.zeros((len(self.mraw),2,3), dtype=float)
+                vectors[:,0,0] = np.arange(len(self.mraw))
+                vectors[:,1,0] = np.arange(len(self.mraw))
+                vectors[:,0,1:] = self.points[i]
+                vectors[:,1,1:] = self.displacements[i]
+
+                vectors_all = np.append(vectors_all, vectors, axis=0)
+            
+            if self.method_name == 'lk':
+                    scale = self.method.roi_size[0]/(2*np.max(self.displacements))
+
+            elif self.method_name == 'sof':
+                    scale = self.method.subset_size/(2*np.max(self.displacements))
+            
+            viewer.add_vectors(vectors_all, edge_colormap='viridis', length=0, name='Displacement Field')
+            viewer.layers['Displacement Field'].length = scale
+
+        viewer.window.add_dock_widget(method_widget, name='Method selection')
+        
+        
             
             
