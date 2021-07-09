@@ -22,7 +22,7 @@ Setting the points
 ------------------
 Displacements are computed for certain points or certain regions of interest that are represented by a point.
 
-Points must be of shape ``n_ponits x 2``:
+Points must be of shape ``n_points x 2``:
 
 .. code:: python
 
@@ -38,7 +38,7 @@ The points must be passed to ``pyIDI`` object:
 
     video.set_points(points=points)
 
-If the points are not known, a :ref:`point-selection` can be used to select the points.
+If the points are not known, a :ref:`point-selection` or newer :ref:`napari` can be used to select the points.
 
 Setting the method
 ------------------

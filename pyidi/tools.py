@@ -336,3 +336,28 @@ def get_gradient(image):
         
     return Gx[1:-1], Gy[:, 1:-1]
 
+
+def view_ROI(self): # view ROI boxes
+            if hasattr(self.method, 'subset_size') or hasattr(self.method, 'roi_size'): #subset/roi layer
+                
+
+                if hasattr(self.method, 'subset_size'):
+                   v_half_subset=h_half_subset=self.method.subset_size/2
+                elif hasattr(self.method, 'roi_size'):
+                   v_half_subset=self.method.roi_size[0]/2 #vertical
+                   h_half_subset=self.method.roi_size[1]/2 #horizontal
+
+
+                rectangles=np.empty(shape=(len(self.points),4,2))
+                for i in range(len(self.points)):
+                    rectangle=np.array([[self.points[i,0]-v_half_subset, self.points[i,1]-h_half_subset], \
+                    [self.points[i,0]-v_half_subset, self.points[i,1]+h_half_subset], \
+                    [self.points[i,0]+v_half_subset, self.points[i,1]+h_half_subset], \
+                    [self.points[i,0]+v_half_subset, self.points[i,1]-h_half_subset]])
+                   
+                    rectangles[i,:,:]=rectangle
+                
+                return rectangles
+    
+                
+        

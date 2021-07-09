@@ -144,8 +144,8 @@ class LucasKanade(IDIMethod):
                 else:
                     raise ValueError(f'Wrong mraw_range definition.')
 
-            if len(self.mraw_range) == 3:
-                self.step_time = self.mraw_range[2]
+                if len(self.mraw_range) == 3:
+                    self.step_time = self.mraw_range[2]
 
             else:
                 raise Exception('Wrong definition of mraw_range.')

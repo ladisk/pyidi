@@ -371,12 +371,13 @@ def get_roi_grid(polygon_points, roi_size, noverlap, deselect_polygon):
     path = Path(points)
     mask = path.contains_points(candidates)
 
-    if deselect_polygon[0] and deselect_polygon[1]:
+    if len(deselect_polygon[0]) and len(deselect_polygon[1]):
         path_deselect = Path(np.array(deselect_polygon).T)
         mask_deselect = path_deselect.contains_points(candidates)
         mask = np.logical_and(mask, np.logical_not(mask_deselect))
 
-    return candidates[mask]
+    return np.round(candidates[mask]).astype(int)
+
 
 
 
