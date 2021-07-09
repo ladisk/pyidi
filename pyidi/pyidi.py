@@ -259,9 +259,19 @@ class pyIDI:
 
         return rep
 
-    def gui(self): #napari image viewer
+    def gui(self):
+        """Napari interface.
+        """
+        available_gui_methods = [
+            ('---', '---'),
+            ('Simplified Optical Flow', 'sof'),
+            ('Lucas-Kanade', 'lk'),
+            ]
+
+        if not hasattr(self, 'method_name'):
+            self.method_name = '---'
+
         self.displacement_widget_shown = False
-        self.points_widget_shown = None
 
         viewer = napari.Viewer(title='pyIDI interface') #launch viewer
         layer = viewer.add_image(self.mraw) #add image layer
@@ -282,39 +292,36 @@ class pyIDI:
         #Method selection widget
         @magicgui(
             call_button="Confirm method",
-            Method={"choices": ['---','Simplified optical flow', 'Lucas-Kanade',]})
-        
-        def method_widget(Method='---'):
-            if Method ==  'Simplified optical flow':
-                self.set_method('sof')
-                print('Simplified optical flow method selected')
-            elif  Method ==  'Lucas-Kanade':
-                self.set_method('lk')
-                print('Lucas-Kanade method selected')
+            Method = {'choices': ['---'] + [_[0] for _ in available_gui_methods]})
+        def method_widget(Method=[_[0] for _ in available_gui_methods if _[1] == self.method_name][0]):
+            if Method != '---':
+                
+                if self.method_name != Method:
+                    self.set_method(dict(available_gui_methods)[Method])
+
+                    try:
+                        viewer.window.remove_dock_widget(self.ConfigWidget)
+                    except:
+                        pass
+                    
+                    try:
+                        viewer.window.remove_dock_widget(self.DisplacementWidget)
+                    except:
+                        pass
+
+                    if self.method_name == 'sof':
+                        self.ConfigWidget = viewer.window.add_dock_widget(sof_config_widget, name='Method configuration - SOF')
+                    elif self.method_name == 'lk':
+                        self.ConfigWidget = viewer.window.add_dock_widget(lk_config_widget, name='Method configuration - LK')
+
             else:
                 warnings.warn('Select one of the methods first')
-            
-            if self.points_widget_shown != 'sof' and Method == 'Simplified optical flow':
-                if self.points_widget_shown == 'lk':
-                    viewer.window.remove_dock_widget(self.widget)
-                
-                self.widget = viewer.window.add_dock_widget(sof_points_widget, name='Method configuration - SOF') # launch sof configurator
-                self.points_widget_shown = 'sof'
-            
-            if self.points_widget_shown != 'lk' and Method == 'Lucas-Kanade':
-                if self.points_widget_shown == 'sof':
-                    viewer.window.remove_dock_widget(self.widget)
-                    
-                self.widget = viewer.window.add_dock_widget(lk_points_widget, name='Method configuration - LK') # launch lk configurator
-                self.points_widget_shown = 'lk'
         
-    
-        #sof configurator + point selection widget
-        @magicgui( 
-            call_button="Configure",
-            Overlap_pixels={'min': -100 })
+        
 
-        def sof_points_widget(
+        #sof configurator + point selection widget
+        @magicgui(call_button="Configure", Overlap_pixels={'min': -100 })
+        def sof_config_widget(
             Subset_size: int=5,
             Overlap_pixels: int=0,
             Show_ROI_box: bool=False,
@@ -322,7 +329,7 @@ class pyIDI:
             mean_n_neighbours: int=0,
             zero_shift: bool=False, 
             reference_range_from: int=0,
-            reference_range_to: int=100
+            reference_range_to: int=self.mraw.shape[0]
             ):
             
             #individual points selection
@@ -370,8 +377,7 @@ class pyIDI:
             call_button="Confirm selection",
             Overlap_pixels={'min': -1000},
             Tolerance={"choices": [1e-3,1e-5,1e-8,1e-10]})
-
-        def lk_points_widget(
+        def lk_config_widget(
             Horizontal_ROI_size: int=5,
             Vertical_ROI_size: int=5,
             Overlap_pixels: int=0,
@@ -434,64 +440,45 @@ class pyIDI:
                 del self.points
             
             if not self.displacement_widget_shown and self.points != []:
-                self.widget_dis=viewer.window.add_dock_widget(displacement_widget, name='Displacements') #launch displacement widget
+                self.DisplacementWidget=viewer.window.add_dock_widget(displacement_widget, name='Displacements') #launch displacement widget
                 self.displacement_widget_shown = True
 
 
         #Calculate displacement widget
-        @magicgui(
-            call_button="Calculate displacements")
-
+        @magicgui(call_button="Calculate displacements")
         def displacement_widget():
-            
             self.get_displacements() #calculate displacements
-            
-            if hasattr(self, 'displacements'):
-                vectors_all = np.empty((0,2,3)) #matrix of all displacement vectors
-                for i in range(len(self.points)): 
-                    vectors = np.zeros((len(self.mraw),2,3), dtype=float) #matrix of one vector through time
-                    vectors[:,0,0] = np.arange(len(self.mraw))
-                    vectors[:,1,0] = np.arange(len(self.mraw))
-                    vectors[:,0,1:] = self.points[i]
-                    vectors[:,1,1:] = self.displacements[i]
+            napari_show_disp_field(self, viewer)
 
-                    vectors_all = np.append(vectors_all, vectors, axis=0)
-                
-                if self.method_name == 'lk':
-                        scale = self.method.roi_size[0]/(2*np.max(self.displacements)) #scale vector length to roi size
 
-                elif self.method_name == 'sof':
-                        scale = self.method.subset_size/(2*np.max(self.displacements)) #scale vector length to subset size
-                
-                if 'Displacement Field' in viewer.layers:
-                    viewer.layers.pop('Displacement Field') # refresh Displacement Field layer
-                    
-                viewer.add_vectors(vectors_all, length=0, name='Displacement Field') #length=0: otherwise empty frames at the end od video
-                viewer.layers['Displacement Field'].length = scale #scale vector length
-
-        #if displacements are already given, show displacements
         if hasattr(self, 'displacements'):
-            vectors_all = np.empty((0,2,3))
-            for i in range(len(self.points)):
-                vectors = np.zeros((len(self.mraw),2,3), dtype=float)
-                vectors[:,0,0] = np.arange(len(self.mraw))
-                vectors[:,1,0] = np.arange(len(self.mraw))
-                vectors[:,0,1:] = self.points[i]
-                vectors[:,1,1:] = self.displacements[i]
-
-                vectors_all = np.append(vectors_all, vectors, axis=0)
-            
-            if self.method_name == 'lk':
-                    scale = self.method.roi_size[0]/(2*np.max(self.displacements))
-
-            elif self.method_name == 'sof':
-                    scale = self.method.subset_size/(2*np.max(self.displacements))
-            
-            viewer.add_vectors(vectors_all, length=0, name='Displacement Field')
-            viewer.layers['Displacement Field'].length = scale
+            napari_show_disp_field(self, viewer)
 
         viewer.window.add_dock_widget(method_widget, name='Method selection')
         
+
+def napari_show_disp_field(self, viewer):
+    if hasattr(self, 'displacements'):
+        vectors_all = np.empty((0,2,3))
+        for i in range(len(self.points)):
+            vectors = np.zeros((len(self.mraw),2,3), dtype=float)
+            vectors[:,0,0] = np.arange(len(self.mraw))
+            vectors[:,1,0] = np.arange(len(self.mraw))
+            vectors[:,0,1:] = self.points[i]
+            vectors[:,1,1:] = self.displacements[i]
+
+            vectors_all = np.append(vectors_all, vectors, axis=0)
         
+        if self.method_name == 'lk':
+                scale = self.method.roi_size[0]/(2*np.max(self.displacements))
+
+        elif self.method_name == 'sof':
+                scale = self.method.subset_size/(2*np.max(self.displacements))
+        try:
+            viewer.layers.pop('Displacement Field')
+        except:
+            pass
+        viewer.add_vectors(vectors_all, length=0, name='Displacement Field')
+        viewer.layers['Displacement Field'].length = scale
             
             
