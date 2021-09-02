@@ -6,7 +6,7 @@ See the [documentation](https://pyidi.readthedocs.io/en/latest/index.html) for `
 # BASIC USAGE:
 Create an instance:
 ```
-v = pyidi.pyIDI(cih_file='video.cih')
+video = pyidi.pyIDI(cih_file='video.cih')
 ```
 Currently the pyIDI method works with Photron ``.cih`` and ``.cihx`` files, however, ``numpy.ndarray`` can
 also be passed as ``cih_file`` argument. If an array is passed, it must have a shape of: ``(n time points, image height, image width)``.
@@ -14,7 +14,7 @@ also be passed as ``cih_file`` argument. If an array is passed, it must have a s
 Set the points where displacements will be determined:
 ```
 p = np.array([[0, 1], [1, 1], [2, 1]]) # example of points
-v.set_points(points=p)
+video.set_points(points=p)
 ```
 Or use point selection UI to set individual points or grid inside selected area. for more information about UI see [documentation](https://pyidi.readthedocs.io/en/quick_start/napari.html). Launch viewer with:
 
@@ -24,15 +24,15 @@ v()
 
 The method of identification has to be specified:
 ```
-v.set_method(method='sof', **method_kwargs)
+video.set_method(method='sof', **method_kwargs)
 ```
 After points are set, displacements can be calculated (using method, set in `set_method`):
 ```
-displacements = v.get_displacements()
+displacements = video.get_displacements()
 ```
 Multiprocessing can also be used by passing the `processes` argument:
 ```
-displacements = v.get_displacements(processes=4)
+displacements = video.get_displacements(processes=4)
 ```
 
 # DEVELOPER GUIDELINES:
