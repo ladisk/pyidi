@@ -336,3 +336,8 @@ def get_gradient(image):
         
     return Gx[1:-1], Gy[:, 1:-1]
 
+
+
+    
+                
+        
