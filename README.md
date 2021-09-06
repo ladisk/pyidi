@@ -3,6 +3,9 @@ Image-based Displacement Identification (IDI) implementation in python.
 
 See the [documentation](https://pyidi.readthedocs.io/en/latest/index.html) for `pyIDI`.
 
+
+<img src="docs/source/quick_start/gifs/napari_full_sof.gif" width="800" />
+
 # BASIC USAGE:
 Create an instance:
 ```
