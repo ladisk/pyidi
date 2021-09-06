@@ -1,4 +1,4 @@
-__version__ = '0.24'
+__version__ = '0.25'
 from .pyidi import *
 from . import tools
 from .selection import ROISelect
