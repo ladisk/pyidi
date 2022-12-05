@@ -118,7 +118,7 @@ class LucasKanade(IDIMethod):
         
         self._set_mraw_range()
 
-        self.temp_dir = os.path.join(os.path.split(self.video.cih_file)[0], 'temp_file')
+        self.temp_dir = os.path.join(self.video.root, 'temp_file')
         self.settings_filename = os.path.join(self.temp_dir, 'settings.pkl')
         self.analysis_run = 0
         
