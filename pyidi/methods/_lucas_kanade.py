@@ -432,7 +432,7 @@ class LucasKanade(IDIMethod):
                    video.points[:, 0], marker='.', color=color)
 
         for point in video.points:
-            roi_border = patches.Rectangle((point - self.roi_size//2)[::-1], self.roi_size[1], self.roi_size[0],
+            roi_border = patches.Rectangle((point - self.roi_size//2 - 0.5)[::-1], self.roi_size[1], self.roi_size[0],
                                             linewidth=1, edgecolor=color, facecolor='none')
             ax.add_patch(roi_border)
 
