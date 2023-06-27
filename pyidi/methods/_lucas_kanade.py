@@ -461,9 +461,12 @@ class LucasKanade(IDIMethod):
         if self.process_number == 0:
             # Write all the settings of the analysis
             settings = self._make_comparison_dict()
-            pickle.dump(settings, open(self.settings_filename, 'wb'))
+            with open(self.settings_filename, 'wb') as f:
+                pickle.dump(settings, f)
+            
             self.points_filename = os.path.join(temp_dir, 'points.pkl')
-            pickle.dump(self.video.points, open(self.points_filename, 'wb'))
+            with open(self.points_filename, 'wb') as f:
+                pickle.dump(self.video.points, f)
 
         if not init_multi:
             token = f'{self.process_number:0>3.0f}'
@@ -482,7 +485,7 @@ class LucasKanade(IDIMethod):
                     f'analysis_run <{self.analysis_run}>:'
                 ])
 
-            self.temp_disp = np.memmap(self.disp_filename, dtype=np.float, mode='w+', shape=(self.video.points.shape[0], self.N_time_points, 2))
+            self.temp_disp = np.memmap(self.disp_filename, dtype=np.float64, mode='w+', shape=(self.video.points.shape[0], self.N_time_points, 2))
             
 
     def clear_temp_files(self):
@@ -530,7 +533,7 @@ class LucasKanade(IDIMethod):
 
         shape = tuple([int(_) for _ in log[4].replace(' ', '').split(':')[1].replace('(', '').replace(')', '').split(',')])
  
-        self.temp_disp = np.memmap(self.disp_filename, dtype=np.float, mode='r+', shape=shape)
+        self.temp_disp = np.memmap(self.disp_filename, dtype=np.float64, mode='r+', shape=shape)
         self.displacements = np.array(self.temp_disp).copy()
 
         self.start_time = int(log[-1].replace(' ', '').rstrip().split('\t')[1].split(':')[1]) + 1
