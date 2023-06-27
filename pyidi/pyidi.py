@@ -225,8 +225,10 @@ class pyIDI:
 
     
     def save(self, root=''):
-        pickle.dump(self.displacements, open(os.path.join(root, 'results.pkl'), 'wb'), protocol=-1)
-        pickle.dump(self.points, open(os.path.join(root, 'points.pkl'), 'wb'), protocol=-1)
+        with open(os.path.join(root, 'results.pkl'), 'wb') as f:
+            pickle.dump(self.displacements, f, protocol=-1)
+        with open(os.path.join(root, 'points.pkl'), 'wb') as f:
+            pickle.dump(self.points, f, protocol=-1)
 
         out = {
             'info': self.info,
