@@ -109,12 +109,15 @@ class SimplifiedOpticalFlow(IDIMethod):
             self.latest_displacements = (self.reference_image[video.points[:,0] , video.points[:, 1] ] - self.image_roi) / \
                 self.gradient_magnitude[video.points[:,0], video.points[:, 1]]
 
-            self.displacements[:, i, 0] = signs_0 * (self.direction_correction_0 * self.latest_displacements * self.convert_from_px) + self.delta_0
-            self.displacements[:, i, 1] = signs_1 * (self.direction_correction_1 * self.latest_displacements * self.convert_from_px) + self.delta_1
+            self.displacements[:, i, 0] = signs_0 * (self.direction_correction_0 * self.latest_displacements) + self.delta_0
+            self.displacements[:, i, 1] = signs_1 * (self.direction_correction_1 * self.latest_displacements) + self.delta_1
 
             if self.pixel_shift:
                 self.delta_0 = np.round(self.displacements[:, i, 0]).astype(int)
                 self.delta_1 = np.round(self.displacements[:, i, 1]).astype(int)
+        
+        # Convert the displacements from pixels to physical units:
+        self.displacements *= self.convert_from_px
 
         # average the neighbouring points
         if isinstance(self.mean_n_neighbours, int):
