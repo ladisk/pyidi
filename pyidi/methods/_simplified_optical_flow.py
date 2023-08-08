@@ -73,7 +73,8 @@ class SimplifiedOpticalFlow(IDIMethod):
             raise Exception('Please set points for analysis!')
 
         self.displacements = np.zeros((video.points.shape[0], video.N, 2))
-        latest_displacements = 0
+        self.delta_0 = np.zeros((video.points.shape[0],)).astype(int)
+        self.delta_1 = np.zeros((video.points.shape[0],)).astype(int)
 
         gradient_0_direction = np.copy(self.gradient_0)
         gradient_1_direction = np.copy(self.gradient_1)
@@ -104,22 +105,16 @@ class SimplifiedOpticalFlow(IDIMethod):
         for i, image in enumerate(p_bar(limited_mraw, ncols=100)):
             image_filtered = self.subset(image, self.subset_size)
 
+            self.image_roi = image_filtered[video.points[:,0] + self.delta_0, video.points[:, 1] + self.delta_1]
+            self.latest_displacements = (self.reference_image[video.points[:,0] , video.points[:, 1] ] - self.image_roi) / \
+                self.gradient_magnitude[video.points[:,0], video.points[:, 1]]
+
+            self.displacements[:, i, 0] = signs_0 * (self.direction_correction_0 * self.latest_displacements * self.convert_from_px) + self.delta_0
+            self.displacements[:, i, 1] = signs_1 * (self.direction_correction_1 * self.latest_displacements * self.convert_from_px) + self.delta_1
+
             if self.pixel_shift:
-                print('Pixel-shifting is not yet implemented.')
-                break
-
-            else:
-                self.image_roi = image_filtered[video.points[:,
-                                                             0], video.points[:, 1]]
-
-                self.latest_displacements = (self.reference_image[video.points[:, 0], video.points[:, 1]] - self.image_roi) / \
-                    self.gradient_magnitude[video.points[:,
-                                                         0], video.points[:, 1]]
-
-            self.displacements[:, i, 0] = signs_0 * self.direction_correction_0 * \
-                self.latest_displacements * self.convert_from_px
-            self.displacements[:, i, 1] = signs_1 * self.direction_correction_1 * \
-                self.latest_displacements * self.convert_from_px
+                self.delta_0 = np.round(self.displacements[:, i, 0]).astype(int)
+                self.delta_1 = np.round(self.displacements[:, i, 1]).astype(int)
 
         # average the neighbouring points
         if isinstance(self.mean_n_neighbours, int):
