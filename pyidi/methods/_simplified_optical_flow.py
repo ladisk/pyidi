@@ -72,9 +72,14 @@ class SimplifiedOpticalFlow(IDIMethod):
         if not hasattr(video, 'points'):
             raise Exception('Please set points for analysis!')
 
-        self.displacements = np.zeros((video.points.shape[0], video.N, 2))
-        self.delta_0 = np.zeros((video.points.shape[0],)).astype(int)
-        self.delta_1 = np.zeros((video.points.shape[0],)).astype(int)
+        self.displacements  = np.zeros((video.points.shape[0], video.N, 2))
+        if self.pixel_shift:
+            self.delta_0    = np.zeros((video.points.shape[0],)).astype(int)
+            self.delta_1    = np.zeros((video.points.shape[0],)).astype(int)
+            self.valid_points = np.ones((video.points.shape[0],)).astype(bool)
+        else:
+            self.delta_0 = 0
+            self.delta_1 = 0
 
         gradient_0_direction = np.copy(self.gradient_0)
         gradient_1_direction = np.copy(self.gradient_1)
@@ -113,9 +118,8 @@ class SimplifiedOpticalFlow(IDIMethod):
             self.displacements[:, i, 1] = signs_1 * (self.direction_correction_1 * self.latest_displacements) + self.delta_1
 
             if self.pixel_shift:
-                self.delta_0 = np.round(self.displacements[:, i, 0]).astype(int)
-                self.delta_1 = np.round(self.displacements[:, i, 1]).astype(int)
-        
+                self.pixel_shift_fun(i, video.points, image.shape)
+
         # Convert the displacements from pixels to physical units:
         self.displacements *= self.convert_from_px
 
@@ -153,10 +157,20 @@ class SimplifiedOpticalFlow(IDIMethod):
             (d_0[:, :, np.newaxis], d_1[:, :, np.newaxis]), axis=2)
         print('Finished!')
 
-    def pixel_shift(self):
-        """Pixel shifting implementation.
+    def pixel_shift_fun(self, i, points, image_shape):
+        """Pixel shifting implementation. Points that are going outside of the image range are excluded.
         """
-        pass
+        self.delta_0 = np.round(self.displacements[:, i, 0]).astype(int)
+        self.delta_1 = np.round(self.displacements[:, i, 1]).astype(int)
+        
+        # Exlude the points that have displacement going outside of the image range
+        out_of_range_it = np.logical_or(self.delta_0 + points[:, 0] > image_shape[0] - 1, self.delta_1 + points[:, 1] > image_shape[1] - 1)
+        if np.any(out_of_range_it):
+            self.delta_0[out_of_range_it] = 0
+            self.delta_1[out_of_range_it] = 0
+            self.valid_points[out_of_range_it] = False
+            warnings.warn('Displacement is going outside of the image range! The valid points are saved in self.method.valid_points')
+        self.displacements[~self.valid_points, i, :] = np.nan
 
     def reference(self, images, subset_size):
         """Calculation of the reference image, image gradients and gradient amplitudes.
