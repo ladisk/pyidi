@@ -72,8 +72,14 @@ class SimplifiedOpticalFlow(IDIMethod):
         if not hasattr(video, 'points'):
             raise Exception('Please set points for analysis!')
 
-        self.displacements = np.zeros((video.points.shape[0], video.N, 2))
-        latest_displacements = 0
+        self.displacements  = np.zeros((video.points.shape[0], video.N, 2))
+        if self.pixel_shift:
+            self.delta_0    = np.zeros((video.points.shape[0],)).astype(int)
+            self.delta_1    = np.zeros((video.points.shape[0],)).astype(int)
+            self.valid_points = np.ones((video.points.shape[0],)).astype(bool)
+        else:
+            self.delta_0 = 0
+            self.delta_1 = 0
 
         gradient_0_direction = np.copy(self.gradient_0)
         gradient_1_direction = np.copy(self.gradient_1)
@@ -104,22 +110,18 @@ class SimplifiedOpticalFlow(IDIMethod):
         for i, image in enumerate(p_bar(limited_mraw, ncols=100)):
             image_filtered = self.subset(image, self.subset_size)
 
+            self.image_roi = image_filtered[video.points[:,0] + self.delta_0, video.points[:, 1] + self.delta_1]
+            self.latest_displacements = (self.reference_image[video.points[:,0] , video.points[:, 1] ] - self.image_roi) / \
+                self.gradient_magnitude[video.points[:,0], video.points[:, 1]]
+
+            self.displacements[:, i, 0] = signs_0 * (self.direction_correction_0 * self.latest_displacements) + self.delta_0
+            self.displacements[:, i, 1] = signs_1 * (self.direction_correction_1 * self.latest_displacements) + self.delta_1
+
             if self.pixel_shift:
-                print('Pixel-shifting is not yet implemented.')
-                break
+                self.pixel_shift_fun(i, video.points, image.shape)
 
-            else:
-                self.image_roi = image_filtered[video.points[:,
-                                                             0], video.points[:, 1]]
-
-                self.latest_displacements = (self.reference_image[video.points[:, 0], video.points[:, 1]] - self.image_roi) / \
-                    self.gradient_magnitude[video.points[:,
-                                                         0], video.points[:, 1]]
-
-            self.displacements[:, i, 0] = signs_0 * self.direction_correction_0 * \
-                self.latest_displacements * self.convert_from_px
-            self.displacements[:, i, 1] = signs_1 * self.direction_correction_1 * \
-                self.latest_displacements * self.convert_from_px
+        # Convert the displacements from pixels to physical units:
+        self.displacements *= self.convert_from_px
 
         # average the neighbouring points
         if isinstance(self.mean_n_neighbours, int):
@@ -155,10 +157,20 @@ class SimplifiedOpticalFlow(IDIMethod):
             (d_0[:, :, np.newaxis], d_1[:, :, np.newaxis]), axis=2)
         print('Finished!')
 
-    def pixel_shift(self):
-        """Pixel shifting implementation.
+    def pixel_shift_fun(self, i, points, image_shape):
+        """Pixel shifting implementation. Points that are going outside of the image range are excluded.
         """
-        pass
+        self.delta_0 = np.round(self.displacements[:, i, 0]).astype(int)
+        self.delta_1 = np.round(self.displacements[:, i, 1]).astype(int)
+        
+        # Exlude the points that have displacement going outside of the image range
+        out_of_range_it = np.logical_or(self.delta_0 + points[:, 0] > image_shape[0] - 1, self.delta_1 + points[:, 1] > image_shape[1] - 1)
+        if np.any(out_of_range_it):
+            self.delta_0[out_of_range_it] = 0
+            self.delta_1[out_of_range_it] = 0
+            self.valid_points[out_of_range_it] = False
+            warnings.warn('Displacement is going outside of the image range! The valid points are saved in self.method.valid_points')
+        self.displacements[~self.valid_points, i, :] = np.nan
 
     def reference(self, images, subset_size):
         """Calculation of the reference image, image gradients and gradient amplitudes.
