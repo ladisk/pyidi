@@ -14,6 +14,7 @@ warnings.simplefilter("default")
 from .idi_method import IDIMethod
 
 
+
 class SimplifiedOpticalFlow(IDIMethod):
     """
     Displacmenet computation based on Simplified Optical Flow method [1].
@@ -33,7 +34,6 @@ class SimplifiedOpticalFlow(IDIMethod):
         progress_bar=True, reference_range=(0, 100)):
         """
         Set the attributes, compute reference image and gradients.
-
         :param video: 'parent' object
         :type video: object
         :param subset_size: size of the averaging subset, defaults to 3
@@ -64,15 +64,12 @@ class SimplifiedOpticalFlow(IDIMethod):
         self.reference_range = reference_range
 
         # Get reference image and gradients
-        self.reference_image, self.gradient_0, self.gradient_1, self.gradient_magnitude = self.reference(
-            self.video.mraw[self.reference_range[0]: self.reference_range[1]], self.subset_size)
-
+        self.reference_image, self.gradient_0, self.gradient_1, self.gradient_magnitude = self._reference()
 
     def calculate_displacements(self, video):
         if not hasattr(video, 'points'):
             raise Exception('Please set points for analysis!')
 
-        self.displacements  = np.zeros((video.points.shape[0], video.N, 2))
         if self.pixel_shift:
             self.delta_0    = np.zeros((video.points.shape[0],)).astype(int)
             self.delta_1    = np.zeros((video.points.shape[0],)).astype(int)
@@ -96,9 +93,11 @@ class SimplifiedOpticalFlow(IDIMethod):
 
         # limited range of mraw can be observed
         if self.mraw_range != 'all':
-            limited_mraw = video.mraw[self.mraw_range[0]: self.mraw_range[1]]
+            limited_mraw = range(self.mraw_range[0], self.mraw_range[1])
+            self.displacements  = np.zeros((video.points.shape[0], self.mraw_range[1]-self.mraw_range[0], 2))
         else:
-            limited_mraw = video.mraw
+            limited_mraw = range(video.N)
+            self.displacements  = np.zeros((video.points.shape[0], video.N, 2))
 
         # Progress bar
         if self.progress_bar:
@@ -107,7 +106,8 @@ class SimplifiedOpticalFlow(IDIMethod):
             def p_bar(x, **kwargs): return x  # empty function
 
         # calculating the displacements
-        for i, image in enumerate(p_bar(limited_mraw, ncols=100)):
+        for i, frame_number in enumerate(p_bar(limited_mraw, ncols=100)):
+            image = video.get_frame(frame_number)
             image_filtered = self.subset(image, self.subset_size)
 
             self.image_roi = image_filtered[video.points[:,0] + self.delta_0, video.points[:, 1] + self.delta_1]
@@ -172,15 +172,20 @@ class SimplifiedOpticalFlow(IDIMethod):
             warnings.warn('Displacement is going outside of the image range! The valid points are saved in self.method.valid_points')
         self.displacements[~self.valid_points, i, :] = np.nan
 
-    def reference(self, images, subset_size):
+    def _reference(self):
         """Calculation of the reference image, image gradients and gradient amplitudes.
 
         :param images: Images to average. Usually the first 100 images.
         :param subset_size: Size of the subset to average.
         :return: Reference image, image gradient in 0 direction, image gradient in 1 direction, gradient magnitude
         """
-        reference_image = np.mean([self.subset(image_, subset_size)
-                                   for image_ in images], axis=0)
+        if self.pixel_shift:
+            reference_image = self.subset(self.video.get_frame(self.reference_range[0]), self.subset_size)
+        else:
+            reference_image = np.zeros((self.video.image_height, self.video.image_width), dtype=float)
+            for frame in range(self.reference_range[0], self.reference_range[1]):
+                reference_image += self.subset(self.video.get_frame(frame), self.subset_size)
+            reference_image /= (self.reference_range[1] - self.reference_range[0])
 
         gradient_0, gradient_1 = np.gradient(reference_image)
         gradient_magnitude = np.sqrt(gradient_0**2 + gradient_1**2)
