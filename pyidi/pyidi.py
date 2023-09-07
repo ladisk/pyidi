@@ -13,7 +13,7 @@ from magicgui import magicgui
 import warnings
 warnings.simplefilter("default")
 
-from .methods import VideoReader, IDIMethod, SimplifiedOpticalFlow, GradientBasedOpticalFlow, LucasKanadeSc, LucasKanade, LucasKanadeSc2
+from .methods import VideoReader, IDIMethod, SimplifiedOpticalFlow, LucasKanade, LucasKanadeSc, LucasKanadeSc2, GradientBasedOpticalFlow
 from . import tools
 from . import selection
 from . import gui
@@ -21,8 +21,8 @@ from . import gui
 available_method_shortcuts = [
     ('sof', SimplifiedOpticalFlow),
     ('lk', LucasKanade),
-    ('lk_scipy', LucasKanadeSc),
-    ('lk_scipy2', LucasKanadeSc2)
+    # ('lk_scipy', LucasKanadeSc),
+    # ('lk_scipy2', LucasKanadeSc2)
     # ('gb', GradientBasedOpticalFlow)
     ]
 
@@ -42,8 +42,7 @@ class pyIDI(VideoReader):
             # self.N = self.info['Total Frame']
             # self.image_width = self.info['Image Width']
             # self.image_height = self.info['Image Height']
-            print('Height', self.image_height)
-            print('Width', self.image_width)
+            print(self.root)
 
         # elif type(cih_file) in [np.ndarray, np.memmap]:
         #     self.root = ''

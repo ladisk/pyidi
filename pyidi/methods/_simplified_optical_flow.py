@@ -250,7 +250,7 @@ class PickPoints:
         self.axis = axis
         self.min_grad = min_grad
 
-        image = video.mraw[0]
+        image = video.get_frame(0)
         self.gradient_0, self.gradient_1 = np.gradient(image.astype(float))
 
         root = tk.Tk()  # Tkinter

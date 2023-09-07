@@ -59,6 +59,11 @@ def gui(self):
                 default_values[k] = self.method.__dict__[k]
         except:
             pass
+        
+    if self.info['File Format'].lower() == 'mraw':
+        self.get_frame(0) # initializes memory map
+    else:
+        raise ValueError('Only `mraw` files are supported for GUI at the moment.')
     
     if hasattr(self, 'method'):
         if hasattr(self.method, 'mraw_range'):

@@ -130,17 +130,17 @@ class LucasKanade(IDIMethod):
 
         if self.mraw_range == 'full':
             self.start_time = 1
-            self.stop_time = self.video.mraw.shape[0]
+            self.stop_time = self.video.N
             
         elif type(self.mraw_range) == tuple:
             if len(self.mraw_range) >= 2:
                 if self.mraw_range[0] < self.mraw_range[1] and self.mraw_range[0] > 0:
                     self.start_time = self.mraw_range[0] + self.step_time
                     
-                    if self.mraw_range[1] <= self.video.mraw.shape[0]:
+                    if self.mraw_range[1] <= self.video.N:
                         self.stop_time = self.mraw_range[1]
                     else:
-                        raise ValueError(f'mraw_range can only go to end of video - index {self.video.mraw.shape[0]}')
+                        raise ValueError(f'mraw_range can only go to end of video - index {self.video.N}')
                 else:
                     raise ValueError(f'Wrong mraw_range definition.')
 
@@ -189,7 +189,7 @@ class LucasKanade(IDIMethod):
             # return?
 
         else:
-            self.image_size = video.mraw.shape[-2:]
+            self.image_size = (video.image_height, video.image_width)
 
             if self.resume_analysis:
                 self.resume_temp_files()
@@ -220,7 +220,7 @@ class LucasKanade(IDIMethod):
                     d_init = np.round(self.displacements[p, ii-1, :]).astype(int)
 
                     yslice, xslice = self._padded_slice(point+d_init, self.roi_size, self.image_size, 1)
-                    G = video.mraw[i, yslice, xslice]
+                    G = video.get_frame(i)[yslice, xslice]
 
                     displacements = self.optimize_translations(
                         G=G, 
@@ -354,12 +354,18 @@ class LucasKanade(IDIMethod):
         """Set the reference image.
         """
         if type(reference_image) == int:
-            ref = video.mraw[reference_image].copy().astype(float)
+            ref = video.get_frame(reference_image).astype(float)
+
         elif type(reference_image) == tuple:
             if len(reference_image) == 2:
-                ref = np.mean(video.mraw[reference_image[0]:reference_image[1]].copy().astype(float), axis=0)
+                ref = np.zeros((video.image_height, video.image_width), dtype=float)
+                for frame in range(reference_image[0], reference_image[1]):
+                    ref += video.get_frame(frame)
+                ref /= (reference_image[1] - reference_image[0])
+  
         elif type(reference_image) == np.ndarray:
             ref = reference_image
+
         else:
             raise Exception('reference_image must be index of frame, tuple (slice) or ndarray.')
         
@@ -427,7 +433,7 @@ class LucasKanade(IDIMethod):
         roi_size = self.roi_size
 
         fig, ax = plt.subplots(figsize=figsize)
-        ax.imshow(video.mraw[0].astype(float), cmap=cmap)
+        ax.imshow(video.get_frame(0).astype(float), cmap=cmap)
         ax.scatter(video.points[:, 1],
                    video.points[:, 0], marker='.', color=color)
 
