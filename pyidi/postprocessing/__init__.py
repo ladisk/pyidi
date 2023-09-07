@@ -1,0 +1,1 @@
+from ._motion_magnification import motion_magnification

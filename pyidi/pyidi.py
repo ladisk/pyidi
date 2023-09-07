@@ -13,6 +13,7 @@ import warnings
 warnings.simplefilter("default")
 
 from .methods import IDIMethod, SimplifiedOpticalFlow, GradientBasedOpticalFlow, LucasKanadeSc, LucasKanade, LucasKanadeSc2
+from .postprocessing import motion_magnification
 from . import tools
 from . import selection
 from . import gui
