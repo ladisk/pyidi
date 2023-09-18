@@ -4,6 +4,7 @@ from tqdm.notebook import tqdm
 import cv2 as cv
 import pyvista as pv
 import imageio
+import scipy as sp
 
 def motion_magnification(video, disp, mag_fact):
     """
@@ -49,6 +50,21 @@ def generate_planar_mesh(points):
 
     return mesh
 
+def generate_planar_mesh_scipy(points):
+    """
+    Generate a planar mesh of triangles from input points (scipy version).
+
+    :param points: Input points for mesh generation, 
+                given by pairs of coordinates (x, y).
+    :type points: numpy.ndarray
+    :return: Planar triangle mesh
+    :rtype: scipy.spatial.qhull.Delaunay Class Instance
+    """
+
+    mesh = sp.spatial.Delaunay(points)
+
+    return mesh
+
 def warp_mesh(mesh, disp, mag_fact):
     """
     Translate and warp mesh nodes based on displacements and magnification 
@@ -73,6 +89,32 @@ def warp_mesh(mesh, disp, mag_fact):
     mesh_def = mesh.warp_by_vector(vectors = "vectors", factor = mag_fact)
 
     return mesh_def
+
+def warp_mesh_scipy(mesh, disp, mag_fact):
+    """
+    Translate and warp mesh nodes based on displacements and magnification 
+    factor.
+
+    :param mesh: Input mesh
+    :type mesh: scipy.spatial.qhull.Delaunay Class Instance
+    :param disp: Displacements to be applied
+    :type disp: numpy.ndarray
+    :param mag_fact: Magnification factor
+    :type mag_fact: positive int or float
+    :return: 
+    :rtype: 
+    """
+
+    # The coordinates of the original mesh are over-written with their counter-
+    # parts in the warped mesh, while the triangle connectivity of the original
+    # mesh is retained.
+
+    mesh_def = mesh
+    mesh_def.points[:,0] = mesh.points[:,0] + disp[:,0] * mag_fact
+    mesh_def.points[:,0] = mesh.points[:,1] + disp[:,1] * mag_fact
+
+    return mesh_def
+
 
 
 def init_output_image(input_image, coord, warp):
