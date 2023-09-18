@@ -34,15 +34,15 @@ def generate_planar_mesh(points):
     Generate a planar mesh of triangles from input points.
 
     :param points: Input points for mesh generation, 
-                given by pairs of coordinates (y, x).
+                given by pairs of coordinates (x, y).
     :type points: numpy.ndarray
     :return: Planar triangle mesh
     :rtype: pyvista.PolyData
     """
     # Create a planar mesh of triangles from the input points
     mesh = pv.PolyData(
-        np.column_stack((points[:,1], 
-                         points[:,0], 
+        np.column_stack((points[:,0], 
+                         points[:,1], 
                          np.zeros(points.shape[0]))))
     
     mesh = mesh.delaunay_2d()
@@ -75,26 +75,40 @@ def warp_mesh(mesh, disp, mag_fact):
     return mesh_def
 
 
-def init_output_image(input_image, coord, vect):
+def init_output_image(input_image, coord, warp):
+    """
+    Initialze the output image.
+
+    :param input_image: Input image to be warped to produce the motion magnified
+    image
+    :type input_image: numpy.ndarray
+    :param coord: Coordinates of points, where the displacement vectors are
+    defined
+    :type coord: numpy.ndarray
+    :param vect: Warped planar mesh of triangles
+    :type vect:pyvista.PolyData
+    :return type: Output image with correct size to prevent clipping
+    :rtype: numpy.ndarray
+    """
     # Find the dimensions of the input image
     input_height, input_width = input_image.shape[:2]
 
     # Calculate the distances between mesh nodes and image edges
     distances = np.array([
-        coord[:, 1],           # Distances to the left edge
-        coord[:, 0],           # Distances to the top edge
-        input_width - coord[:, 1],  # Distances to the right edge
-        input_height - coord[:, 0]  # Distances to the bottom edge
+        coord[:, 0],           # Distances to the left edge
+        coord[:, 1],           # Distances to the top edge
+        input_width - coord[:, 0],  # Distances to the right edge
+        input_height - coord[:, 1]  # Distances to the bottom edge
     ])
     
     # Calculate the minimum distance from the edges
     min_distance = np.min(distances)
     
     # Calculate the minimum and maximum of the deformed mesh nodes
-    min_x = np.min(vect.points[:,0])
-    max_x = np.max(vect.points[:,0])
-    min_y = np.min(vect.points[:,1])
-    max_y = np.max(vect.points[:,1])
+    min_x = np.min(warp.points[:,0])
+    max_x = np.max(warp.points[:,0])
+    min_y = np.min(warp.points[:,1])
+    max_y = np.max(warp.points[:,1])
     
     # Calculate the new size for the output image based on the minimum distance 
     # and mesh node coordinates
