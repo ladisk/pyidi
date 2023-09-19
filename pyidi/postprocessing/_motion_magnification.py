@@ -1,10 +1,9 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from tqdm.notebook import tqdm
 import cv2 as cv
-import pyvista as pv
 import imageio
 import scipy as sp
+import copy
 
 def motion_magnification(video, disp, mag_fact):
     """
@@ -27,7 +26,7 @@ def motion_magnification(video, disp, mag_fact):
     
     res = warp_image_elements(img_in, img_out, mesh, mesh_def, a, b)
 
-    return res
+    return mesh, mesh_def, img_out, res
 
 def generate_planar_mesh(points):
     """
@@ -66,7 +65,7 @@ def warp_mesh(mesh, disp, mag_fact):
     # parts in the warped mesh, while the triangle connectivity of the original
     # mesh is retained.
 
-    mesh_def = mesh
+    mesh_def = copy.deepcopy(mesh)
     mesh_def.points[:,0] = mesh.points[:,0] - disp[:,0] * mag_fact
     mesh_def.points[:,1] = mesh.points[:,1] + disp[:,1] * mag_fact
 
@@ -147,12 +146,12 @@ def warp_image_elements(img_in, img_out, mesh, mesh_def, a, b):
         rect_0 = cv.boundingRect(el_0)
         rect_1 = cv.boundingRect(el_1)
 
-        reg_0 = [((el_0[j, 0] - rect_0[0]), 
-                    (el_0[j, 1] - rect_0[1])) 
+        reg_0 = [((el_0[j, 1] - rect_0[1]), 
+                  (el_0[j, 0] - rect_0[0])) 
                     for j in range(3)]
 
-        reg_1 = [((el_1[j, 0] - rect_1[0]), 
-                    (el_1[j, 1] - rect_1[1])) 
+        reg_1 = [((el_1[j, 1] - rect_1[1]),
+                  (el_1[j, 0] - rect_1[0])) 
                     for j in range(3)]
 
         crop_0 = img_in[rect_0[0] : rect_0[0] + rect_0[2],
@@ -166,13 +165,13 @@ def warp_image_elements(img_in, img_out, mesh, mesh_def, a, b):
         crop_1 = cv.warpAffine(
             src = crop_0,
             M = aff_mat,
-            dsize = (rect_1[2], rect_1[3]),
+            dsize = (rect_1[3], rect_1[2]),
             dst = None,
             flags = cv.INTER_LINEAR,
             borderMode = cv.BORDER_REFLECT_101,
         )
 
-        mask = np.zeros((rect_1[3], rect_1[2]), dtype=np.float32)
+        mask = np.zeros((rect_1[2], rect_1[3]), dtype=np.float32)
         mask = cv.fillConvexPoly(
             img = mask,
             points = np.int32(reg_1),
@@ -182,11 +181,11 @@ def warp_image_elements(img_in, img_out, mesh, mesh_def, a, b):
         )
 
         img_out[
-            rect_1[1] + a : rect_1[1] + rect_1[3] + a,
-            rect_1[0] + b : rect_1[0] + rect_1[2] + b
+            rect_1[0] + a : rect_1[0] + rect_1[2] + a,
+            rect_1[1] + b : rect_1[1] + rect_1[3] + b
         ] = img_out[
-            rect_1[1] + a : rect_1[1] + rect_1[3] + a,
-            rect_1[0] + b : rect_1[0] + rect_1[2] + b
+            rect_1[0] + a : rect_1[0] + rect_1[2] + a,
+            rect_1[1] + b : rect_1[1] + rect_1[3] + b
         ] * (1.0 - mask) + crop_1 * mask
 
     return img_out
