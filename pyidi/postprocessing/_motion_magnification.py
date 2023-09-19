@@ -26,7 +26,25 @@ def motion_magnification(video, disp, mag_fact):
     
     res = warp_image_elements(img_in, img_out, mesh, mesh_def, a, b)
 
-    return mesh, mesh_def, img_out, res
+    return res
+
+def animate(input_image, n_frames = 30, dpi = 100):
+    """
+    Create EMA based motion magnified video.
+
+    :param input_image: Input image to be warped to produce the motion magnified
+    video
+    :type input_image: numpy.ndarray
+    :param n_frames: Number of frames to be generated, default = 30
+    :type n_frames: Int
+    :param dpi: Dots per inch, used to control the quality of the out-put video,
+    default = 100
+    :type dpi: Int
+    :return:
+    :rtype:
+    """
+
+    pass
 
 def generate_planar_mesh(points):
     """
