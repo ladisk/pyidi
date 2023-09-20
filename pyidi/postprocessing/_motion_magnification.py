@@ -15,20 +15,31 @@ def motion_magnification(video, disp, mag_fact):
     :type disp: numpy.ndarray
     :param mag_fact: the scalar magnification factor
     :type mag_fact: positive int or float
+
+    :return: Image of the mode shape of the structure, magnified by EMA based 
+    motion magnifiaction
+    :rtype: numpy.ndarray
     """
-    img_in = video.mraw[0]
+    img_in = video.mraw[0]  # change this
 
-    mesh = generate_planar_mesh(video.points)
+    mesh, mesh_def = create_mesh(points = video.points,
+                                 disp = disp,
+                                 mag_fact = mag_fact)
 
-    mesh_def = warp_mesh(mesh=mesh, disp=disp, mag_fact=mag_fact)
-
-    img_out, a, b = init_output_image(img_in, video.points, mesh_def)
+    img_out, a, b = init_output_image(input_image = img_in, 
+                                      coord = video.points, 
+                                      warp = mesh_def)
     
-    res = warp_image_elements(img_in, img_out, mesh, mesh_def, a, b)
+    res = warp_image_elements(img_in = img_in, 
+                              img_out = img_out, 
+                              mesh = mesh, 
+                              mesh_def = mesh_def, 
+                              a = a, 
+                              b = b)
 
     return res
 
-def animate(input_image, n_frames = 30, dpi = 100):
+def animate(video, disp, mag_fact, n_frames = 30, dpi = 100):
     """
     Create EMA based motion magnified video.
 
@@ -40,58 +51,68 @@ def animate(input_image, n_frames = 30, dpi = 100):
     :param dpi: Dots per inch, used to control the quality of the out-put video,
     default = 100
     :type dpi: Int
+
     :return:
     :rtype:
     """
+    img_in = video.mraw[0]   # change this
+    mesh, mesh_def = create_mesh(points = video.points,
+                                 disp = disp,
+                                 mag_fact = mag_fact)
+    
+    # All frames of the output video are the same size, defined by the maximum
+    # deflections
+    img_out, a, b = init_output_image(input_image = img_in,
+                                      coord = video.points,
+                                      warp = mesh_def)
+    
+    frames = np.linspace(0, 2 * np.pi, n_frames)
+    amp = np.sin(frames) * mag_fact
 
-    pass
+    for i, el in enumerate(amp):
+        pass
 
-def generate_planar_mesh(points):
+def create_mesh(points, disp, mag_fact):
     """
-    Generate a planar mesh of triangles from input points (scipy version).
+    Generates a planar mesh of triangles based on the input set of points. Then 
+    generates the deformed planar mesh of triangles based on the displacement 
+    vectors "disp", scaled by the magnification factor "mag_fact".
 
-    :param points: Input points for mesh generation, 
-                given by pairs of coordinates (x, y).
+    :param points: Input points for mesh generation, given by pairs of coordina-
+    tes (y, x)
     :type points: numpy.ndarray
-    :return: Planar triangle mesh
-    :rtype: scipy.spatial.qhull.Delaunay Class Instance
+    :param disp: Vector of displacements of input points in the y and x directi-
+    ons to be magnified
+    :type disp: numpy.ndarray
+    :param mag_fact: The magnification factor of the diplacement vector
+    :type mag_fact: int or float
+
+    :return: Undeformed and deformed forms of the planar triangle mesh
+    :rtype: Instances of the scipy.spatial.qhull.Delaunay class
     """
 
     # Switch x and y columns
     pts = np.column_stack((points[:,0], 
                            points[:,1]))
+    
+    # Create undeformed mesh
     mesh = sp.spatial.Delaunay(pts)
 
-    return mesh
-
-def warp_mesh(mesh, disp, mag_fact):
-    """
-    Translate and warp mesh nodes based on displacements and magnification 
-    factor.
-
-    :param mesh: Input mesh
-    :type mesh: scipy.spatial.qhull.Delaunay Class Instance
-    :param disp: Displacements to be applied
-    :type disp: numpy.ndarray
-    :param mag_fact: Magnification factor
-    :type mag_fact: positive int or float
-    :return: Warped mesh
-    :rtype: scipy.spatial.qhull.Delaunay Class Instance
-    """
-
+    # Create deformed mesh
     # The coordinates of the original mesh are over-written with their counter-
     # parts in the warped mesh, while the triangle connectivity of the original
     # mesh is retained.
-
     mesh_def = copy.deepcopy(mesh)
-    mesh_def.points[:,0] = mesh.points[:,0] - disp[:,0] * mag_fact
-    mesh_def.points[:,1] = mesh.points[:,1] + disp[:,1] * mag_fact
+    mesh_def.points[:, 0] = mesh.points[:, 0] - disp[:, 0] * mag_fact
+    mesh_def.poinst[:, 1] = mesh.points[:, 1] + disp[:, 1] * mag_fact
 
-    return mesh_def
+    return mesh, mesh_def
+
 
 def init_output_image(input_image, coord, warp):
     """
-    Initialze the output image.
+    Initialze the output image. The output image needs to be large enough to 
+    prevent clipping of the motion magnified shape.
 
     :param input_image: Input image to be warped to produce the motion magnified
     image
@@ -99,8 +120,9 @@ def init_output_image(input_image, coord, warp):
     :param coord: Coordinates of points, where the displacement vectors are
     defined
     :type coord: numpy.ndarray
-    :param warp: Warped planar mesh of triangles
-    :type warp:pyvista.PolyData
+    :param warp: Deformed planar mesh of triangles
+    :type warp: scipy.spatial.qhull.Delaunay
+
     :return type: Output image with correct size to prevent clipping
     :rtype: numpy.ndarray
     """
@@ -153,6 +175,7 @@ def warp_image_elements(img_in, img_out, mesh, mesh_def, a, b):
     :type a: int
     :param b: Offset value for x-axis
     :type b: int
+
     :return: Warped output image
     :rtype: numpy.ndarray
     """
