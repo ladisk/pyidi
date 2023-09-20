@@ -39,7 +39,7 @@ def motion_magnification(video, disp, mag_fact):
 
     return res
 
-def animate(video, disp, mag_fact, n_frames = 30, dpi = 100):
+def animate(video, disp, mag_fact, n_frames = 30, filename = 'MM_video'):
     """
     Create EMA based motion magnified video.
 
@@ -47,10 +47,9 @@ def animate(video, disp, mag_fact, n_frames = 30, dpi = 100):
     video
     :type input_image: numpy.ndarray
     :param n_frames: Number of frames to be generated, default = 30
-    :type n_frames: Int
-    :param dpi: Dots per inch, used to control the quality of the out-put video,
-    default = 100
-    :type dpi: Int
+    :type n_frames: int
+    :param filename: Name of the output video file
+    :type filename: str
 
     :return:
     :rtype:
@@ -69,8 +68,40 @@ def animate(video, disp, mag_fact, n_frames = 30, dpi = 100):
     frames = np.linspace(0, 2 * np.pi, n_frames)
     amp = np.sin(frames) * mag_fact
 
+    result = cv.VideoWriter(filename = f'{filename}.avi',
+                            fourcc = cv.VideoWriter_fourcc(*'XVID'),
+                            fps = n_frames,
+                            frameSize = (img_out.shape[1], img_out.shape[0]),
+                            isColor = False)
+
     for i, el in enumerate(amp):
-        pass
+
+        img_out_i = copy.deepcopy(img_out)
+
+        # Create the deformed mesh for a given frame
+        mesh_def = create_mesh(points = video.points,
+                               disp = disp,
+                               mag_fact = el)[1]
+
+        res = warp_image_elements(img_in = img_in,
+                                  img_out = img_out_i,
+                                  mesh = mesh,
+                                  mesh_def = mesh_def,
+                                  a = a,
+                                  b = b)
+        
+        # The OpenCV VideoWriter approach to video generation only works with 8-
+        # images
+        norm = (res - np.min(res)) / (np.max(res) - np.min(res))
+        result.write((norm * 255).astype('uint8'))
+        cv.imshow('Frame', res)
+
+    result.release()
+    cv.destroyAllWindows()
+
+    print(f'Video saved in file: {filename}.avi')
+        
+        
 
 def create_mesh(points, disp, mag_fact):
     """
@@ -104,7 +135,7 @@ def create_mesh(points, disp, mag_fact):
     # mesh is retained.
     mesh_def = copy.deepcopy(mesh)
     mesh_def.points[:, 0] = mesh.points[:, 0] - disp[:, 0] * mag_fact
-    mesh_def.poinst[:, 1] = mesh.points[:, 1] + disp[:, 1] * mag_fact
+    mesh_def.points[:, 1] = mesh.points[:, 1] + disp[:, 1] * mag_fact
 
     return mesh, mesh_def
 
