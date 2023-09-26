@@ -22,11 +22,14 @@ def motion_magnification(disp: np.ndarray,
     :type disp: numpy.ndarray
     :param mag_fact: magnification factor
     :type mag_fact: int or float
-    :param video: pyIDI class instance
+    :param video: pyIDI class instance,
+        defaults to None
     :type video: pyidi.pyIDI, optional
-    :param img: the reference image, on which motion magnification is performed
+    :param img: the reference image, on which motion magnification is performed,
+        defaults to None
     :type img: numpy.ndarray or numpy.memmap, optional
-    :param pts: image coordinates, where displacements 'disp' are defined
+    :param pts: image coordinates, where displacements 'disp' are defined,
+        defaults to None
     :type pts: numpy.ndarray, optional
 
     :return: motion magnified image of the structure
@@ -35,14 +38,14 @@ def motion_magnification(disp: np.ndarray,
     if hasattr(disp, 'shape') and len(disp.shape) == 2:
         pass
     else:
-        raise TypeError("The expected data type for input parameter 'disp' is "\
-                        "a 2D array of image coordinates of points of interest.")
+        raise TypeError("The expected data type for argument 'disp' is a 2D "\
+                        "array of image coordinates of points of interest.")
     
     if isinstance(mag_fact, (int, float)):
         pass
     else:
-        raise TypeError("Expected data type for input parameter 'mag_fact' is "\
-                        "int or float.")
+        raise TypeError("Expected data type for argument 'mag_fact' is int or "\
+                        "float.")
     
     if video is not None:
         if img is not None:
@@ -81,12 +84,12 @@ def motion_magnification(disp: np.ndarray,
                         "to be input, either via 'video' attributes 'mraw' and"\
                         " 'points' or as seperate arguments 'img' and 'pts'.")
 
-    mesh, mesh_def = create_mesh(points = video.points,
+    mesh, mesh_def = create_mesh(points = points,
                                  disp = disp,
                                  mag_fact = mag_fact)
 
     img_out, a, b = init_output_image(input_image = img_in, 
-                                      coord = video.points, 
+                                      coord = points, 
                                       warp = mesh_def)
     
     res = warp_image_elements(img_in = img_in, 
@@ -98,30 +101,107 @@ def motion_magnification(disp: np.ndarray,
 
     return res
 
-def animate(video, disp, mag_fact, n_frames = 30, filename = 'MM_video'):
+def animate(disp: np.ndarray, 
+            mag_fact: Union[int, float], 
+            video: pyidi.pyIDI = None, 
+            img: Union[np.ndarray, np.memmap] = None, 
+            pts: np.ndarray = None,
+            n_frames: int = 30,
+            filename: str = 'Motion_mag_video'
+            )-> None:
     """
-    Create EMA based motion magnified video.
+    Create a video based on the Experimental modal analysis motion magnification. 
+    If a 'pyidi.pyIDI object is input as argument 'video', the argument 'img' is 
+    set to 'video.mraw[0]' and the argument 'pts' is set to 'video.points'. These 
+    values can be overwritten by specifying the 'img' and 'pts' arguments explicitly.
 
-    :param input_image: Input image to be warped to produce the motion magnified
-    video
-    :type input_image: numpy.ndarray
-    :param n_frames: Number of frames to be generated, default = 30
-    :type n_frames: int
-    :param filename: Name of the output video file
+    :param disp: displacement vector
+    :type disp: numpy.ndarray
+    :param mag_fact: magnification factor
+    :type mag_fact: int or float
+    :param video: pyIDI class instance, 
+        defaults to None
+    :type video: pyidi.pyIDI, optional
+    :param img: the reference image, on which motion magnification is performed,
+        defaults to None
+    :type img: numpy.ndarray or numpy.memmap, optional
+    :param pts: image coordinates, where displacements 'disp' are defined,
+        defaults to None
+    :type pts: numpy.ndarray, optional
+    :param n_frames: number of frames per period, 
+        defaults to 30
+    :type n_frames: int, optional
+    :param filename: the name of the output video file
+        defaults to 'Motion_mag_video'
     :type filename: str
-
-    :return:
-    :rtype:
     """
-    img_in = video.mraw[0]   # change this
-    mesh, mesh_def = create_mesh(points = video.points,
+    if hasattr(disp, 'shape') and len(disp.shape) == 2:
+        pass
+    else:
+        raise TypeError("The expected data type for argument 'disp' is a 2D "\
+                        "array of image coordinates of points of interest.")
+    
+    if isinstance(mag_fact, (int, float)):
+        pass
+    else:
+        raise TypeError("Expected data type for argument 'mag_fact' is int or "\
+                        "float.")
+    
+    if isinstance(n_frames, int):
+        pass
+    else:
+        raise TypeError("Expected data type for argument 'n_frames' is int.")
+    
+    if isinstance(filename, str):
+        pass
+    else:
+        raise TypeError("Expected data type for argument 'filename' is str.")
+    
+    if video is not None:
+        if img is not None:
+            if isinstance(img, (np.ndarray, np.memmap)):
+                img_in = img
+            else:
+                raise TypeError("Expected object types for argument 'img' are "\
+                                "'numpy.ndarray' and 'numpy.memmap'.")
+        else:
+            img_in = video.mraw[0]
+
+        if pts is not None:
+            if isinstance(pts, np.ndarray):
+                points = pts
+            else:
+                raise TypeError("Expected object type for argument 'pts' is "\
+                                "'numpy.ndarray'.")
+        else:
+            points = video.points
+
+    elif img is not None and pts is not None:
+        if isinstance(img, (np.ndarray, np.memmap)):
+            img_in = img
+        else:
+            raise TypeError("Expected object types for argument 'img' are "\
+                            "'numpy.ndarray' and 'numpy.memmap'.")
+
+        if isinstance(pts, np.ndarray):
+            points = pts
+        else:
+            raise TypeError("Expected object type for argument 'pts' is "\
+                            "'numpy.ndarray'.")
+    
+    else:
+        raise TypeError("Both the input image and the points of interest need "\
+                        "to be input, either via 'video' attributes 'mraw' and"\
+                        " 'points' or as seperate arguments 'img' and 'pts'.")
+    
+    mesh, mesh_def = create_mesh(points = points,
                                  disp = disp,
                                  mag_fact = mag_fact)
     
     # All frames of the output video are the same size, defined by the maximum
     # deflections
     img_out, a, b = init_output_image(input_image = img_in,
-                                      coord = video.points,
+                                      coord = points,
                                       warp = mesh_def)
     
     frames = np.linspace(0, 2 * np.pi, n_frames)
@@ -138,7 +218,7 @@ def animate(video, disp, mag_fact, n_frames = 30, filename = 'MM_video'):
         img_out_i = copy.deepcopy(img_out)
 
         # Create the deformed mesh for a given frame
-        mesh_def = create_mesh(points = video.points,
+        mesh_def = create_mesh(points = points,
                                disp = disp,
                                mag_fact = el)[1]
 
@@ -167,18 +247,6 @@ def create_mesh(points, disp, mag_fact):
     Generates a planar mesh of triangles based on the input set of points. Then 
     generates the deformed planar mesh of triangles based on the displacement 
     vectors "disp", scaled by the magnification factor "mag_fact".
-
-    :param points: Input points for mesh generation, given by pairs of coordina-
-    tes (y, x)
-    :type points: numpy.ndarray
-    :param disp: Vector of displacements of input points in the y and x directi-
-    ons to be magnified
-    :type disp: numpy.ndarray
-    :param mag_fact: The magnification factor of the diplacement vector
-    :type mag_fact: int or float
-
-    :return: Undeformed and deformed forms of the planar triangle mesh
-    :rtype: Instances of the scipy.spatial.qhull.Delaunay class
     """
 
     # Switch x and y columns
@@ -203,18 +271,6 @@ def init_output_image(input_image, coord, warp):
     """
     Initialze the output image. The output image needs to be large enough to 
     prevent clipping of the motion magnified shape.
-
-    :param input_image: Input image to be warped to produce the motion magnified
-    image
-    :type input_image: numpy.ndarray
-    :param coord: Coordinates of points, where the displacement vectors are
-    defined
-    :type coord: numpy.ndarray
-    :param warp: Deformed planar mesh of triangles
-    :type warp: scipy.spatial.qhull.Delaunay
-
-    :return type: Output image with correct size to prevent clipping
-    :rtype: numpy.ndarray
     """
     # Find the dimensions of the input image
     input_height, input_width = input_image.shape[:2]
@@ -252,22 +308,6 @@ def init_output_image(input_image, coord, warp):
 def warp_image_elements(img_in, img_out, mesh, mesh_def, a, b):
     """
     Warp image elements based on mesh and deformed mesh nodes.
-
-    :param img_in: Input image
-    :type img_in: numpy.ndarray
-    :param img_out: Output image
-    :type img_out: numpy.ndarray
-    :param mesh: Original mesh
-    :type mesh: pyvista.PolyData
-    :param mesh_def: Deformed mesh
-    :type mesh_def: pyvista.PolyData
-    :param a: Offset value for y-axis
-    :type a: int
-    :param b: Offset value for x-axis
-    :type b: int
-
-    :return: Warped output image
-    :rtype: numpy.ndarray
     """
 
     for i in range(len(mesh.simplices)):
