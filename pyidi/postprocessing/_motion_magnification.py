@@ -1,26 +1,85 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import cv2 as cv
-import imageio
 import scipy as sp
 import copy
+import pyidi
+from typing import Union
 
-def motion_magnification(video, disp, mag_fact):
+def motion_magnification(disp: np.ndarray, 
+                         mag_fact: Union[int, float], 
+                         video: pyidi.pyIDI = None, 
+                         img: Union[np.ndarray, np.memmap] = None,
+                         pts: np.ndarray = None
+                         ) -> np.ndarray:
     """
-    Perform Experimental Modal analysis based motion magnification.
+    Perform Experimental Modal analysis based motion magnification. If a 'pyidi.
+    pyIDI object is input as argument 'video', the argument 'img' is set to 
+    'video.mraw[0]' and the argument 'pts' is set to 'video.points'. These values 
+    can be overwritten by specifying the 'img' and 'pts' arguments explicitly.
 
-    :param video: pyIDI class instance
-    :type video: object
-    :param disp: displacements to be magnified
+    :param disp: displacement vector
     :type disp: numpy.ndarray
-    :param mag_fact: the scalar magnification factor
-    :type mag_fact: positive int or float
+    :param mag_fact: magnification factor
+    :type mag_fact: int or float
+    :param video: pyIDI class instance
+    :type video: pyidi.pyIDI, optional
+    :param img: the reference image, on which motion magnification is performed
+    :type img: numpy.ndarray or numpy.memmap, optional
+    :param pts: image coordinates, where displacements 'disp' are defined
+    :type pts: numpy.ndarray, optional
 
-    :return: Image of the mode shape of the structure, magnified by EMA based 
-    motion magnifiaction
+    :return: motion magnified image of the structure
     :rtype: numpy.ndarray
     """
-    img_in = video.mraw[0]  # change this
+    if hasattr(disp, 'shape') and len(disp.shape) == 2:
+        pass
+    else:
+        raise TypeError("The expected data type for input parameter 'disp' is "\
+                        "a 2D array of image coordinates of points of interest.")
+    
+    if isinstance(mag_fact, (int, float)):
+        pass
+    else:
+        raise TypeError("Expected data type for input parameter 'mag_fact' is "\
+                        "int or float.")
+    
+    if video is not None:
+        if img is not None:
+            if isinstance(img, (np.ndarray, np.memmap)):
+                img_in = img
+            else:
+                raise TypeError("Expected object types for argument 'img' are "\
+                                "'numpy.ndarray' and 'numpy.memmap'.")
+        else:
+            img_in = video.mraw[0]
+
+        if pts is not None:
+            if isinstance(pts, np.ndarray):
+                points = pts
+            else:
+                raise TypeError("Expected object type for argument 'pts' is "\
+                                "'numpy.ndarray'.")
+        else:
+            points = video.points
+
+    elif img is not None and pts is not None:
+        if isinstance(img, (np.ndarray, np.memmap)):
+            img_in = img
+        else:
+            raise TypeError("Expected object types for argument 'img' are "\
+                            "'numpy.ndarray' and 'numpy.memmap'.")
+
+        if isinstance(pts, np.ndarray):
+            points = pts
+        else:
+            raise TypeError("Expected object type for argument 'pts' is "\
+                            "'numpy.ndarray'.")
+    
+    else:
+        raise TypeError("Both the input image and the points of interest need "\
+                        "to be input, either via 'video' attributes 'mraw' and"\
+                        " 'points' or as seperate arguments 'img' and 'pts'.")
 
     mesh, mesh_def = create_mesh(points = video.points,
                                  disp = disp,
