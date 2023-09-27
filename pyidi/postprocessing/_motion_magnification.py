@@ -17,9 +17,10 @@ def motion_magnification(disp: np.ndarray,
                          ) -> np.ndarray:
     """
     Perform Experimental Modal Analysis based motion magnification. If a 'pyidi.
-    pyIDI object is input as argument 'video', the argument 'img' is set to 
-    'video.mraw[0]' and the argument 'pts' is set to 'video.points'. These values 
-    can be overwritten by specifying the 'img' and 'pts' arguments explicitly.
+    pyIDI class instance is input as argument 'video', the argument 'img' is set
+    to 'video.mraw[0]' and the argument 'pts' is set to 'video.points'. These 
+    values can be overwritten by specifying the 'img' and 'pts' arguments 
+    explicitly.
 
     :param disp: displacement vector
     :type disp: numpy.ndarray
@@ -114,9 +115,10 @@ def animate(disp: np.ndarray,
             )-> None:
     """
     Create a video based on the Experimental modal analysis motion magnification. 
-    If a 'pyidi.pyIDI object is input as argument 'video', the argument 'img' is 
-    set to 'video.mraw[0]' and the argument 'pts' is set to 'video.points'. These 
-    values can be overwritten by specifying the 'img' and 'pts' arguments explicitly.
+    If a 'pyidi.pyIDI class instance is input as argument 'video', the argument 
+    'img' is set to 'video.mraw[0]' and the argument 'pts' is set to 'video.points'. 
+    These values can be overwritten by specifying the 'img' and 'pts' arguments 
+    explicitly.
 
     :param disp: displacement vector
     :type disp: numpy.ndarray
@@ -316,6 +318,8 @@ def warp_image_elements(img_in, img_out, mesh, mesh_def, a, b):
         el_0 = np.float32(mesh.points[mesh.simplices[i]])
         el_1 = np.float32(mesh_def.points[mesh.simplices[i]])
 
+        # Define axis-aligned bounding rectangle for given triangle element in 
+        # its original and deformed state
         rect_0 = cv.boundingRect(el_0)
         rect_1 = cv.boundingRect(el_1)
 
@@ -330,11 +334,14 @@ def warp_image_elements(img_in, img_out, mesh, mesh_def, a, b):
         crop_0 = img_in[rect_0[0] : rect_0[0] + rect_0[2],
                         rect_0[1] : rect_0[1] + rect_0[3]]
 
+        # Definition of the affine transformation matrix for the given triangle 
+        # element
         aff_mat = cv.getAffineTransform(
             src = np.float32(reg_0),
             dst = np.float32(reg_1)
         )
 
+        # Execution of the affine transformation
         crop_1 = cv.warpAffine(
             src = crop_0,
             M = aff_mat,
@@ -353,6 +360,7 @@ def warp_image_elements(img_in, img_out, mesh, mesh_def, a, b):
             shift=0
         )
 
+        # Assembly of the transformed element into the output image
         img_out[
             rect_1[0] + a : rect_1[0] + rect_1[2] + a,
             rect_1[1] + b : rect_1[1] + rect_1[3] + b
