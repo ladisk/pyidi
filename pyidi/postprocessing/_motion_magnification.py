@@ -94,16 +94,16 @@ def motion_magnification(disp: np.ndarray,
                                  disp = disp,
                                  mag_fact = mag_fact)
 
-    img_out, a, b = init_output_image(input_image = img_in, 
-                                      coord = points, 
-                                      warp = mesh_def)
+    img_out, d = init_output_image(input_image = img_in, 
+                                   mesh = mesh, 
+                                   mesh_def = mesh_def)
     
     res = warp_image_elements(img_in = img_in, 
                               img_out = img_out, 
                               mesh = mesh, 
                               mesh_def = mesh_def, 
-                              a = a, 
-                              b = b)
+                              a = d[2], 
+                              b = d[0])
 
     return res
 
@@ -221,9 +221,9 @@ def animate(disp: np.ndarray,
     
     # All frames of the output video are the same size, defined by the maximum
     # deflections
-    img_out, a, b = init_output_image(input_image = img_in,
-                                      coord = points,
-                                      warp = mesh_def)
+    img_out, d = init_output_image(input_image = img_in,
+                                   mesh = mesh,
+                                   mesh_def = mesh_def)
     
     frames = np.linspace(0, 2 * np.pi * n_periods, fps * n_periods)
     amp = np.sin(frames) * mag_fact
@@ -247,8 +247,8 @@ def animate(disp: np.ndarray,
                                   img_out = img_out_i,
                                   mesh = mesh,
                                   mesh_def = mesh_def,
-                                  a = a,
-                                  b = b)
+                                  a = d[2],
+                                  b = d[0])
         
         # The OpenCV VideoWriter approach to video generation only works with 8-
         # images
@@ -287,8 +287,7 @@ def create_mesh(points, disp, mag_fact):
 
     return mesh, mesh_def
 
-
-def init_output_image(input_image, coord, warp):
+def init_output_image(input_image, mesh, mesh_def):
     """
     Initialze the output image. The output image needs to be large enough to 
     prevent clipping of the motion magnified shape.
@@ -296,34 +295,24 @@ def init_output_image(input_image, coord, warp):
     # Find the dimensions of the input image
     input_height, input_width = input_image.shape[:2]
 
-    # Calculate the distances between mesh nodes and image edges
-    distances = np.array([
-        coord[:, 1],           # Distances to the left edge
-        coord[:, 0],           # Distances to the top edge
-        input_width - coord[:, 1],  # Distances to the right edge
-        input_height - coord[:, 0]  # Distances to the bottom edge
+    d = np.array([
+          np.min(mesh.points[:, 1]) - np.min(mesh_def.points[:, 1]),
+        - np.max(mesh.points[:, 1]) + np.max(mesh_def.points[:, 1]),
+          np.min(mesh.points[:, 0]) - np.min(mesh_def.points[:, 0]),
+        - np.max(mesh.points[:, 0]) + np.max(mesh_def.points[:, 0])
     ])
-    
-    # Calculate the minimum distance from the edges
-    min_distance = np.min(distances)
-    
-    # Calculate the minimum and maximum of the deformed mesh nodes
-    min_x = np.min(warp.points[:, 1])
-    max_x = np.max(warp.points[:, 1])
-    min_y = np.min(warp.points[:, 0])
-    max_y = np.max(warp.points[:, 0])
+    d = np.round(d).astype('int')
+    d[d < 0] = 0
     
     # Calculate the new size for the output image based on the minimum distance 
     # and mesh node coordinates
-    new_width = int(max_x - min_x + 2 * min_distance)
-    new_height = int(max_y - min_y + 2 * min_distance)
-
-    dy = int(abs(min_distance - min_y))
-    dx = int(abs(min_distance - min_x))
+    new_width = round(input_width + d[0] + d[1])
+    new_height = round(input_height + d[2] + d[3])
 
     out = np.ones((new_height, new_width)) * np.average(input_image) * 0.3
-    
-    return out, dy, dx
+    out[d[2] : d[2] + input_height, 
+        d[0] : d[0] + input_width] = input_image * 0.4
+    return out, d
 
 def warp_image_elements(img_in, img_out, mesh, mesh_def, a, b):
     """
@@ -386,120 +375,3 @@ def warp_image_elements(img_in, img_out, mesh, mesh_def, a, b):
         ] * (1.0 - mask) + crop_1 * mask
 
     return img_out
-
-
-# def generate_planar_mesh(points):
-#     """
-#     Generate a planar mesh of triangles from input points.
-
-#     :param points: Input points for mesh generation, 
-#                 given by pairs of coordinates.
-#     :type points: numpy.ndarray
-#     :return: Planar triangle mesh
-#     :rtype: pyvista.PolyData
-#     """
-#     # Create a planar mesh of triangles from the input points
-#     mesh = pv.PolyData(
-#         np.column_stack((points[:,1], 
-#                          points[:,0], 
-#                          np.zeros(points.shape[0]))))
-    
-#     mesh = mesh.delaunay_2d()
-
-#     return mesh
-
-# def warp_mesh(mesh, disp, mag_fact):
-#     """
-#     Translate and warp mesh nodes based on displacements and magnification 
-#     factor.
-
-#     :param mesh: Input mesh
-#     :type mesh: pyvista.PolyData
-#     :param disp: Displacements to be applied
-#     :type disp: numpy.ndarray
-#     :param mag_fact: Magnification factor
-#     :type mag_fact: positive int or float
-#     :return: Warped mesh
-#     :rtype: pyvista.PolyData
-#     """
-
-#     # Translate the mesh nodes in accordance with "disp", scaled by "mag_fact"
-#     vect = np.column_stack((disp[:,1], 
-#                             - disp[:,0], 
-#                             np.zeros(disp.shape[0])))
-
-#     mesh.add_field_data(vect, "vectors")
-#     mesh_def = mesh.warp_by_vector(vectors = "vectors", factor = mag_fact)
-
-#     return mesh_def
-
-# def warp_image_elements(img_in, img_out, mesh, mesh_def, a, b):
-#     """
-#     Warp image elements based on mesh and deformed mesh nodes.
-
-#     :param img_in: Input image
-#     :type img_in: numpy.ndarray
-#     :param img_out: Output image
-#     :type img_out: numpy.ndarray
-#     :param mesh: Original mesh
-#     :type mesh: pyvista.PolyData
-#     :param mesh_def: Deformed mesh
-#     :type mesh_def: pyvista.PolyData
-#     :param a: Offset value for y-axis
-#     :type a: int
-#     :param b: Offset value for x-axis
-#     :type b: int
-#     :return: Warped output image
-#     :rtype: numpy.ndarray
-#     """
-
-#     for i in range(mesh.n_cells):
-#         el_0 = np.float32(mesh.cell_points(i)[:,:2])
-#         el_1 = np.float32(mesh_def.cell_points(i)[:,:2])
-
-#         rect_0 = cv.boundingRect(el_0)
-#         rect_1 = cv.boundingRect(el_1)
-
-#         reg_0 = [((el_0[j, 0] - rect_0[0]), 
-#                     (el_0[j, 1] - rect_0[1])) 
-#                     for j in range(3)]
-
-#         reg_1 = [((el_1[j, 0] - rect_1[0]), 
-#                     (el_1[j, 1] - rect_1[1])) 
-#                     for j in range(3)]
-
-#         crop_0 = img_in[rect_0[1] : rect_0[1] + rect_0[3],
-#                         rect_0[0] : rect_0[0] + rect_0[2]]
-
-#         aff_mat = cv.getAffineTransform(
-#             src = np.float32(reg_0),
-#             dst = np.float32(reg_1)
-#         )
-
-#         crop_1 = cv.warpAffine(
-#             src = crop_0,
-#             M = aff_mat,
-#             dsize = (rect_1[2], rect_1[3]),
-#             dst = None,
-#             flags = cv.INTER_LINEAR,
-#             borderMode = cv.BORDER_REFLECT_101,
-#         )
-
-#         mask = np.zeros((rect_1[3], rect_1[2]), dtype=np.float32)
-#         mask = cv.fillConvexPoly(
-#             img = mask,
-#             points = np.int32(reg_1),
-#             color = 1,
-#             lineType = cv.LINE_AA,
-#             shift=0
-#         )
-
-#         img_out[
-#             rect_1[1] + a : rect_1[1] + rect_1[3] + a,
-#             rect_1[0] + b : rect_1[0] + rect_1[2] + b
-#         ] = img_out[
-#             rect_1[1] + a : rect_1[1] + rect_1[3] + a,
-#             rect_1[0] + b : rect_1[0] + rect_1[2] + b
-#         ] * (1.0 - mask) + crop_1 * mask
-
-#     return img_out
