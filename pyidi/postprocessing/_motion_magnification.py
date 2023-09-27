@@ -3,17 +3,20 @@ import matplotlib.pyplot as plt
 import cv2 as cv
 import scipy as sp
 import copy
-import pyidi
 from typing import Union
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    import pyidi
 
 def motion_magnification(disp: np.ndarray, 
                          mag_fact: Union[int, float], 
-                         video: pyidi.pyIDI = None, 
-                         img: Union[np.ndarray, np.memmap] = None,
-                         pts: np.ndarray = None
+                         video: Union["pyidi.pyIDI", None] = None, 
+                         img: Union[np.ndarray, np.memmap, None] = None,
+                         pts: Union[np.ndarray, None] = None
                          ) -> np.ndarray:
     """
-    Perform Experimental Modal analysis based motion magnification. If a 'pyidi.
+    Perform Experimental Modal Analysis based motion magnification. If a 'pyidi.
     pyIDI object is input as argument 'video', the argument 'img' is set to 
     'video.mraw[0]' and the argument 'pts' is set to 'video.points'. These values 
     can be overwritten by specifying the 'img' and 'pts' arguments explicitly.
@@ -103,7 +106,7 @@ def motion_magnification(disp: np.ndarray,
 
 def animate(disp: np.ndarray, 
             mag_fact: Union[int, float], 
-            video: pyidi.pyIDI = None, 
+            video = None, 
             img: Union[np.ndarray, np.memmap] = None, 
             pts: np.ndarray = None,
             n_frames: int = 30,
@@ -301,7 +304,6 @@ def init_output_image(input_image, coord, warp):
     dx = int(abs(min_distance - min_x))
 
     out = np.ones((new_height, new_width)) * np.average(input_image) * 0.3
-    # out[dy : dy + input_height, dx : dx + input_width] = input_image * 0.3
     
     return out, dy, dx
 
