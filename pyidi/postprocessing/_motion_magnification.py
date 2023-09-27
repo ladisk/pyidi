@@ -28,13 +28,13 @@ def motion_magnification(disp: np.ndarray,
     :type mag_fact: int or float
     :param video: pyIDI class instance,
         defaults to None
-    :type video: pyidi.pyIDI, optional
+    :type video: pyidi.pyIDI or None, optional
     :param img: the reference image, on which motion magnification is performed,
         defaults to None
-    :type img: numpy.ndarray or numpy.memmap, optional
+    :type img: numpy.ndarray, numpy.memmap or None, optional
     :param pts: image coordinates, where displacements 'disp' are defined,
         defaults to None
-    :type pts: numpy.ndarray, optional
+    :type pts: numpy.ndarray or None, optional
 
     :return: motion magnified image of the structure
     :rtype: numpy.ndarray
@@ -110,7 +110,8 @@ def animate(disp: np.ndarray,
             video = None, 
             img: Union[np.ndarray, np.memmap] = None, 
             pts: np.ndarray = None,
-            n_frames: int = 30,
+            fps: int = 30,
+            n_periods: int = 3,
             filename: str = 'Motion_mag_video'
             )-> None:
     """
@@ -126,16 +127,19 @@ def animate(disp: np.ndarray,
     :type mag_fact: int or float
     :param video: pyIDI class instance, 
         defaults to None
-    :type video: pyidi.pyIDI, optional
+    :type video: pyidi.pyIDI or None, optional
     :param img: the reference image, on which motion magnification is performed,
         defaults to None
-    :type img: numpy.ndarray or numpy.memmap, optional
+    :type img: numpy.ndarray, numpy.memmap or None, optional
     :param pts: image coordinates, where displacements 'disp' are defined,
         defaults to None
-    :type pts: numpy.ndarray, optional
-    :param n_frames: number of frames per period, 
+    :type pts: numpy.ndarray or None, optional
+    :param fps: framerate of the created video, 
         defaults to 30
-    :type n_frames: int, optional
+    :type fps: int, optional
+    :param n_periods: number of periods of oscilation to be animated,
+        defaults to 3
+    :type n_periods: int, optional
     :param filename: the name of the output video file
         defaults to 'Motion_mag_video'
     :type filename: str
@@ -152,10 +156,15 @@ def animate(disp: np.ndarray,
         raise TypeError("Expected data type for argument 'mag_fact' is int or "\
                         "float.")
     
-    if isinstance(n_frames, int):
+    if isinstance(fps, int):
         pass
     else:
-        raise TypeError("Expected data type for argument 'n_frames' is int.")
+        raise TypeError("Expected data type for argument 'fps' is int.")
+    
+    if isinstance(n_periods, int):
+        pass
+    else:
+        raise TypeError("Expected data type for argument 'n_periods' is int.")
     
     if isinstance(filename, str):
         pass
@@ -209,12 +218,12 @@ def animate(disp: np.ndarray,
                                       coord = points,
                                       warp = mesh_def)
     
-    frames = np.linspace(0, 2 * np.pi, n_frames)
+    frames = np.linspace(0, 2 * np.pi * n_periods, fps * n_periods)
     amp = np.sin(frames) * mag_fact
 
-    result = cv.VideoWriter(filename = f'{filename}.avi',
+    result = cv.VideoWriter(filename = f'{filename}.mp4',
                             fourcc = cv.VideoWriter_fourcc(*'XVID'),
-                            fps = n_frames,
+                            fps = fps,
                             frameSize = (img_out.shape[1], img_out.shape[0]),
                             isColor = False)
 
@@ -243,7 +252,7 @@ def animate(disp: np.ndarray,
     result.release()
     cv.destroyAllWindows()
 
-    print(f'Video saved in file: {filename}.avi')
+    print(f'Video saved in file: {filename}.mp4')
         
         
 
