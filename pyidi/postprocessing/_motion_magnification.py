@@ -2,6 +2,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import cv2 as cv
 import scipy as sp
+
+import os
 import copy
 from typing import Union
 from typing import TYPE_CHECKING
@@ -207,6 +209,11 @@ def animate(disp: np.ndarray,
         raise TypeError("Both the input image and the points of interest need "\
                         "to be input, either via 'video' attributes 'mraw' and"\
                         " 'points' or as seperate arguments 'img' and 'pts'.")
+    
+    # Create subfolder defined in 'filename' argument (if needed)
+    folder, name = os.path.split(filename)
+    if folder and not os.path.exists(folder):
+        os.makedirs(folder)
     
     mesh, mesh_def = create_mesh(points = points,
                                  disp = disp,
