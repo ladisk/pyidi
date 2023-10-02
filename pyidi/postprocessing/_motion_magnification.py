@@ -94,16 +94,16 @@ def motion_magnification(disp: np.ndarray,
                                  disp = disp,
                                  mag_fact = mag_fact)
 
-    img_out, d = init_output_image(input_image = img_in, 
-                                   mesh = mesh, 
-                                   mesh_def = mesh_def)
+    img_out, a, b = init_output_image(input_image = img_in, 
+                                      mesh = mesh.points, 
+                                      mesh_def = mesh_def.points)
     
     res = warp_image_elements(img_in = img_in, 
                               img_out = img_out, 
                               mesh = mesh, 
                               mesh_def = mesh_def, 
-                              a = d[2], 
-                              b = d[0])
+                              a = a, 
+                              b = b)
 
     return res
 
@@ -219,11 +219,18 @@ def animate(disp: np.ndarray,
                                  disp = disp,
                                  mag_fact = mag_fact)
     
+    mesh_def_negative = create_mesh(points = points,
+                                disp = disp,
+                                mag_fact = -mag_fact)[1]
+    
     # All frames of the output video are the same size, defined by the maximum
     # deflections
-    img_out, d = init_output_image(input_image = img_in,
-                                   mesh = mesh,
-                                   mesh_def = mesh_def)
+    img_out, a, b = init_output_image(input_image = img_in,
+                                      mesh = mesh.points,
+                                      mesh_def = np.concatenate((
+                                          mesh_def.points,
+                                          mesh_def_negative.points
+                                      )))
     
     frames = np.linspace(0, 2 * np.pi * n_periods, fps * n_periods)
     amp = np.sin(frames) * mag_fact
@@ -235,26 +242,31 @@ def animate(disp: np.ndarray,
                             isColor = False)
 
     for i, el in enumerate(amp):
+        try:
+            img_out_i = copy.deepcopy(img_out)
 
-        img_out_i = copy.deepcopy(img_out)
+            # Create the deformed mesh for a given frame
+            mesh_def = create_mesh(points = points,
+                                   disp = disp,
+                                   mag_fact = el)[1]
 
-        # Create the deformed mesh for a given frame
-        mesh_def = create_mesh(points = points,
-                               disp = disp,
-                               mag_fact = el)[1]
-
-        res = warp_image_elements(img_in = img_in,
-                                  img_out = img_out_i,
-                                  mesh = mesh,
-                                  mesh_def = mesh_def,
-                                  a = d[2],
-                                  b = d[0])
-        
-        # The OpenCV VideoWriter approach to video generation only works with 8-
-        # images
-        norm = (res - np.min(res)) / (np.max(res) - np.min(res))
-        result.write((norm * 255).astype('uint8'))
-        cv.imshow('Frame', res)
+            res = warp_image_elements(img_in = img_in,
+                                      img_out = img_out_i,
+                                      mesh = mesh,
+                                      mesh_def = mesh_def,
+                                      a = a,
+                                      b = b)
+            
+            # The OpenCV VideoWriter approach to video generation only works
+            # with 8-bit images
+            norm = (res - np.min(res)) / (np.max(res) - np.min(res))
+            result.write((norm * 255).astype('uint8'))
+            cv.imshow('Frame', res)
+        except ValueError:
+            cv.destroyAllWindows()
+            print("Failed to generate entire video, try a smaller magnification"\
+                  " factor.")
+            break
 
     result.release()
     cv.destroyAllWindows()
@@ -296,23 +308,26 @@ def init_output_image(input_image, mesh, mesh_def):
     input_height, input_width = input_image.shape[:2]
 
     d = np.array([
-          np.min(mesh.points[:, 1]) - np.min(mesh_def.points[:, 1]),
-        - np.max(mesh.points[:, 1]) + np.max(mesh_def.points[:, 1]),
-          np.min(mesh.points[:, 0]) - np.min(mesh_def.points[:, 0]),
-        - np.max(mesh.points[:, 0]) + np.max(mesh_def.points[:, 0])
+          np.min(mesh[:, 1]) - np.min(mesh_def[:, 1]),
+        - np.max(mesh[:, 1]) + np.max(mesh_def[:, 1]),
+          np.min(mesh[:, 0]) - np.min(mesh_def[:, 0]),
+        - np.max(mesh[:, 0]) + np.max(mesh_def[:, 0])
     ])
     d = np.round(d).astype('int')
-    d[d < 0] = 0
-    
-    # Calculate the new size for the output image based on the minimum distance 
-    # and mesh node coordinates
-    new_width = round(input_width + d[0] + d[1])
-    new_height = round(input_height + d[2] + d[3])
 
-    out = np.ones((new_height, new_width)) * np.average(input_image) * 0.3
-    out[d[2] : d[2] + input_height, 
-        d[0] : d[0] + input_width] = input_image * 0.4
-    return out, d
+    a = np.max(np.abs([d[2], d[3]]))
+    b = np.max(np.abs([d[0], d[1]]))
+
+    val = np.average(input_image) * 0.3
+
+    out = cv.copyMakeBorder(input_image * 0.3,
+                            top = a,
+                            bottom = a,
+                            left = b,
+                            right = b,
+                            borderType = cv.BORDER_CONSTANT,
+                            value = val)
+    return out, a, b
 
 def warp_image_elements(img_in, img_out, mesh, mesh_def, a, b):
     """
