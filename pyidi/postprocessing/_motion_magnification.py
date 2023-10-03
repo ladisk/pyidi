@@ -2,9 +2,11 @@ import numpy as np
 import matplotlib.pyplot as plt
 import cv2 as cv
 import scipy as sp
+import imageio.v2 as iio
 
 import os
 import copy
+from io import BytesIO
 from typing import Union
 from typing import TYPE_CHECKING
 
@@ -232,46 +234,57 @@ def animate(displacements: np.ndarray,
                                           mesh_def_negative.points
                                       )))
     
+    # Harmonic oscilation 
     frames = np.linspace(0, 2 * np.pi * n_periods, fps * n_periods)
     amp = np.sin(frames) * magnification_factor
 
-    result = cv.VideoWriter(filename = f'{filename}.mp4',
-                            fourcc = cv.VideoWriter_fourcc(*'XVID'),
-                            fps = fps,
-                            frameSize = (img_out.shape[1], img_out.shape[0]),
-                            isColor = False)
+    with iio.get_writer(uri = f'{filename}.gif',
+                        mode = 'I',
+                        duration = 1) as writer:
+        for i, el in enumerate(amp):
+            try:
+                img_out_i = copy.deepcopy(img_out)
 
-    for i, el in enumerate(amp):
-        try:
-            img_out_i = copy.deepcopy(img_out)
+                # Create the deformed mesh for a given frame
+                mesh_def = create_mesh(points = points,
+                                       disp = displacements,
+                                       mag_fact = el)[1]
 
-            # Create the deformed mesh for a given frame
-            mesh_def = create_mesh(points = points,
-                                   disp = displacements,
-                                   mag_fact = el)[1]
+                res = warp_image_elements(img_in = img_in,
+                                          img_out = img_out_i,
+                                          mesh = mesh,
+                                          mesh_def = mesh_def,
+                                          a = a,
+                                          b = b)
+                
+                fig, ax = plt.subplots()
+                ax.imshow(res, 'gray')
+                ax.axis('off')
 
-            res = warp_image_elements(img_in = img_in,
-                                      img_out = img_out_i,
-                                      mesh = mesh,
-                                      mesh_def = mesh_def,
-                                      a = a,
-                                      b = b)
-            
-            # The OpenCV VideoWriter approach to video generation only works
-            # with 8-bit images
-            norm = (res - np.min(res)) / (np.max(res) - np.min(res))
-            result.write((norm * 255).astype('uint8'))
-            cv.imshow('Frame', res)
-        except ValueError:
-            cv.destroyAllWindows()
-            print("Failed to generate entire video, try a smaller magnification"\
-                  " factor.")
-            break
+                buffer = BytesIO()
+                fig.savefig(buffer,
+                            format = 'png',
+                            bbox_inches = 'tight',
+                            transparent = True,
+                            pad_inches = 0
+                            )
+                buffer.seek(0)
 
-    result.release()
-    cv.destroyAllWindows()
+                figure = iio.imread(buffer)
+                writer.append_data(figure)
 
-    print(f'Video saved in file: {filename}.mp4')
+                plt.close()
+
+            except ValueError:
+                writer.close()
+                print("Failed to generate entire video, try a smaller magnification"\
+                        " factor.")
+                break
+
+    buffer.close()
+    writer.close()
+
+    print(f'Video saved in file: {filename}.gif')
         
         
 
