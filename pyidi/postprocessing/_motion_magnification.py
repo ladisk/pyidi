@@ -17,7 +17,9 @@ def motion_magnification(displacements: np.ndarray,
                          magnification_factor: Union[int, float], 
                          video: Union["pyidi.pyIDI", None] = None, 
                          image: Union[np.ndarray, np.memmap, None] = None,
-                         points: Union[np.ndarray, None] = None
+                         points: Union[np.ndarray, None] = None,
+                         background_brightness: float = 0.3,
+                         show_undeformed: bool = True
                          ) -> np.ndarray:
     """
     Perform Experimental Modal Analysis based motion magnification. If a 'pyidi.
@@ -39,6 +41,12 @@ def motion_magnification(displacements: np.ndarray,
     :param points: image coordinates, where displacements 'displacements' are 
         defined, defaults to None
     :type points: numpy.ndarray or None, optional
+    :param background_brightness: brightness of the background, expected values
+        in range [0, 1], defaults to 0.3
+    :type background_brighness: float, optional
+    :param show_undeformed: Show the reference image (argument 'image') underneath
+        the motion magnified shape, defaults to True
+    :type show_undeformed: bool, optional
 
     :return: motion magnified image of the structure
     :rtype: numpy.ndarray
@@ -54,6 +62,19 @@ def motion_magnification(displacements: np.ndarray,
     else:
         raise TypeError("Expected data type for argument 'magnification_factor'"\
                         " is int or float.")
+    
+    if (isinstance(background_brightness, (int, float)) and 
+        0 <= background_brightness <= 1):
+        pass
+    else:
+        raise TypeError("Expected data type for argument 'background_brightness'"\
+                        " is float in range [0, 1].")
+    
+    if isinstance(show_undeformed, bool):
+        pass
+    else:
+        raise TypeError("Expected data type for argument 'show_undeformed' is"\
+                        " boolean.")
     
     if video is not None:
         if image is not None:
@@ -98,7 +119,9 @@ def motion_magnification(displacements: np.ndarray,
 
     img_out, a, b = init_output_image(input_image = img_in, 
                                       mesh = mesh.points, 
-                                      mesh_def = mesh_def.points)
+                                      mesh_def = mesh_def.points,
+                                      bb = background_brightness,
+                                      bu = show_undeformed)
     
     res = warp_image_elements(img_in = img_in, 
                               img_out = img_out, 
@@ -111,12 +134,13 @@ def motion_magnification(displacements: np.ndarray,
 
 def animate(displacements: np.ndarray, 
             magnification_factor: Union[int, float], 
-            video = None, 
-            image: Union[np.ndarray, np.memmap] = None, 
-            points: np.ndarray = None,
+            video: Union["pyidi.pyIDI", None] = None, 
+            image: Union[np.ndarray, np.memmap, None] = None, 
+            points: Union[np.ndarray, None] = None,
             fps: int = 30,
             n_periods: int = 3,
-            filename: str = 'Motion_mag_video'
+            filename: str = 'Motion_mag_video', 
+            background_brightness: float = 0.3
             )-> None:
     """
     Create a video based on the Experimental modal analysis motion magnification. 
@@ -147,6 +171,9 @@ def animate(displacements: np.ndarray,
     :param filename: the name of the output video file
         defaults to 'Motion_mag_video'
     :type filename: str
+    :param background_brightness: brightness of the background, expected values
+        in range [0, 1], defaults to 0.3
+    :type background_brighness: float, optional
     """
     if hasattr(displacements, 'shape') and len(displacements.shape) == 2:
         pass
@@ -174,6 +201,13 @@ def animate(displacements: np.ndarray,
         pass
     else:
         raise TypeError("Expected data type for argument 'filename' is str.")
+    
+    if (isinstance(background_brightness, float) and 
+        0 <= background_brightness <= 1):
+        pass
+    else:
+        raise TypeError("Expected data type for argument 'background_brightness'"\
+                        " is float in range [0, 1].")
     
     if video is not None:
         if image is not None:
@@ -232,7 +266,8 @@ def animate(displacements: np.ndarray,
                                       mesh_def = np.concatenate((
                                           mesh_def.points,
                                           mesh_def_negative.points
-                                      )))
+                                      )),
+                                      bb = background_brightness)
     
     # Harmonic oscilation 
     frames = np.linspace(0, 2 * np.pi * n_periods, fps * n_periods)
@@ -313,7 +348,7 @@ def create_mesh(points, disp, mag_fact):
 
     return mesh, mesh_def
 
-def init_output_image(input_image, mesh, mesh_def):
+def init_output_image(input_image, mesh, mesh_def, bb, bu):
     """
     Initialze the output image. The output image needs to be large enough to 
     prevent clipping of the motion magnified shape.
@@ -330,15 +365,18 @@ def init_output_image(input_image, mesh, mesh_def):
     a = np.max(np.abs([d[2], d[3]]))
     b = np.max(np.abs([d[0], d[1]]))
 
-    val = np.average(input_image) * 0.3
-
-    out = cv.copyMakeBorder(input_image * 0.3,
-                            top = a,
-                            bottom = a,
-                            left = b,
-                            right = b,
-                            borderType = cv.BORDER_CONSTANT,
-                            value = val)
+    val = np.average(input_image) * bb
+    if bu:
+        out = cv.copyMakeBorder(input_image * bb,
+                                top = a,
+                                bottom = a,
+                                left = b,
+                                right = b,
+                                borderType = cv.BORDER_CONSTANT,
+                                value = val)
+    else:
+        out = np.ones((input_image.shape[0] + 2 * a, 
+                       input_image.shape[1] + 2 * b)) * val
     return out, a, b
 
 def warp_image_elements(img_in, img_out, mesh, mesh_def, a, b):
