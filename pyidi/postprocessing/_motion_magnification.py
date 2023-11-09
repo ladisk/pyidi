@@ -321,7 +321,6 @@ def animate(displacements: np.ndarray,
 
     print(f'Video saved in file: {filename}.gif')
         
-        
 
 def create_mesh(points, disp, mag_fact):
     """
@@ -330,22 +329,18 @@ def create_mesh(points, disp, mag_fact):
     vectors "disp", scaled by the magnification factor 
     "mag_fact".
     """
-
-    # Switch x and y columns
-    pts = np.column_stack((points[:,0], 
-                           points[:,1]))
     
     # Create undeformed mesh
-    mesh = sp.spatial.Delaunay(pts)
+    mesh = sp.spatial.Delaunay(points)
 
     # Create deformed mesh
     # The coordinates of the original mesh are over-written with their counter-
     # parts in the warped mesh, while the triangle connectivity of the original
     # mesh is retained.
     mesh_def = copy.deepcopy(mesh)
-    mesh_def.points[:, 0] = mesh.points[:, 0] - disp[:, 0] * mag_fact
-    mesh_def.points[:, 1] = mesh.points[:, 1] + disp[:, 1] * mag_fact
-
+    mesh_def.points[:, 0] -= disp[:, 0] * mag_fact
+    mesh_def.points[:, 1] += disp[:, 1] * mag_fact
+    
     return mesh, mesh_def
 
 def init_output_image(input_image, mesh, mesh_def, bb, bu):
@@ -383,7 +378,7 @@ def warp_image_elements(img_in, img_out, mesh, mesh_def, a, b):
     """
     Warp image elements based on mesh and deformed mesh nodes.
     """
-
+    
     for i in range(len(mesh.simplices)):
         el_0 = np.float32(mesh.points[mesh.simplices[i]])
         el_1 = np.float32(mesh_def.points[mesh.simplices[i]])
