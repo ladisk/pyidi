@@ -19,7 +19,7 @@ def motion_magnification(displacements: np.ndarray,
                          image: Union[np.ndarray, np.memmap, None] = None,
                          points: Union[np.ndarray, None] = None,
                          background_brightness: float = 0.3,
-                         show_undeformed: bool = True
+                         show_undeformed: bool = False
                          ) -> np.ndarray:
     """
     Perform Experimental Modal Analysis based motion magnification. If a 'pyidi.
@@ -139,8 +139,10 @@ def animate(displacements: np.ndarray,
             points: Union[np.ndarray, None] = None,
             fps: int = 30,
             n_periods: int = 3,
-            filename: str = 'Motion_mag_video', 
-            background_brightness: float = 0.3
+            filename: str = 'Motion_mag_video',
+            output_format: str = 'gif', 
+            background_brightness: float = 0.3,
+            show_undeformed: bool = False
             )-> None:
     """
     Create a video based on the Experimental modal analysis motion magnification. 
@@ -171,9 +173,15 @@ def animate(displacements: np.ndarray,
     :param filename: the name of the output video file
         defaults to 'Motion_mag_video'
     :type filename: str
+    :param output_format: output format of the video, selected from 'gif', 'mp4', 
+        'avi', 'mov', defaults to 'gif'
+    :type output_format: str, optional
     :param background_brightness: brightness of the background, expected values
         in range [0, 1], defaults to 0.3
     :type background_brighness: float, optional
+    :param show_undeformed: Show the reference image (argument 'image') underneath
+        the motion magnified shape, defaults to True
+    :type show_undeformed: bool, optional
     """
     if hasattr(displacements, 'shape') and len(displacements.shape) == 2:
         pass
@@ -201,6 +209,15 @@ def animate(displacements: np.ndarray,
         pass
     else:
         raise TypeError("Expected data type for argument 'filename' is str.")
+    
+    if isinstance(output_format, str):
+        if output_format in ['gif', 'mp4', 'avi', 'mov']:
+            pass
+        else:
+            raise ValueError("Expected value for argument 'output_format' is one"\
+                             " of 'gif', 'mp4', 'avi', 'mov'.")
+    else:
+        raise TypeError("Expected data type for argument 'output_format' is str.")
     
     if (isinstance(background_brightness, float) and 
         0 <= background_brightness <= 1):
@@ -267,15 +284,23 @@ def animate(displacements: np.ndarray,
                                           mesh_def.points,
                                           mesh_def_negative.points
                                       )),
-                                      bb = background_brightness)
+                                      bb = background_brightness,
+                                      bu = show_undeformed)
     
     # Harmonic oscilation 
     frames = np.linspace(0, 2 * np.pi * n_periods, fps * n_periods)
     amp = np.sin(frames) * magnification_factor
 
-    with iio.get_writer(uri = f'{filename}.gif',
-                        mode = 'I',
-                        duration = 1) as writer:
+    if output_format == 'gif':
+        temp_writer = iio.get_writer(uri = f'{filename}.{output_format}',
+                                     mode = 'I',
+                                     duration = 1)
+        
+    else:
+        temp_writer = iio.get_writer(uri = f'{filename}.{output_format}',
+                                     fps = fps)
+
+    with temp_writer as writer:
         for i, el in enumerate(amp):
             try:
                 img_out_i = copy.deepcopy(img_out)
@@ -319,7 +344,7 @@ def animate(displacements: np.ndarray,
     buffer.close()
     writer.close()
 
-    print(f'Video saved in file: {filename}.gif')
+    print(f'Video saved in file: {filename}.{output_format}')
         
 
 def create_mesh(points, disp, mag_fact):
