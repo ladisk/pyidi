@@ -96,8 +96,8 @@ class SimplifiedOpticalFlow(IDIMethod):
             limited_mraw = range(self.mraw_range[0], self.mraw_range[1])
             self.displacements  = np.zeros((video.points.shape[0], self.mraw_range[1]-self.mraw_range[0], 2))
         else:
-            limited_mraw = range(video.N)
-            self.displacements  = np.zeros((video.points.shape[0], video.N, 2))
+            limited_mraw = range(video.reader.N)
+            self.displacements  = np.zeros((video.points.shape[0], video.reader.N, 2))
 
         # Progress bar
         if self.progress_bar:
@@ -107,7 +107,7 @@ class SimplifiedOpticalFlow(IDIMethod):
 
         # calculating the displacements
         for i, frame_number in enumerate(p_bar(limited_mraw, ncols=100)):
-            image = video.get_frame(frame_number)
+            image = video.reader.get_frame(frame_number)
             image_filtered = self.subset(image, self.subset_size)
 
             self.image_roi = image_filtered[video.points[:,0] + self.delta_0, video.points[:, 1] + self.delta_1]
@@ -180,11 +180,11 @@ class SimplifiedOpticalFlow(IDIMethod):
         :return: Reference image, image gradient in 0 direction, image gradient in 1 direction, gradient magnitude
         """
         if self.pixel_shift:
-            reference_image = self.subset(self.video.get_frame(self.reference_range[0]), self.subset_size)
+            reference_image = self.subset(self.video.reader.get_frame(self.reference_range[0]), self.subset_size)
         else:
-            reference_image = np.zeros((self.video.image_height, self.video.image_width), dtype=float)
+            reference_image = np.zeros((self.video.reader.image_height, self.video.reader.image_width), dtype=float)
             for frame in range(self.reference_range[0], self.reference_range[1]):
-                reference_image += self.subset(self.video.get_frame(frame), self.subset_size)
+                reference_image += self.subset(self.video.reader.get_frame(frame), self.subset_size)
             reference_image /= (self.reference_range[1] - self.reference_range[0])
 
         gradient_0, gradient_1 = np.gradient(reference_image)

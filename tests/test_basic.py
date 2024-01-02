@@ -23,10 +23,10 @@ def test_points_1():
 
 def test_info():
     video = pyidi.pyIDI(cih_file='./data/data_showcase.cih')
-    assert 'Shutter Speed(s)' in video.info.keys()
-    assert 'Color Bit' in video.info.keys()
-    assert 'Total Frame' in video.info.keys()
-    assert 'Record Rate(fps)' in video.info.keys()
+    assert 'Shutter Speed(s)' in video.reader.info.keys()
+    assert 'Color Bit' in video.reader.info.keys()
+    assert 'Total Frame' in video.reader.info.keys()
+    assert 'Record Rate(fps)' in video.reader.info.keys()
 
 
 if __name__ == '__main__':

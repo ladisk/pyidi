@@ -3,7 +3,7 @@ import numpy as np
 import collections
 import matplotlib.pyplot as plt
 import pickle
-import pyMRAW
+# import pyMRAW
 import datetime
 import json
 import glob
@@ -27,22 +27,22 @@ available_method_shortcuts = [
     ]
 
 
-class pyIDI(VideoReader):
+class pyIDI():
     """
     The pyIDI base class represents the video to be analysed.
     """
     def __init__(self, cih_file):
         
         if type(cih_file) == str:
-            super().__init__(cih_file)
+            self.reader = VideoReader(cih_file)
             self.cih_file = cih_file
+            # self.info = self.reader.info
             # self.root = os.path.split(self.cih_file)[0]
             # Load selected video
             # self.mraw, self.info = pyMRAW.load_video(self.cih_file)
             # self.N = self.info['Total Frame']
             # self.image_width = self.info['Image Width']
             # self.image_height = self.info['Image Height']
-            print(self.root)
 
         # elif type(cih_file) in [np.ndarray, np.memmap]:
         #     self.root = ''
@@ -138,7 +138,7 @@ class pyIDI(VideoReader):
             marker = kwargs.get('marker', '.')
             color = kwargs.get('color', 'r')
             fig, ax = plt.subplots(figsize=figsize)
-            ax.imshow(self.get_frame(0).astype(float), cmap=cmap)
+            ax.imshow(self.reader.get_frame(0).astype(float), cmap=cmap)
             ax.scatter(self.points[:, 1], self.points[:, 0], 
                 marker=marker, color=color)
             plt.grid(False)
@@ -159,7 +159,7 @@ class pyIDI(VideoReader):
         max_L = np.max(field[:, 0]**2 + field[:, 1]**2)
 
         fig, ax = plt.subplots(1)
-        ax.imshow(self.video.get_frame(0), 'gray')
+        ax.imshow(self.reader.get_frame(0), 'gray')
         for i, ind in enumerate(self.points):
             f0 = field[i, 0]
             f1 = field[i, 1]
@@ -211,7 +211,7 @@ class pyIDI(VideoReader):
             cih_file_ = os.path.split(self.cih_file)[-1].split('.')[0]
         else:
             cih_file_ = 'ndarary_video'
-        self.root_analysis = os.path.join(self.root, f'{cih_file_}_pyidi_analysis')
+        self.root_analysis = os.path.join(self.reader.root, f'{cih_file_}_pyidi_analysis')
         if not os.path.exists(self.root_analysis):
             os.mkdir(self.root_analysis)
         
@@ -234,7 +234,7 @@ class pyIDI(VideoReader):
             pickle.dump(self.points, f, protocol=-1)
 
         out = {
-            'info': self.info,
+            'info': self.reader.info,
             'createdate': datetime.datetime.now().strftime("%Y %m %d    %H:%M:%S"),
             'cih_file': self.cih_file,
             'settings': self.method.create_settings_dict(),
@@ -270,6 +270,11 @@ class pyIDI(VideoReader):
     
     def gui(self):
         self.gui_obj = gui.gui(self)
+
+    @property
+    def mraw(self):
+        warnings.warn('`self.mraw` is deprecated and will be removed in the next version. Please use `self.reader.mraw` instead.', DeprecationWarning)
+        return self.reader.mraw
 
 #     def gui(self):
 #         """Napari interface.

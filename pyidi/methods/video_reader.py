@@ -6,7 +6,8 @@ Module for reading video files from high-speed video recordings. Based on pyMRAW
 
 import os
 import xmltodict
-import warnings
+# import warnings 
+import pyMRAW
 import numpy as np
 import imageio.v3 as iio
 
@@ -62,17 +63,21 @@ class VideoReader:
                     'EffectiveBit Depth',
                     'Comment Text',
                     'Color Bit']
-        cih = self._get_cih(cih_file)
+        self.info = self._get_cih(cih_file)
         
-        if not all(_ in cih.keys() for _ in wanted_info):
+        if not all(_ in self.info.keys() for _ in wanted_info):
             raise ValueError('Missing mandatory keys in cih file!')
         
         self.root = os.path.split(cih_file)[0]
         self.filename = os.path.splitext(os.path.split(cih_file)[1])[0]
-        self.info = cih.copy()
         self.N = self.info['Total Frame']
         self.image_width = self.info['Image Width']
         self.image_height = self.info['Image Height']
+
+        if self.info['File Format'].lower() == 'mraw':
+            # f_name = self.filename + '.' + self.info['File Format'].lower()
+            # input_file = os.path.join(self.root, f_name)
+            self.mraw, _ = pyMRAW.load_video(cih_file)
         return None
     
     def get_frame(self, frame_number, *args):
@@ -83,7 +88,8 @@ class VideoReader:
             raise ValueError('Frame number exceeds total frame number!')
 
         if self.info['File Format'].lower() == 'mraw':
-            return self._get_frame_from_mraw_file(frame_number)
+            # return self._get_frame_from_mraw_file(frame_number)
+            return self.mraw[frame_number]
 
         if self.info['File Format'].lower() in SUPPORTED_IMAGE_FORMATS:
             image = self._get_frame_from_image_stream(frame_number)
@@ -97,19 +103,19 @@ class VideoReader:
         if self.info['Color Bit'] == '8':
             return np.asarray(image, dtype=np.uint8)
         return np.asarray(image, dtype=np.uint16)
-    
-    def _generate_memmap(self, filename):
-        """
-        Generates a memory map for the video file.
-        """
-        if self.info['File Format'].lower() != 'mraw':
-            raise ValueError('Memory map can only be generated for mraw files!')
-        shape = (self.N, self.image_height, self.image_width)
-        if self.info['Color Bit'] == '8':
-            self.mraw = np.memmap(filename, dtype=np.uint8, mode='r', shape=shape)
-        else:
-            self.mraw = np.memmap(filename, dtype=np.uint16, mode='r', shape=shape)        
-        return None
+
+    # def _generate_memmap(self, filename):
+    #     """
+    #     Generates a memory map for the video file.
+    #     """
+    #     if self.info['File Format'].lower() != 'mraw':
+    #         raise ValueError('Memory map can only be generated for mraw files!')
+    #     shape = (self.N, self.image_height, self.image_width)
+    #     if self.info['Color Bit'] == '8':
+    #         self.mraw = np.memmap(filename, dtype=np.uint8, mode='r', shape=shape)
+    #     else:
+    #         self.mraw = np.memmap(filename, dtype=np.uint16, mode='r', shape=shape)        
+    #     return None
     
     # def close_memmap(self):
     #     """
@@ -147,18 +153,18 @@ class VideoReader:
             return np.dot(image, [0.2989, 0.5870, 0.1140]) # convert to grayscale
         return image
     
-    def _get_frame_from_mraw_file(self, frame_number):
-        """Reads the frame from the mraw file. Generates a memory map if it does not
-        exist.
+    # def _get_frame_from_mraw_file(self, frame_number):
+    #     """Reads the frame from the mraw file. Generates a memory map if it does not
+    #     exist.
 
-        :param frame_number: frame number
-        :return: image
-        """
-        f_name = self.filename + '.' + self.info['File Format'].lower()
-        input_file = os.path.join(self.root, f_name)
-        if not hasattr(self, 'mraw'):
-            self._generate_memmap(input_file)
-        return self.mraw[frame_number]
+    #     :param frame_number: frame number
+    #     :return: image
+    #     """
+    #     if not hasattr(self, 'mraw'):
+    #         f_name = self.filename + '.' + self.info['File Format'].lower()
+    #         input_file = os.path.join(self.root, f_name)
+    #         self._generate_memmap(input_file)
+    #     return self.mraw[frame_number]
 
     def _get_cih(self, filename):
         """Function reads the CIH(X) - Camera Information Header file and read data
@@ -222,20 +228,20 @@ class VideoReader:
         # ff = cih['File Format']
         # if ff.lower() not in SUPPORTED_FILE_FORMATS:
         #     raise Exception('Unexpected File Format: {:g}.'.format(ff))
-        bits = cih['Color Bit']
-        if bits < 12:
-            warnings.warn('Not 12bit ({:g} bits)! clipped values?'.format(bits))
-                    # - may cause overflow')
-                    # 12-bit values are spaced over the 16bit resolution - in case of photron filming at 12bit
-                    # this can be meanded by dividing images with //16
-        if cih['EffectiveBit Depth'] != 12:
-            warnings.warn('Not 12bit image!')
-        ebs = cih['EffectiveBit Side']
-        if ebs.lower() not in SUPPORTED_EFFECTIVE_BIT_SIDE:
-            raise Exception('Unexpected EffectiveBit Side: {:g}'.format(ebs))
-        if (cih['File Format'].lower() == 'mraw') & (cih['Color Bit'] not in [8, 12, 16]):
-            raise Exception('pyMRAW only works for 8-bit, 12-bit and 16-bit files!')
-        if cih['Original Total Frame'] > cih['Total Frame']:
-            warnings.warn('Clipped footage! (Total frame: {}, Original total frame: {})'.format(cih['Total Frame'], cih['Original Total Frame'] ))
+        # bits = cih['Color Bit']
+        # if bits < 12:
+        #     warnings.warn('Not 12bit ({:g} bits)! clipped values?'.format(bits))
+        #             # - may cause overflow')
+        #             # 12-bit values are spaced over the 16bit resolution - in case of photron filming at 12bit
+        #             # this can be meanded by dividing images with //16
+        # if cih['EffectiveBit Depth'] != 12:
+        #     warnings.warn('Not 12bit image!')
+        # ebs = cih['EffectiveBit Side']
+        # if ebs.lower() not in SUPPORTED_EFFECTIVE_BIT_SIDE:
+        #     raise Exception('Unexpected EffectiveBit Side: {:g}'.format(ebs))
+        # if (cih['File Format'].lower() == 'mraw') & (cih['Color Bit'] not in [8, 12, 16]):
+        #     raise Exception('pyMRAW only works for 8-bit, 12-bit and 16-bit files!')
+        # if cih['Original Total Frame'] > cih['Total Frame']:
+        #     warnings.warn('Clipped footage! (Total frame: {}, Original total frame: {})'.format(cih['Total Frame'], cih['Original Total Frame'] ))
 
         return cih
