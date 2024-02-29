@@ -1,4 +1,3 @@
-from .video_reader import VideoReader
 from .idi_method import IDIMethod
 from ._simplified_optical_flow import SimplifiedOpticalFlow
 from ._gradient_based_optical_flow import GradientBasedOpticalFlow
