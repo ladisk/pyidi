@@ -119,3 +119,6 @@ dmypy.json
 .pyre/
 
 /data/*.pkl
+
+#other
+server_user_id.txt

@@ -2,15 +2,15 @@
 Date : 2016/08/31
 Camera Type : 1
 Record Rate(fps) : 1
-Shutter Speed(s) : 1.000000
-Total Frame : 101
+Shutter Speed(s) : 1.0
+Total Frame : 10
 Original Total Frame : 101
 Start Frame : 0
 Image Width : 256
 Image Height : 128
 Color Type : Mono
 Color Bit : 16
-File Format : MRaw
+File Format : PNG
 EffectiveBit Depth : 12
 EffectiveBit Side : Lower
 Comment Text : Generated sequence.<br>Modify measurement info in<br>created .cih file if necessary.
