@@ -1,0 +1,1175 @@
+[33mcommit d37af2274f1dc98ff210c383c340742f7da0eece[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmaster[m[33m, [m[1;31mupstream/master[m[33m, [m[1;31mupstream/HEAD[m[33m)[m
+Merge: 39ad506 5e82f91
+Author: Klemen Zaletelj <zaletelj.klemen@gmail.com>
+Date:   Tue Aug 22 08:34:52 2023 +0200
+
+    Merge pull request #26 from ThijsIllimited/master
+    
+    Implemented Pixel shift
+
+[33mcommit 5e82f9124902ee6b57f5e53ed936f4a34d76d533[m
+Author: ThijsIllimited <111088301+ThijsIllimited@users.noreply.github.com>
+Date:   Fri Aug 11 11:23:00 2023 +0200
+
+    Updated pixel shifting
+    
+    delta_0/delta_1 are now 0 instead of an array of zeros when pixel shifting is off.
+    Moved the execution of the pixel shift in the already existing definition for pixel shifting.
+    
+    Implemented a method that catches points going outside of the image. Displacements of these points are set to NaN after this happens. Before, a point going outside of the image caused an error.
+
+[33mcommit 8f1a5ba2a968db2554c794190f86b0bd8e37b8d5[m
+Author: ThijsIllimited <111088301+ThijsIllimited@users.noreply.github.com>
+Date:   Tue Aug 8 12:46:22 2023 +0200
+
+    Convert to physical units outside of the loop
+
+[33mcommit f2448c3e0ae79028f125881945aacbf39f276908[m
+Author: ThijsIllimited <111088301+ThijsIllimited@users.noreply.github.com>
+Date:   Tue Aug 8 11:50:52 2023 +0200
+
+    Implemented Pixel shift
+
+[33mcommit 39ad506de626c2c2200d23fab69dea5e9d22c24a[m
+Merge: 1a2022b ab7246b
+Author: dgorjup <domen_gorjup@hotmail.com>
+Date:   Tue Jun 27 11:31:30 2023 +0200
+
+    Merge pull request #25 from domengorjup/master
+    
+    BUG: fix bugs with numpy.float deprecation
+
+[33mcommit ab7246be0b853fc6282e420ca1dabc70dea90b5b[m
+Author: dgorjup <domen_gorjup@hotmail.com>
+Date:   Tue Jun 27 11:29:47 2023 +0200
+
+    version bump
+
+[33mcommit 3c2c9b717e0cf67d07f29a92049b83eca2e105e2[m
+Author: dgorjup <domen_gorjup@hotmail.com>
+Date:   Tue Jun 27 11:26:59 2023 +0200
+
+    numpy.float deprecation bug fix, pickle file closing warnings fix
+
+[33mcommit 1a2022b611e7e0a5bf62b7269c70fedfa450c9da[m
+Merge: 8e1c017 edf62b0
+Author: Janko Slavič <janko.slavic@gmail.com>
+Date:   Tue May 9 06:24:03 2023 -0300
+
+    Merge pull request #22 from itomac/master
+    
+    small correction
+
+[33mcommit edf62b025c267da988a242cb5d629f5ad17ca2a2[m
+Author: Ivan Tomac <itomac80@gmail.com>
+Date:   Mon May 8 11:00:28 2023 +0200
+
+    small correction: ROI border in show_points() is shifted for 0.5px to be shown centered around selected point.
+
+[33mcommit 8e1c0179ab50f95ece477d9ace5870db2c82322c[m
+Merge: b3a7ba3 2e8a602
+Author: Janko Slavič <janko.slavic@gmail.com>
+Date:   Mon Dec 5 14:47:48 2022 +0100
+
+    Merge pull request #21 from domengorjup/master
+    
+    enable loading video from np.arrays with the 'lk' method
+
+[33mcommit 2e8a602d6a47006451c1d9c53990271b3c3c0486[m
+Author: domengorjup <domen_gorjup@hotmail.com>
+Date:   Mon Dec 5 13:50:54 2022 +0100
+
+    enable loading video from np.arrays with the 'lk' method
+
+[33mcommit b3a7ba3acf1adbe8f2e781480f7dbe01f2d031ab[m
+Author: klemen_git <zaletelj.klemen@gmail.com>
+Date:   Mon Sep 6 12:43:15 2021 +0200
+
+    v0.25 prep
+
+[33mcommit ac579fe93261a8832af51c3ff168fba71273cc54[m
+Author: klemen_git <zaletelj.klemen@gmail.com>
+Date:   Mon Sep 6 09:51:01 2021 +0200
+
+    doc update and added gifs for napari
+
+[33mcommit 0e829b7a5bd7e94125baa60faf1ecb920ff91781[m
+Author: klemen_git <zaletelj.klemen@gmail.com>
+Date:   Mon Sep 6 09:02:20 2021 +0200
+
+    readme update
+
+[33mcommit 752b80f0a56722f334cfe49536e2a79c78ae940c[m
+Author: Janko Slavič <janko.slavic@gmail.com>
+Date:   Thu Sep 2 07:24:36 2021 +0200
+
+    changed  to  in readme
+
+[33mcommit ef24fd60ddb67b4e8ffef6b00b51e2fa3c334641[m
+Merge: 510c991 c922346
+Author: Janko Slavič <janko.slavic@gmail.com>
+Date:   Thu Sep 2 07:15:27 2021 +0200
+
+    Merge pull request #18 from jasasonc/master
+    
+    Napari image viewer and selection tool
+
+[33mcommit c922346a2c143465f2269a574064d6d1ce88c57d[m
+Author: klemen_git <zaletelj.klemen@gmail.com>
+Date:   Thu Aug 26 08:56:57 2021 +0200
+
+    travis: added python 3.9
+
+[33mcommit a77344f8c33d1c50df9600bd0367043553258288[m
+Author: klemen_git <zaletelj.klemen@gmail.com>
+Date:   Thu Aug 26 08:10:56 2021 +0200
+
+    travis update
+
+[33mcommit 8f2f28b1c76672573b9fbc062684ea172e769a23[m
+Author: klemen_git <zaletelj.klemen@gmail.com>
+Date:   Wed Jul 14 07:05:18 2021 +0200
+
+    gui in separate module
+
+[33mcommit 699d2027a97fa3baa4eed0faebdbb07e6e0058b5[m
+Author: klemen_git <zaletelj.klemen@gmail.com>
+Date:   Fri Jul 9 13:58:03 2021 +0200
+
+    work on UI
+
+[33mcommit 8a8a9cda7d542ae3351b1887d6049e05838abf21[m
+Author: jasasonc <jasasonc@gmail.com>
+Date:   Fri Jul 9 12:46:20 2021 +0200
+
+    Added napari method configurator
+
+[33mcommit 1e7788df49217fff3b11aa7bf2be5d13ba5c3f88[m
+Author: jasasonc <jasasonc@gmail.com>
+Date:   Thu Jul 8 14:35:14 2021 +0200
+
+    napari UI added functionality
+
+[33mcommit 2909672220e2463ce7a1ccc3b6d16b7a4a2500af[m
+Author: jasasonc <jasasonc@gmail.com>
+Date:   Wed Jun 30 09:10:08 2021 +0200
+
+    napari installation fix
+
+[33mcommit d42c92694f64b2dd61cf88de8139a8d767a46b48[m
+Author: jasasonc <jasasonc@gmail.com>
+Date:   Wed Jun 30 09:02:55 2021 +0200
+
+    napari version fix
+
+[33mcommit b59d353be685eaeade9eb6d0ef73fd2e0960183f[m
+Author: jasasonc <jasasonc@gmail.com>
+Date:   Wed Jun 30 08:45:33 2021 +0200
+
+    restructured __call__ function
+
+[33mcommit 5a0affe7cdb4991887b876c72f1d7c6d40200f69[m
+Author: jasasonc <jasasonc@gmail.com>
+Date:   Wed Jun 30 08:44:32 2021 +0200
+
+    Updated napari documentation
+
+[33mcommit bdda63092210f998f5b83031b4837ac519636d14[m
+Author: jasasonc <jasasonc@gmail.com>
+Date:   Tue Jun 29 14:23:12 2021 +0200
+
+    Updated documentation + GIF showcase
+
+[33mcommit bcff68c000cd7c049a2f96866526832e268d81c8[m
+Author: jasasonc <jasasonc@gmail.com>
+Date:   Tue Jun 29 14:22:15 2021 +0200
+
+    fixed empty self.points array problem
+
+[33mcommit 4981c46267c710a8db99b80ec60528069a26b8ba[m
+Author: jasasonc <jasasonc@gmail.com>
+Date:   Mon Jun 28 14:54:23 2021 +0200
+
+    Napari documentation
+
+[33mcommit b368f5167e8d18702519dd9e5ba05846e25f4ccc[m
+Author: jasasonc <jasasonc@gmail.com>
+Date:   Mon Jun 28 14:53:22 2021 +0200
+
+    Added individual point selection
+
+[33mcommit 91a1d4a45b9917d1093f9f5334e4b6c9edfcaac2[m
+Author: jasasonc <jasasonc@gmail.com>
+Date:   Thu Jun 24 14:48:12 2021 +0200
+
+    Point selection UI inside __call__ method
+
+[33mcommit a46797a1087b5c26cb0460a1aa5c22e513490342[m
+Author: jasasonc <jasasonc@gmail.com>
+Date:   Wed Jun 23 14:20:35 2021 +0200
+
+    __call__ method - image viewer
+
+[33mcommit ef4dd5a8e14dbd0e4e524f704ff2b3ceddfd231e[m
+Author: jasasonc <jasasonc@gmail.com>
+Date:   Wed Jun 23 10:15:28 2021 +0200
+
+    Added __repr__ method
+
+[33mcommit 76a4acd832ac5ab3c21e3064c09e8613bc24c011[m
+Author: jasasonc <jasasonc@gmail.com>
+Date:   Tue Jun 22 13:01:20 2021 +0200
+
+    SOF Warning for large displacements
+
+[33mcommit 510c99172dc43f569d97ac922d68d20c850429ec[m
+Merge: 99847fd 89ef473
+Author: klemen_git <zaletelj.klemen@gmail.com>
+Date:   Mon Mar 29 21:52:15 2021 +0200
+
+    Merge branch 'master' of https://github.com/ladisk/pyIDI
+
+[33mcommit 99847fd8ba6f441d746f93882edbd025dc0ad8fd[m
+Author: klemen_git <zaletelj.klemen@gmail.com>
+Date:   Mon Mar 29 21:51:05 2021 +0200
+
+    updated docs (mainly id methods)
+
+[33mcommit 89ef473cfea12d0c5381e46803e2d410f3368b3a[m
+Author: jankoslavic <janko.slavic@gmail.com>
+Date:   Fri Mar 26 06:32:26 2021 +0100
+
+    prep for v0.24 release
+
+[33mcommit a3ac182678595f2a27108aaf35c393a296ea75c1[m
+Merge: 799c10b 6b398ec
+Author: Klemen Zaletelj <zaletelj.klemen@gmail.com>
+Date:   Thu Mar 25 16:20:30 2021 +0100
+
+    Merge pull request #16 from ladisk/develop
+    
+    Analysis saving, analysis loading, selection UI
+
+[33mcommit 6b398ecc8c3076ab66d7de5520fda02957723469[m
+Merge: 799c10b a81e9fa
+Author: klemen_git <zaletelj.klemen@gmail.com>
+Date:   Thu Mar 25 16:12:33 2021 +0100
+
+    Merge branch 'develop'
+
+[33mcommit a81e9fa6cd56930cfac3caed44993b24724dbd98[m
+Author: klemen_git <zaletelj.klemen@gmail.com>
+Date:   Thu Mar 25 16:04:51 2021 +0100
+
+    readme update
+
+[33mcommit 2754eae38ad65a329c8e36ff8fca0f0ff286b595[m
+Author: klemen_git <zaletelj.klemen@gmail.com>
+Date:   Thu Mar 25 15:54:31 2021 +0100
+
+    Bug fix (self.points.shape)
+
+[33mcommit 981b1fe78086c3dcbc6c63a18036a1eac9f3d3cf[m
+Author: klemen_git <zaletelj.klemen@gmail.com>
+Date:   Thu Mar 25 14:54:47 2021 +0100
+
+    docs updated, point selection docs
+
+[33mcommit 2a1332463941c6d1ef47142928f26bfe33604cee[m
+Author: klemen_git <zaletelj.klemen@gmail.com>
+Date:   Thu Mar 25 12:05:56 2021 +0100
+
+    testing update
+
+[33mcommit 29358d4e5beeffbf383340ab452ba14a0912780d[m
+Author: klemen_git <zaletelj.klemen@gmail.com>
+Date:   Thu Mar 25 12:00:55 2021 +0100
+
+    create_analysis_directory bug fix
+
+[33mcommit 4ae4f3c843d567958606ce0acb1877d6a3108c99[m
+Author: klemen_git <zaletelj.klemen@gmail.com>
+Date:   Thu Mar 25 11:53:22 2021 +0100
+
+    numba in requirements
+
+[33mcommit 8d35e94b30046bf3e86ca434a02a2fdd2e05eca6[m
+Merge: 576b0b3 1fe47a0
+Author: Klemen Zaletelj <zaletelj.klemen@gmail.com>
+Date:   Thu Mar 25 11:49:41 2021 +0100
+
+    Merge pull request #15 from klemengit/develop
+    
+    ROI selection UI, load analysis
+
+[33mcommit 1fe47a0074e7e07f796f820ad77b512b7ed4a56b[m
+Author: klemen_git <zaletelj.klemen@gmail.com>
+Date:   Thu Mar 25 10:14:07 2021 +0100
+
+    ROI selection UI upgrade
+
+[33mcommit 85012e76f7eb5496957c3f0e9151647fcb8d9dfd[m
+Author: klemen_git <zaletelj.klemen@gmail.com>
+Date:   Thu Mar 25 07:33:29 2021 +0100
+
+    use_numba argument, numba not implemented
+
+[33mcommit 10b6d5415a6bf8dec9dd9e992b7183186c8750a4[m
+Author: klemen_git <zaletelj.klemen@gmail.com>
+Date:   Fri Mar 19 19:11:05 2021 +0100
+
+    Show number of selected points
+
+[33mcommit 799c10ba2385c7ecbf2d509991e430367d32d191[m
+Author: klemen_git <zaletelj.klemen@gmail.com>
+Date:   Mon Sep 7 10:54:20 2020 +0200
+
+    Zenodo DOI badge added
+
+[33mcommit ddc3c61c345f1fea840f030c6ef0c1d44137df55[m
+Author: klemen_git <zaletelj.klemen@gmail.com>
+Date:   Fri Jul 3 13:40:57 2020 +0200
+
+    pickle dump protocol fix
+
+[33mcommit c4518251a5b9999233a2bacee65d1c3d888ad437[m[33m ([m[1;33mtag: [m[1;33mv0.23[m[33m)[m
+Author: klemen_git <zaletelj.klemen@gmail.com>
+Date:   Thu Jul 2 15:14:57 2020 +0200
+
+    readme and docs update
+
+[33mcommit c093ba8778da37790c1cad5391b3cf5b3b2fd22f[m
+Author: klemen_git <zaletelj.klemen@gmail.com>
+Date:   Thu Jul 2 10:18:43 2020 +0200
+
+    load analysis from directory, create new object
+
+[33mcommit c5f68402f062067776409ae4144729a1cb93b4ac[m
+Author: klemen_git <zaletelj.klemen@gmail.com>
+Date:   Thu Jul 2 08:57:32 2020 +0200
+
+    code cleanup
+
+[33mcommit 576b0b30e40d6430cb6e6ee73a16af57b57039da[m
+Author: klemen_git <zaletelj.klemen@gmail.com>
+Date:   Wed Jul 1 13:48:23 2020 +0200
+
+    result saving: structure change
+
+[33mcommit 7e5b28b121a90946325f46af46a373ecf410f499[m
+Author: klemen_git <zaletelj.klemen@gmail.com>
+Date:   Wed Jul 1 13:47:51 2020 +0200
+
+    bug fix in settings dict creation
+
+[33mcommit 3a5607fafe9ca138294f32cf0893dc6b74161295[m
+Author: klemen_git <zaletelj.klemen@gmail.com>
+Date:   Wed Jul 1 13:18:24 2020 +0200
+
+    Code cleanup
+
+[33mcommit a84d46a50cd1e469f4f1468730ab8ff215d22d93[m
+Merge: 6347465 39e0716
+Author: klemen_git <zaletelj.klemen@gmail.com>
+Date:   Tue Jun 30 14:32:58 2020 +0200
+
+    Merge branch 'master' into develop
+
+[33mcommit 6347465c93f3b1d9202da110c18aa74409bd2da0[m
+Author: klemen_git <zaletelj.klemen@gmail.com>
+Date:   Tue Jun 30 14:28:23 2020 +0200
+
+    numba implementation
+
+[33mcommit 39e0716ac209977a1b99aa02f1abb1d303571f92[m
+Author: klemen_git <zaletelj.klemen@gmail.com>
+Date:   Tue Jun 30 14:23:45 2020 +0200
+
+    minor code changes
+
+[33mcommit 3aa2a75a248a8beb2e761bf5505b0480594f8a65[m
+Author: klemen_git <zaletelj.klemen@gmail.com>
+Date:   Tue Jun 30 14:18:00 2020 +0200
+
+    fast gradient computation
+
+[33mcommit 5f5f364f816c5b82953624348c6a85ae49bdb885[m
+Author: klemen_git <zaletelj.klemen@gmail.com>
+Date:   Mon Jun 29 10:33:14 2020 +0200
+
+    deselect polygon (remove points inside the polyg)
+
+[33mcommit 496e41bdee59bed147aff36e060a70d603cb84aa[m
+Author: klemen_git <zaletelj.klemen@gmail.com>
+Date:   Mon Jun 29 09:47:26 2020 +0200
+
+    roi grid inside polygon speedup
+
+[33mcommit d9aed641c31907e94f2ad57e8234a1f37eedfa47[m
+Author: klemen_git <zaletelj.klemen@gmail.com>
+Date:   Sat Jun 20 12:44:12 2020 +0200
+
+    inverse and norm computation optimization
+
+[33mcommit ced1460b0b7caf3949fcf04a039a267854d14c11[m
+Author: klemen_git <zaletelj.klemen@gmail.com>
+Date:   Fri Jun 19 21:59:44 2020 +0200
+
+    mraw_range step and minor code changes
+
+[33mcommit db158e018fd631555bec12f2f96053f82466f4aa[m
+Author: klemen_git <zaletelj.klemen@gmail.com>
+Date:   Fri Jun 19 19:24:13 2020 +0200
+
+    ROI on edge moved into image (initial)
+
+[33mcommit aef036ab9d67094d65d62aeb078989e4de60b302[m
+Author: klemen_git <zaletelj.klemen@gmail.com>
+Date:   Fri Jun 19 18:06:31 2020 +0200
+
+    mraw range for partial disp. identification
+
+[33mcommit e33d32b663d5cf9e4b34455836c7dd99da155b08[m
+Author: klemen_git <zaletelj.klemen@gmail.com>
+Date:   Fri Jun 19 08:59:27 2020 +0200
+
+    updated lk_scipy (lk_scipy2)
+
+[33mcommit a6dba83824a44c6bd8448c795e8a7814afa2fd5e[m
+Author: domengorjup <domen_gorjup@hotmail.com>
+Date:   Thu Jun 18 10:17:18 2020 +0200
+
+    add bounds checking to lucas_kanade `_padded_slice`
+
+[33mcommit 6a4219726b7ecd2d1fa27237cb77942b30ad00fa[m
+Author: domengorjup <domen_gorjup@hotmail.com>
+Date:   Thu Jun 18 08:51:15 2020 +0200
+
+    fix multiprocessing bugs, add multiprocessing test
+
+[33mcommit 210195e40ff9b65d86922c68995d2cc8658b8868[m
+Author: domengorjup <domen_gorjup@hotmail.com>
+Date:   Thu Jun 18 08:21:07 2020 +0200
+
+    update long_description for release
+
+[33mcommit d1b0491ee72b890c72f21f329deb6cb262e2f778[m
+Author: domengorjup <domen_gorjup@hotmail.com>
+Date:   Wed Jun 17 17:10:01 2020 +0200
+
+    specify mantichora version compatible with Windows
+
+[33mcommit 83c678445d3213e347d86e7e59bc65d306977b7d[m
+Author: klemen_git <zaletelj.klemen@gmail.com>
+Date:   Wed Jun 17 10:33:21 2020 +0200
+
+    ROISelect GUI updates (cleanup)
+
+[33mcommit 5e0223de808a3797050b54ac68e5d058d4985c38[m
+Author: klemen_git <zaletelj.klemen@gmail.com>
+Date:   Wed Jun 17 10:32:44 2020 +0200
+
+    ROISelect namespace change
+
+[33mcommit 576a344ea185e4b22ae13bc48e89e83c5dbf6509[m
+Author: klemen_git <zaletelj.klemen@gmail.com>
+Date:   Sat Jun 13 21:37:13 2020 +0200
+
+    Predetermined polygon -  ROI grid gui
+
+[33mcommit d9fc054216fc275b2bbc88de3d4e7739b070af1f[m
+Author: klemen_git <zaletelj.klemen@gmail.com>
+Date:   Sat Jun 13 21:30:37 2020 +0200
+
+    ROI grid selection gui
+
+[33mcommit c364e8cd1d99c27ce892be56dea84424b56d7711[m
+Author: klemen_git <zaletelj.klemen@gmail.com>
+Date:   Sat Jun 13 21:00:08 2020 +0200
+
+    auto_filename is attribute
+
+[33mcommit 21682fea334b556c70c94279381ca796f25024c9[m
+Author: klemen_git <zaletelj.klemen@gmail.com>
+Date:   Tue Jun 9 14:14:30 2020 +0200
+
+    LucasKanade: reference image selection
+
+[33mcommit e27d2b9fe4c4242b4399b458385a2d84e0ee00ad[m
+Merge: cd825bc c97b823
+Author: klemen_git <zaletelj.klemen@gmail.com>
+Date:   Fri Apr 3 16:19:36 2020 +0200
+
+    Merge branch 'develop'
+
+[33mcommit c97b8235ae4bc51e3e3a9af3c587ebe98f9206cc[m
+Author: klemen_git <zaletelj.klemen@gmail.com>
+Date:   Fri Apr 3 16:19:16 2020 +0200
+
+    tools.GridOfROI change (structural)
+
+[33mcommit 70fc423a8cb4a851047a2eb9f51c9be82f07983e[m
+Author: klemen_git <zaletelj.klemen@gmail.com>
+Date:   Thu Mar 19 09:30:28 2020 +0100
+
+    automatic settings saving
+
+[33mcommit 87da64616b82f4095abadff1591dbe90f42ecc7e[m
+Author: klemen_git <zaletelj.klemen@gmail.com>
+Date:   Mon Mar 9 13:05:40 2020 +0100
+
+    docstrings, minor changes
+
+[33mcommit df80e0d66a54ffade3ea0f6cff474fd2933e4764[m
+Author: klemengit <zaletelj.klemen@gmail.com>
+Date:   Mon Mar 9 09:19:21 2020 +0100
+
+    auto save filename, log encoding
+
+[33mcommit 71d06dd8d58356c80489812dd150cb2c4509b010[m
+Merge: a51a5a1 97d8ebc
+Author: klemengit <zaletelj.klemen@gmail.com>
+Date:   Fri Mar 6 07:23:15 2020 +0100
+
+    Merge
+
+[33mcommit 97d8ebc2c65263b44eb79e7aab3ef3246eda918d[m
+Author: klemen_git <zaletelj.klemen@gmail.com>
+Date:   Wed Mar 4 16:23:08 2020 +0100
+
+    temp displacement storage and autosave
+
+[33mcommit a51a5a1c22ed611c021ef3e045d24f4e4c52ad61[m
+Author: klemen_git <zaletelj.klemen@gmail.com>
+Date:   Wed Mar 4 16:23:08 2020 +0100
+
+    temp displacement storage and autosave
+
+[33mcommit 55a0fede9142de8fb891c622447e377fcd0e0c76[m
+Author: klemengit <zaletelj.klemen@gmail.com>
+Date:   Wed Mar 4 14:58:26 2020 +0100
+
+    point split update
+
+[33mcommit cd825bc9f82f0ee5cbb4ca80104218492b66012e[m
+Merge: bbf8b83 8b44398
+Author: klemen_git <zaletelj.klemen@gmail.com>
+Date:   Wed Mar 4 15:08:32 2020 +0100
+
+    Merge branch 'master' into develop
+
+[33mcommit 8b44398f396ac5e8705a09ef54f4c459b7310d73[m
+Author: klemengit <zaletelj.klemen@gmail.com>
+Date:   Wed Mar 4 14:58:26 2020 +0100
+
+    point split update
+
+[33mcommit bbf8b83a7a8777fd5b5051aee4f9d94b022f8b34[m
+Author: klemen_git <zaletelj.klemen@gmail.com>
+Date:   Tue Mar 3 12:24:32 2020 +0100
+
+    array as video support
+
+[33mcommit eb7a1debbc2a284f909df6a8e266f7b40cff055a[m
+Merge: 8c5afa3 4a0d1c2
+Author: klemen_git <zaletelj.klemen@gmail.com>
+Date:   Tue Mar 3 12:15:30 2020 +0100
+
+    Merge branch 'develop' of https://github.com/ladisk/pyIDI into develop
+
+[33mcommit 4a0d1c262789ae4d3aaa0ae3e830233562b12053[m
+Author: klemengit <zaletelj.klemen@gmail.com>
+Date:   Fri Feb 14 13:13:17 2020 +0100
+
+    multiprocessing point split debug
+
+[33mcommit 8c5afa3df64b9be3912450328d529c87c16d26f7[m
+Author: klemen_git <zaletelj.klemen@gmail.com>
+Date:   Wed Feb 5 08:23:33 2020 +0100
+
+    prep 0.21 - setup.py
+
+[33mcommit 13d24cd99a684b10ce74995fbc07ec57cfb1ff10[m
+Author: jankoslavic <janko.slavic@gmail.com>
+Date:   Wed Feb 5 08:08:42 2020 +0100
+
+    Release 0.21 prep
+
+[33mcommit 5155122b6f23fd467de83546033e80f950a23b7e[m
+Author: klemen_git <zaletelj.klemen@gmail.com>
+Date:   Wed Feb 5 07:26:15 2020 +0100
+
+    Showcase change
+
+[33mcommit d47f035f60768b4f61477d8041963798d1672df9[m
+Author: klemen_git <zaletelj.klemen@gmail.com>
+Date:   Fri Jan 31 13:46:33 2020 +0100
+
+    multiprocessing duration info
+
+[33mcommit 02f9f4e5f4bb6746cf0ba86c3d7dc82ac73d7101[m
+Author: klemen_git <zaletelj.klemen@gmail.com>
+Date:   Fri Jan 31 13:29:25 2020 +0100
+
+    default multi processing change
+
+[33mcommit 79b6c7c43a9c7e088576832c3578d2005bafe606[m
+Author: klemen_git <zaletelj.klemen@gmail.com>
+Date:   Fri Jan 31 13:21:45 2020 +0100
+
+    mantichora nworkers fix
+
+[33mcommit 1697d673e63d36e2c313c5b5c610c4f0d4321c85[m
+Author: klemen_git <zaletelj.klemen@gmail.com>
+Date:   Fri Jan 31 13:07:14 2020 +0100
+
+    requirements update
+
+[33mcommit 47b4c7d84862e19bc2a79bdab4c9ff0c633220aa[m
+Author: klemen_git <zaletelj.klemen@gmail.com>
+Date:   Fri Jan 31 12:00:27 2020 +0100
+
+    changes in configure method (arguments)
+    added mantichora and atpbar
+
+[33mcommit 9a598f6b82706c8738814424589623a06ef7bc1c[m
+Author: domengorjup <domen_gorjup@hotmail.com>
+Date:   Fri Jan 31 09:17:19 2020 +0100
+
+    fixed `set_points` bug when input is not a numpy.ndarray
+
+[33mcommit becc95911269691719f874fd8d371a77ab2abe55[m
+Author: domengorjup <domen_gorjup@hotmail.com>
+Date:   Fri Jan 31 09:12:22 2020 +0100
+
+    update setup script and requirements
+
+[33mcommit 61a7c5eed349673eddacaeca1f4004710e6de432[m
+Merge: 5bda00d e98ed06
+Author: domengorjup <domen_gorjup@hotmail.com>
+Date:   Thu Jan 30 10:26:18 2020 +0100
+
+    new implementation of the Lucas-Kanade method for translations
+
+[33mcommit 5bda00d188769e5da41e536e6675cea423213971[m
+Author: domengorjup <domen_gorjup@hotmail.com>
+Date:   Wed Jan 29 08:47:52 2020 +0100
+
+    working n 2-parameter DIC
+
+[33mcommit e98ed06b67bd09a16a8031a54ca992e34d9e9009[m
+Author: jankoslavic <janko.slavic@gmail.com>
+Date:   Wed Jan 15 06:57:51 2020 +0100
+
+    preparation for 0.20 release
+
+[33mcommit 2edfc4fbc00396ee13609732757227ee97cb80bb[m
+Author: klemen_git <zaletelj.klemen@gmail.com>
+Date:   Tue Jan 14 14:09:56 2020 +0100
+
+    basic usage gif
+
+[33mcommit 3816e519304877bc1ff2afbb2d45ad6c6a9b7318[m
+Author: klemen_git <zaletelj.klemen@gmail.com>
+Date:   Mon Jan 13 08:42:48 2020 +0100
+
+    Multiprocessing cleanup, showcase update and v0.19 prep
+
+[33mcommit 9ee371852ee8ea3674ad34b3fa1c96a866288513[m
+Author: klemengit <zaletelj.klemen@gmail.com>
+Date:   Mon Jan 13 08:29:52 2020 +0100
+
+    multiprocessing update
+
+[33mcommit 793b3a49f7ee2f1d951b04cd59c4524781558a5a[m
+Author: klemengit <zaletelj.klemen@gmail.com>
+Date:   Thu Jan 9 15:45:53 2020 +0100
+
+    multiprocessing update
+
+[33mcommit cacd00cf0a4c51ab37df0406eca4d73458b7a019[m
+Author: klemen_git <zaletelj.klemen@gmail.com>
+Date:   Wed Jan 8 12:44:39 2020 +0100
+
+    multiprocessing
+
+[33mcommit 2e447ffdbfe3020644b69c866ec43c8ed4693c3b[m
+Author: klemen_git <zaletelj.klemen@gmail.com>
+Date:   Fri Dec 6 12:13:25 2019 +0100
+
+    Save results of computation method added.
+
+[33mcommit 3d2a0a5aac0aa7b5823d14e81ccf1fcb123cb2c8[m
+Author: klemen_git <zaletelj.klemen@gmail.com>
+Date:   Tue Dec 3 15:13:25 2019 +0100
+
+    tools.py - new roi selection tool
+
+[33mcommit 7c6aa73b1fe9e1befaf2ef1d6125e2e85a8ef7fe[m
+Author: klemen_git <zaletelj.klemen@gmail.com>
+Date:   Thu Jul 11 09:59:13 2019 +0200
+
+    pyMRAW use, minor edits
+
+[33mcommit 0c8005336748e32f23050947438370ecadef2a58[m
+Author: klemen_git <zaletelj.klemen@gmail.com>
+Date:   Wed Jul 10 13:38:17 2019 +0200
+
+    bug fix
+
+[33mcommit 133e9ff61f3d9b4ff34e0e3c45a6ffef85778f23[m
+Author: klemen_git <zaletelj.klemen@gmail.com>
+Date:   Wed Jul 10 12:53:20 2019 +0200
+
+    readme update
+
+[33mcommit 4aec7d4589b1c928fe7e71cd4a688c21afa128d5[m
+Merge: a090f64 2676747
+Author: klemen_git <zaletelj.klemen@gmail.com>
+Date:   Wed Jul 10 12:44:43 2019 +0200
+
+    Merge branch 'develop'
+
+[33mcommit 2676747138ec27890ad247e96231ac8314dba31f[m
+Author: klemen_git <zaletelj.klemen@gmail.com>
+Date:   Wed Jul 10 12:44:37 2019 +0200
+
+    documentation update
+
+[33mcommit a090f64b1d346489b2b039f77ecdf7f4ff12869f[m
+Merge: db8897a 0ca96d3
+Author: klemen_git <zaletelj.klemen@gmail.com>
+Date:   Wed Jul 10 11:06:03 2019 +0200
+
+    Merge branch 'develop'
+
+[33mcommit 0ca96d38b9c5c1506bfaf5188890aa43d84cdf56[m
+Merge: 0fddbdd 07b285d
+Author: domengorjup <domen_gorjup@hotmail.com>
+Date:   Wed Jul 10 10:22:35 2019 +0200
+
+    Merge branch 'develop' of https://github.com/ladisk/pyidi into develop
+
+[33mcommit 0fddbdd5df8b30ca2c4943533cc5f80ade1d7879[m
+Author: domengorjup <domen_gorjup@hotmail.com>
+Date:   Wed Jul 10 10:22:23 2019 +0200
+
+    docs
+
+[33mcommit 07b285d29c7c18d0f2780d6a88b6378b0a83cbd4[m
+Author: klemen_git <zaletelj.klemen@gmail.com>
+Date:   Mon Jul 8 13:18:01 2019 +0200
+
+    multiprocessing for get_displacements()
+
+[33mcommit 03371c6205403d7939d15ee54b7efde1d57eb3aa[m
+Author: domengorjup <domen_gorjup@hotmail.com>
+Date:   Wed Jul 3 09:58:22 2019 +0200
+
+     available methods documentation
+
+[33mcommit 5714fb3ed91b3dd3ea0226172ccdc89c9368ebf5[m
+Author: klemen_git <zaletelj.klemen@gmail.com>
+Date:   Tue Jul 2 15:11:35 2019 +0200
+
+    Documentation update
+
+[33mcommit db8897a7a873f54530256fd5a814f7b84ac0bc52[m
+Author: jankoslavic <janko.slavic@gmail.com>
+Date:   Tue May 21 15:39:05 2019 +0200
+
+    Description polishing
+
+[33mcommit 9ea3d254a83624a02af97f2395696644fa1101bb[m
+Author: klemen_git <zaletelj.klemen@gmail.com>
+Date:   Tue May 21 14:57:05 2019 +0200
+
+    prep for 0.17 release
+
+[33mcommit 6e01b2af2842dd38424d980e6a34b78adc9c2606[m
+Author: klemen_git <zaletelj.klemen@gmail.com>
+Date:   Tue Apr 30 14:12:06 2019 +0200
+
+    minor changes
+
+[33mcommit 6b44c72da9b939e533770cd9dc7b95333a291fd6[m
+Author: klemen_git <zaletelj.klemen@gmail.com>
+Date:   Tue Apr 30 09:56:57 2019 +0200
+
+    test update.
+
+[33mcommit 3c7782a3a6c1b0ce64a76c309a4e3cb98b8eda6a[m
+Author: klemen_git <zaletelj.klemen@gmail.com>
+Date:   Fri Apr 26 11:02:48 2019 +0200
+
+    tools.py manual ROI selection
+
+[33mcommit 1dab0b6b8eefb9179eef70d7061045afd97d2710[m
+Author: klemen_git <zaletelj.klemen@gmail.com>
+Date:   Wed Apr 24 17:13:23 2019 +0200
+
+    tools.py, RegularROIGrid for ROI selection
+
+[33mcommit acb96009e0140fb8df4206cb367619508cd6015d[m
+Author: klemen_git <zaletelj.klemen@gmail.com>
+Date:   Wed Apr 24 09:30:52 2019 +0200
+
+    Lucas-Kanade docstring, visual code changes
+
+[33mcommit ea764819e006237041051da5ace3434f05a59937[m
+Author: klemen_git <zaletelj.klemen@gmail.com>
+Date:   Fri Apr 19 08:01:07 2019 +0200
+
+    Update lk
+
+[33mcommit b7b36e036e49873220b1b4c88b6913f25ed5bc49[m
+Author: klemen_git <zaletelj.klemen@gmail.com>
+Date:   Sun Apr 14 19:29:44 2019 +0200
+
+    Iterative Lucas-Kanade
+
+[33mcommit 1b1ab5773b8de118d8cfe8ad6a6fe1395212b0ad[m
+Author: klemen_git <zaletelj.klemen@gmail.com>
+Date:   Thu Feb 28 11:53:09 2019 +0100
+
+    tqdm autonotebook
+
+[33mcommit e6a661f99bd795b667da1da5224ed34fc3ed58a4[m
+Author: jankoslavic <janko.slavic@gmail.com>
+Date:   Wed Feb 27 20:00:27 2019 +0100
+
+    trying travis for py 3.7 and 3.6
+
+[33mcommit 90e4fc5b88b67fca4b84340958a915ffdec71899[m
+Author: jankoslavic <janko.slavic@gmail.com>
+Date:   Wed Feb 27 19:58:42 2019 +0100
+
+    trying travis for py 3.7
+
+[33mcommit 7e3e612783c92078c259a6742d09d5159bcb7b45[m
+Author: jankoslavic <janko.slavic@gmail.com>
+Date:   Wed Feb 27 19:53:17 2019 +0100
+
+    removed travis for py3.5, added py3.7.1
+
+[33mcommit f570ef361e469e75b5b96843110f1655daa96020[m
+Author: jankoslavic <janko.slavic@gmail.com>
+Date:   Wed Feb 27 19:48:54 2019 +0100
+
+    added scipy to requirements
+
+[33mcommit 53a9fcf5bb416153f6b450fefb980a52a41dba77[m
+Author: jankoslavic <janko.slavic@gmail.com>
+Date:   Wed Feb 27 19:10:51 2019 +0100
+
+    added pytest to requirements
+
+[33mcommit 1430bd967e7b1b55b6b34cedfe1a008dcddda8c0[m
+Author: jankoslavic <janko.slavic@gmail.com>
+Date:   Wed Feb 27 19:09:57 2019 +0100
+
+    added travis c badge
+
+[33mcommit dbdcdef0cd9d2e6e71467e2ac7373a19b7a5418d[m
+Author: jankoslavic <janko.slavic@gmail.com>
+Date:   Wed Feb 27 19:06:38 2019 +0100
+
+    added pytest and travis
+
+[33mcommit ff673e8e84d7394383c16515289fe4c990f5ff89[m
+Author: klemen_git <zaletelj.klemen@gmail.com>
+Date:   Wed Feb 27 14:04:33 2019 +0100
+
+    bug fix, code test, prep for 0.16 release
+
+[33mcommit 0435c7934ce4625cd192e5facbd909be417fd3b6[m
+Author: klemen_git <zaletelj.klemen@gmail.com>
+Date:   Wed Feb 27 13:35:14 2019 +0100
+
+    prep for 0.15 release
+
+[33mcommit 3d82bd20f4af9fd83bd6c6e1920a57e791ac6f46[m
+Author: klemen_git <zaletelj.klemen@gmail.com>
+Date:   Wed Feb 27 08:12:58 2019 +0100
+
+    styling changes
+
+[33mcommit 7d22f4b028b577cd740a92ba95264fe2da1f5882[m
+Author: klemen_git <zaletelj.klemen@gmail.com>
+Date:   Mon Feb 25 15:11:34 2019 +0100
+
+    show displacement field function
+
+[33mcommit 9cc0bedbf5478022ce52b665dcdd2a45cfb862ad[m
+Author: klemen_git <zaletelj.klemen@gmail.com>
+Date:   Mon Feb 25 14:52:22 2019 +0100
+
+    min_grad at point picking (sof)
+
+[33mcommit a5dd0c4e73dabab60bf283cf2a6c13a7ce0efdc0[m
+Author: Klemen Zaletelj <zaletelj.klemen@gmail.com>
+Date:   Mon Feb 25 14:24:10 2019 +0100
+
+    Update README.md
+
+[33mcommit 65e8ee5d32a31a80a8b27bf20e476b757d561b18[m
+Author: klemen_git <zaletelj.klemen@gmail.com>
+Date:   Mon Feb 25 13:00:46 2019 +0100
+
+    sof - point picking (tkinter, new picking based on subsets)
+
+[33mcommit f52955ffa312fecf800f709ae0b8f1415f565476[m
+Author: klemen_git <zaletelj.klemen@gmail.com>
+Date:   Mon Feb 25 10:31:42 2019 +0100
+
+    Automatic possible kwargs to docstring
+
+[33mcommit 7b71cfb6448c6e2352dddd15a4566348c18fd448[m
+Author: klemen_git <zaletelj.klemen@gmail.com>
+Date:   Mon Feb 25 08:36:12 2019 +0100
+
+    minor changes
+
+[33mcommit 323edda4278858e16d16337cb5ba3ca8c1481c7e[m
+Author: klemen_git <zaletelj.klemen@gmail.com>
+Date:   Fri Feb 22 12:04:42 2019 +0100
+
+    point selection method correction
+
+[33mcommit 462448b8ae5d6ce3bf918b4d590c834f9ab071d0[m
+Author: domengorjup <domen_gorjup@hotmail.com>
+Date:   Fri Feb 22 10:45:50 2019 +0100
+
+    added scipy dependency
+
+[33mcommit b5c862947ee7c7a393d776ebf3c3e41f7f4b6a6c[m
+Author: klemen_git <zaletelj.klemen@gmail.com>
+Date:   Fri Feb 22 10:24:50 2019 +0100
+
+    minor corrections.
+
+[33mcommit a81788a76fb2c7bc9e5360def267980c523fea9a[m
+Author: jankoslavic <janko.slavic@gmail.com>
+Date:   Fri Feb 22 09:56:39 2019 +0100
+
+    prep for v 0.12 release
+
+[33mcommit 9c15171b2dfac6801dcbdc6cf8f236d48b7e633a[m
+Author: klemen_git <zaletelj.klemen@gmail.com>
+Date:   Fri Feb 22 09:00:27 2019 +0100
+
+    exception update
+
+[33mcommit 657ea4690d303fd26f8feb817283204b9814defd[m
+Merge: ac55ec1 6fc7b07
+Author: domengorjup <domen_gorjup@hotmail.com>
+Date:   Fri Feb 22 08:18:46 2019 +0100
+
+    Merge branch 'develop' of https://github.com/ladisk/pyIDI into develop
+
+[33mcommit ac55ec12114a5281af2feb9d0af3c987ef1fb772[m
+Author: domengorjup <domen_gorjup@hotmail.com>
+Date:   Fri Feb 22 08:18:28 2019 +0100
+
+    moved dic_translation to separate branch
+
+[33mcommit c40b73f9fd2cad6b8868f66d2513b239c2a4852e[m
+Author: domengorjup <domen_gorjup@hotmail.com>
+Date:   Thu Feb 21 16:19:47 2019 +0100
+
+    working on 2-parameter DIC
+
+[33mcommit 6fc7b072b84ae34bdb7461ed0998dbfd7941d6fa[m
+Author: klemen_git <zaletelj.klemen@gmail.com>
+Date:   Fri Feb 22 08:06:37 2019 +0100
+
+    bit depth exception
+
+[33mcommit 5cef1afbdbb051ed2f2131d84dd52a1b542c64d0[m
+Author: klemen_git <zaletelj.klemen@gmail.com>
+Date:   Thu Feb 21 20:59:15 2019 +0100
+
+    sof: zeroshift and mean_n_neighbours correction
+
+[33mcommit 3010df4d214548173f4e60b4df9edb62acd51ba9[m
+Author: klemen_git <zaletelj.klemen@gmail.com>
+Date:   Thu Feb 21 19:21:08 2019 +0100
+
+    sof - optional progress bar
+
+[33mcommit b0880e40676816549c04ccb824ee5641d5408a56[m
+Author: domengorjup <domen_gorjup@hotmail.com>
+Date:   Thu Feb 21 10:54:20 2019 +0100
+
+    support method-specific show_points()
+
+[33mcommit 9dd56c004b69ad9d3e70a19c1199e5284e15e191[m
+Author: domengorjup <domen_gorjup@hotmail.com>
+Date:   Thu Feb 21 09:29:16 2019 +0100
+
+    methods restructure
+
+[33mcommit 33946c874161437f59efe864d15c8f4e9646375b[m
+Author: klemen_git <zaletelj.klemen@gmail.com>
+Date:   Wed Feb 20 13:44:59 2019 +0100
+
+    sof in 2 directions
+
+[33mcommit 3990364f2aa34264718502b23f777e1fdc1a1812[m
+Merge: 3e4ec44 5e8351e
+Author: klemen_git <zaletelj.klemen@gmail.com>
+Date:   Wed Feb 20 13:16:44 2019 +0100
+
+    pull
+
+[33mcommit 3e4ec44affb12995988104ddcc3fa1a708a11f6f[m
+Author: klemen_git <zaletelj.klemen@gmail.com>
+Date:   Wed Feb 20 13:12:38 2019 +0100
+
+    gradient based optical flow
+
+[33mcommit 5e8351ec9b1a8b993f01c1364257150767b67d14[m
+Author: klemen_git <zaletelj.klemen@gmail.com>
+Date:   Wed Feb 20 11:58:13 2019 +0100
+
+    showcase gb
+
+[33mcommit 70e8a65a702c943f4415f08cca64cbdf18d17aa6[m
+Merge: 400e21b 94bb1a2
+Author: klemen_git <zaletelj.klemen@gmail.com>
+Date:   Wed Feb 20 11:49:45 2019 +0100
+
+    Merge branch 'master' of https://github.com/ladisk/pyIDI into develop
+
+[33mcommit 94bb1a2edc80456ed64e61337893900b9d60730f[m
+Author: domengorjup <domen_gorjup@hotmail.com>
+Date:   Wed Feb 20 11:48:53 2019 +0100
+
+    showcase - gradient_based corrections
+
+[33mcommit 400e21b5f7fc7d265234b3873c911d55106e6cbf[m
+Merge: 2d4cbb5 f54059f
+Author: klemen_git <zaletelj.klemen@gmail.com>
+Date:   Wed Feb 20 10:58:17 2019 +0100
+
+    merge
+
+[33mcommit 2d4cbb540faa4b67695f2e3ab8af7f92ca0f0441[m
+Author: klemen_git <zaletelj.klemen@gmail.com>
+Date:   Wed Feb 20 10:57:12 2019 +0100
+
+    gb work
+
+[33mcommit f54059fb8f6bc68e10e491f37bc8d77e06a20d35[m
+Author: domengorjup <domen_gorjup@hotmail.com>
+Date:   Wed Feb 20 10:55:52 2019 +0100
+
+    Added synthetic data to showcase
+
+[33mcommit 1844d8753deea953c5db609b2d84b22de7a618ee[m
+Author: klemen_git <zaletelj.klemen@gmail.com>
+Date:   Wed Feb 20 08:45:48 2019 +0100
+
+    Init: gradient based optical flow method
+
+[33mcommit ff3a650818dc46f94dba7e705b57da5b36434275[m
+Author: Klemen Zaletelj <zaletelj.klemen@gmail.com>
+Date:   Fri Dec 21 07:53:59 2018 +0100
+
+    Update LICENSE
+
+[33mcommit 8cea0bc29d801275933bc28326bdb8294be879c4[m
+Author: Klemen Zaletelj <zaletelj.klemen@gmail.com>
+Date:   Fri Dec 21 07:46:54 2018 +0100
+
+    Create LICENSE
+
+[33mcommit e692dbab3b18d02f072615e7b0e0388b3c0b1f05[m
+Author: jankoslavic <janko.slavic@gmail.com>
+Date:   Thu Dec 20 16:19:57 2018 +0100
+
+    version 0.11 released
+
+[33mcommit 51e674a2e4276484087d75e6803f850af4105bf7[m
+Author: klemen_git <zaletelj.klemen@gmail.com>
+Date:   Thu Dec 20 15:47:29 2018 +0100
+
+    Showcase added.
+
+[33mcommit 5aa76b3e796725c5c5fafa18e3c411ca57593dda[m
+Author: domengorjup <domen_gorjup@hotmail.com>
+Date:   Thu Dec 20 15:14:58 2018 +0100
+
+    package name fix
+
+[33mcommit c3736337efcadb4f84aea9a2ef2ac3d8d1f7f3e4[m
+Author: domengorjup <domen_gorjup@hotmail.com>
+Date:   Thu Dec 20 15:02:02 2018 +0100
+
+    packaging fix
+
+[33mcommit edba70eb36a158d6c880bf43a2bb0513ed059240[m
+Author: jankoslavic <janko.slavic@gmail.com>
+Date:   Thu Dec 20 14:24:15 2018 +0100
+
+    preparation for first release
+
+[33mcommit 9aefc61c6331b2341779fc3cd81ded71b54f99c5[m
+Author: klemen_git <zaletelj.klemen@gmail.com>
+Date:   Thu Dec 20 14:16:09 2018 +0100
+
+    Correction - name.
+
+[33mcommit f370b69f33864a32c5ad1140ed9025cf4a967b41[m
+Author: klemen_git <zaletelj.klemen@gmail.com>
+Date:   Thu Dec 20 14:14:36 2018 +0100
+
+    Name change.
+
+[33mcommit 897850f7d29309f28b78ebca44df6aea8f00b7d6[m
+Author: klemen_git <zaletelj.klemen@gmail.com>
+Date:   Wed Dec 19 15:02:41 2018 +0100
+
+    requirements.txt
+
+[33mcommit 6772a085d3e1448958d58a671e02a12a6fa35f41[m
+Author: klemen_git <zaletelj.klemen@gmail.com>
+Date:   Tue Dec 18 15:25:16 2018 +0100
+
+    zero shift option
+
+[33mcommit b864504608c21d8ed4a489a48d92d373990160a3[m
+Author: klemen_git <zaletelj.klemen@gmail.com>
+Date:   Mon Dec 17 16:32:09 2018 +0100
+
+    Minor corrections
+
+[33mcommit 15da1af2b83e5fc56d4e4192c323969e6dcff368[m
+Author: klemen_git <zaletelj.klemen@gmail.com>
+Date:   Thu Dec 13 16:41:50 2018 +0100
+
+    show_points in pyIDC, sof update
+
+[33mcommit 6d888c3458367e42b69442626f7db601e3367b8f[m
+Author: klemen_git <zaletelj.klemen@gmail.com>
+Date:   Wed Dec 12 14:44:26 2018 +0100
+
+    sof method
+
+[33mcommit 5aff325b9b8db4fb191a4f7869ea6d2c303fc075[m
+Author: Klemen Zaletelj <zaletelj.klemen@gmail.com>
+Date:   Tue Dec 11 14:51:16 2018 +0000
+
+    Update README.md
+
+[33mcommit b980c3dd6ed0c217157a12edb8e9c882ccb9b759[m
+Author: Klemen Zaletelj <zaletelj.klemen@gmail.com>
+Date:   Tue Dec 11 14:46:48 2018 +0000
+
+    gitignore
+
+[33mcommit 6568a3539598cdaa000f4e227bc3ce4de5b966ae[m
+Author: Klemen Zaletelj <zaletelj.klemen@gmail.com>
+Date:   Tue Dec 11 14:46:26 2018 +0000
+
+    Initial commit
