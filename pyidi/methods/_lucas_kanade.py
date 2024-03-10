@@ -218,6 +218,7 @@ class LucasKanade(IDIMethod):
                     
                     # start optimization with previous optimal parameter values
                     d_init = np.round(self.displacements[p, ii-1, :]).astype(int)
+                    d_res  = self.displacements[p, ii-1, :] - d_init
 
                     yslice, xslice = self._padded_slice(point+d_init, self.roi_size, self.image_size, 1)
                     G = video.mraw[i, yslice, xslice]
@@ -226,7 +227,8 @@ class LucasKanade(IDIMethod):
                         G=G, 
                         F_spline=self.interpolation_splines[p], 
                         maxiter=self.max_nfev,
-                        tol=self.tol
+                        tol=self.tol,
+                        d_subpixel_init = -d_res
                         )
 
                     self.displacements[p, ii, :] = displacements + d_init
