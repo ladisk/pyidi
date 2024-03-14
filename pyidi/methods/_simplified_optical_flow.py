@@ -179,8 +179,7 @@ class SimplifiedOpticalFlow(IDIMethod):
         :param subset_size: Size of the subset to average.
         :return: Reference image, image gradient in 0 direction, image gradient in 1 direction, gradient magnitude
         """
-        reference_image = np.mean([self.subset(image_, subset_size)
-                                   for image_ in images], axis=0)
+        reference_image = self.subset(np.mean(images, axis=0), subset_size)
 
         gradient_0, gradient_1 = np.gradient(reference_image)
         gradient_magnitude = np.sqrt(gradient_0**2 + gradient_1**2)
