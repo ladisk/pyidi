@@ -273,8 +273,8 @@ def animate(displacements: np.ndarray,
                                  mag_fact = magnification_factor)
     
     mesh_def_negative = create_mesh(points = points,
-                                disp = displacements,
-                                mag_fact = -magnification_factor)[1]
+                                    disp = displacements,
+                                    mag_fact = -magnification_factor)[1]
     
     # All frames of the output video are the same size, defined by the maximum
     # deflections
