@@ -13,30 +13,30 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     import pyidi
 
-def motion_magnification(displacements: np.ndarray, 
-                         magnification_factor: Union[int, float], 
-                         video: Union["pyidi.pyIDI", None] = None, 
-                         image: Union[np.ndarray, np.memmap, None] = None,
-                         points: Union[np.ndarray, None] = None,
-                         background_brightness: float = 0.3,
-                         show_undeformed: bool = False
-                         ) -> np.ndarray:
+def mode_shape_magnification(displacements: np.ndarray, 
+                             magnification_factor: Union[int, float], 
+                             video: Union["pyidi.pyIDI", None] = None, 
+                             image: Union[np.ndarray, np.memmap, None] = None,
+                             points: Union[np.ndarray, None] = None,
+                             background_brightness: float = 0.3,
+                             show_undeformed: bool = False
+                             ) -> np.ndarray:
     """
-    Perform Experimental Modal Analysis based motion magnification. If a 'pyidi.
-    pyIDI class instance is input as argument 'video', the argument 'image' is 
-    setto 'video.mraw[0]' and the argument 'points' is set to 'video.points'. 
-    These values can be overwritten by specifying the 'image' and 'points' 
-    arguments explicitly.
+    Create an image of a magnified mode-shape of a structure. If a 'pyidi.pyIDI' 
+    class instance is input as argument 'video', the argument 'image' is set to 
+    'video.mraw[0]' and the argument 'points' is set to 'video.points'. These 
+    values can be overwritten by specifying the 'image' and 'points' arguments 
+    explicitly.
 
-    :param displacements: displacement vector
+    :param displacements: displacement (mode-shape) vector
     :type displacements: numpy.ndarray
     :param magnification_factor: magnification factor
     :type magnification_factor: int or float
     :param video: pyIDI class instance,
         defaults to None
     :type video: pyidi.pyIDI or None, optional
-    :param image: the reference image, on which motion magnification is performed,
-        defaults to None
+    :param image: the reference image, on which mode-shape magnification is 
+        performed, defaults to None
     :type image: numpy.ndarray, numpy.memmap or None, optional
     :param points: image coordinates, where displacements 'displacements' are 
         defined, defaults to None
@@ -44,11 +44,11 @@ def motion_magnification(displacements: np.ndarray,
     :param background_brightness: brightness of the background, expected values
         in range [0, 1], defaults to 0.3
     :type background_brighness: float, optional
-    :param show_undeformed: Show the reference image (argument 'image') underneath
-        the motion magnified shape, defaults to True
+    :param show_undeformed: Show the reference image (argument 'image') 
+        underneath the magnified mode-shape, defaults to False
     :type show_undeformed: bool, optional
 
-    :return: motion magnified image of the structure
+    :return: image of a magnified mode-shape of the structure
     :rtype: numpy.ndarray
     """
     if hasattr(displacements, 'shape') and len(displacements.shape) == 2:
@@ -139,17 +139,17 @@ def animate(displacements: np.ndarray,
             points: Union[np.ndarray, None] = None,
             fps: int = 30,
             n_periods: int = 3,
-            filename: str = 'Motion_mag_video',
+            filename: str = 'mode_shape_mag_video',
             output_format: str = 'gif', 
             background_brightness: float = 0.3,
             show_undeformed: bool = False
             )-> None:
     """
-    Create a video based on the Experimental modal analysis motion magnification. 
-    If a 'pyidi.pyIDI class instance is input as argument 'video', the argument 
-    'image' is set to 'video.mraw[0]' and the argument 'points' is set to 
-    'video.points'. These values can be overwritten by specifying the 'image' and 
-    'points' arguments explicitly.
+    Create a video of a magnified mode-shape of a structure. If a 'pyidi.pyIDI'
+    class instance is input as argument 'video', the argument 'image' is set to 
+    'video.mraw[0]' and the argument 'points' is set to 'video.points'. These 
+    values can be overwritten by specifying the 'image' and 'points' arguments 
+    explicitly.
 
     :param displacements: displacement vector
     :type displacements: numpy.ndarray
@@ -158,8 +158,8 @@ def animate(displacements: np.ndarray,
     :param video: pyIDI class instance, 
         defaults to None
     :type video: pyidi.pyIDI or None, optional
-    :param image: the reference image, on which motion magnification is performed,
-        defaults to None
+    :param image: the reference image, on which mode-shape magnification is 
+        performed, defaults to None
     :type image: numpy.ndarray, numpy.memmap or None, optional
     :param points: image coordinates, where displacements 'displacements' are 
         defined, defaults to None
@@ -171,7 +171,7 @@ def animate(displacements: np.ndarray,
         defaults to 3
     :type n_periods: int, optional
     :param filename: the name of the output video file
-        defaults to 'Motion_mag_video'
+        defaults to 'mode_shape_mag_video'
     :type filename: str
     :param output_format: output format of the video, selected from 'gif', 'mp4', 
         'avi', 'mov', defaults to 'gif'
@@ -179,8 +179,8 @@ def animate(displacements: np.ndarray,
     :param background_brightness: brightness of the background, expected values
         in range [0, 1], defaults to 0.3
     :type background_brighness: float, optional
-    :param show_undeformed: Show the reference image (argument 'image') underneath
-        the motion magnified shape, defaults to True
+    :param show_undeformed: Show the reference image (argument 'image') 
+        underneath the magnified mode-shape, defaults to True
     :type show_undeformed: bool, optional
     """
     if hasattr(displacements, 'shape') and len(displacements.shape) == 2:
@@ -351,8 +351,7 @@ def create_mesh(points, disp, mag_fact):
     """
     Generates a planar mesh of triangles based on the input set of points. Then 
     generates the deformed planar mesh of triangles based on the displacement 
-    vectors "disp", scaled by the magnification factor 
-    "mag_fact".
+    vectors 'disp', scaled by the magnification factor 'mag_fact'.
     """
     
     # Create undeformed mesh
