@@ -11,7 +11,8 @@ from magicgui import magicgui
 import warnings
 warnings.simplefilter("default")
 
-from .methods import VideoReader, IDIMethod, SimplifiedOpticalFlow, LucasKanade, LucasKanadeSc, LucasKanadeSc2, GradientBasedOpticalFlow
+from .methods import IDIMethod, SimplifiedOpticalFlow, LucasKanade, LucasKanadeSc, LucasKanadeSc2, GradientBasedOpticalFlow
+from .video_reader import VideoReader
 from . import tools
 from . import selection
 from . import gui
