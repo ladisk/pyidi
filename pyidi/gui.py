@@ -60,7 +60,9 @@ def gui(self):
         except:
             pass
         
-    if self.reader.info['File Format'].lower() != 'mraw':
+    try:
+        self.reader.mraw
+    except:
         raise ValueError('Only `mraw` files are supported for GUI at the moment.')
     
     if hasattr(self, 'method'):

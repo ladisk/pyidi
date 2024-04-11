@@ -3,13 +3,11 @@ import numpy as np
 import collections
 import matplotlib.pyplot as plt
 import pickle
-# import pyMRAW
 import datetime
 import json
 import glob
 import napari
 from magicgui import magicgui
-# from video_read import * # type: ignore
 import warnings
 warnings.simplefilter("default")
 
@@ -31,30 +29,14 @@ class pyIDI():
     """
     The pyIDI base class represents the video to be analysed.
     """
-    def __init__(self, cih_file):
+    def __init__(self, input_file):
         
-        if type(cih_file) == str:
-            self.reader = VideoReader(cih_file)
-            self.cih_file = cih_file
-            # self.info = self.reader.info
-            # self.root = os.path.split(self.cih_file)[0]
-            # Load selected video
-            # self.mraw, self.info = pyMRAW.load_video(self.cih_file)
-            # self.N = self.info['Total Frame']
-            # self.image_width = self.info['Image Width']
-            # self.image_height = self.info['Image Height']
-
-        # elif type(cih_file) in [np.ndarray, np.memmap]:
-        #     self.root = ''
-        #     self.mraw = cih_file
-        #     self.cih_file = 'ndarray_video.cih'
-        #     self.N = cih_file.shape[0]
-        #     self.image_height = cih_file.shape[1]
-        #     self.image_width = cih_file.shape[2]
-        #     self.info = {}
+        if type(input_file) == str:
+            self.reader = VideoReader(input_file)
+            self.cih_file = input_file
 
         else:
-            raise ValueError('`cih_file` must be either a cih filename or a 3D array (N_time, height, width)')
+            raise ValueError('`input_file` must be either a image/video/cih filename or a 3D array (N_time, height, width)')
 
         self.available_methods = dict([ 
             (key, {
@@ -234,7 +216,11 @@ class pyIDI():
             pickle.dump(self.points, f, protocol=-1)
 
         out = {
-            'info': self.reader.info,
+            'info': {
+                'width': self.reader.image_width,
+                'height': self.reader.image_height,
+                'N': self.reader.N
+            },
             'createdate': datetime.datetime.now().strftime("%Y %m %d    %H:%M:%S"),
             'cih_file': self.cih_file,
             'settings': self.method.create_settings_dict(),

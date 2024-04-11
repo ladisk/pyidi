@@ -631,7 +631,11 @@ class LucasKanade(IDIMethod):
         settings = {
             # 'configure': dict([(var, None) for var in self.configure.__code__.co_varnames]),
             'configure': self.create_settings_dict(),
-            'info': self.video.reader.info
+            'info': {
+                'width': self.video.reader.image_width,
+                'height': self.video.reader.image_height,
+                'N': self.video.reader.N
+            }
         }
         return settings
 
@@ -663,7 +667,7 @@ def multi(video, processes):
     points_split = tools.split_points(points, processes=processes)
     
     idi_kwargs = {
-        'cih_file': video.cih_file,
+        'input_file': video.cih_file,
     }
     
     method_kwargs = {
