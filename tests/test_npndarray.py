@@ -1,8 +1,11 @@
-import pyidi
 import numpy as np
 import pyMRAW
 from numpy.testing import assert_array_equal
+import sys, os
+my_path = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, my_path + '/../')
 
+import pyidi
 
 def test_multiprocessing():
     # data = np.load(r".\data\data_synthetic_generated.npy")

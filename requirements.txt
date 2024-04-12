@@ -10,5 +10,4 @@ atpbar
 numba
 napari[all]
 magicgui
-imageio
-pyav
+imageio[pyav]

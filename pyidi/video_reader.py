@@ -1,7 +1,7 @@
 """
 Module for reading video files from high-speed video recordings.
 
-@author: Ivan Tomac (itomac@fesb.hr), Klemen Zaletelj (klemen.zaletelj@fs.uni-lj.si), Jaka Javh (jaka.javh@fs.uni-lj.si), Janko Slavič (janko.slavic@fs.uni-lj.si)
+@author: Ivan Tomac (itomac@fesb.hr), Klemen Zaletelj (klemen.zaletelj@fs.uni-lj.si), Janko Slavič (janko.slavic@fs.uni-lj.si)
 """
 
 import os
@@ -13,25 +13,34 @@ PHORTRON_HEADER_FILE = ['cih', 'cihx']
 SUPPORTED_IMAGE_FORMATS = ['png', 'tif', 'tiff', 'bmp', 'jpg', 'jpeg', 'gif']
 PYAV_SUPPORTED_VIDEO_FORMATS = ['avi', 'mkv', 'mp4', 'mov', 'm4v', 'wmv', 'webm', 'flv', 'ogg', 'ogv']
 CHANNELS = {'R': 0, 'G': 1, 'B': 2}
+
 class VideoReader:
     """
     Manages reading of high-speed video recordings. The video recording can be any
     of the supported file formats which includes image streams, video files or memory 
     map for "mraw" file format.
+    
+    This applies to frames from image and video file formats:
+    Reader returns the frame as a monochrome image. For colour images the "Y" (luma)
+    is default channel, but other channels can be selected ("R", "G", "B", "Y"). 
+    The reader returns image in 2D "numpy.array" ("height, width") of type 
+    "numpy.uint8" or "numpy.uint16" depending on the bit depth of the image file,
+    e.g. 12 bit depth images are returned as "numpy.array" of type "numpy.uint16".
     """
     def __init__(self, input_file, root=None):
         """
-        The video recording is initialized by providing the path to the image/video file or 
-        "cih(x)" file from Photron. For image stream it is enough to provide the path to the
-        any image file in the sequence. Image formats that support multiple images, such as 
-        "gif", "tif" are supported too. 
-        Video files are supported by the "pyav" plug-in and to allow support of higher bit depth
-        then 8 bit upgrade is needed.
+        The video recording is initialized by providing the path to the image/video file, 
+        "cih(x)" file from Photron, or "numpy.ndarray". For image stream it is enough to 
+        provide the path to the any image file in the sequence. Images in stream must be 
+        in the same directory and named in the way that can be sorted in the correct order,
+        e.g. for stream of 10000 images file names should be: "im_0000.ext, ..., im_9999.ext".
+        Image formats that support multiple images, such as "gif", "tif" are supported too.
+        Upgrade is needed to enable higher bit depth then 8 bit for video file formats.
 
         :param input_file: path to the image/video or "cih(x)" file
         :type input_file: str
         :param root: root directory of the image/video file. Only used when the 
-            input file is a np.ndarray. Defaults to None.
+            input file is a "np.ndarray". Defaults to None.
         :type root: str
         """
 
@@ -54,6 +63,7 @@ class VideoReader:
         
         elif self.file_format in SUPPORTED_IMAGE_FORMATS:
             image_prop = iio.improps(input_file)
+            self.image_meta = iio.immeta(input_file, plugin='pyav')
             if image_prop.n_images is None:
                 self.is_n_images = False
                 sc_dir = os.scandir(self.root)
@@ -88,9 +98,12 @@ class VideoReader:
     
     def get_frame(self, frame_number, *args):
         """
-        Returns the ``frame_number``-th frame from the video.
+        Returns the "frame_number"-th frame from the video. Frames from image and video
+        files are checked for the bit depth and converted to 8 or 16 bit depth if needed.
+        The frames from "numpy.ndarray" and "mraw" files are returned as they are.
 
-        :param frame_number: frame number (int)
+        :param frame_number: frame number
+        :type frame_number: int
         :param args: additional arguments to be passed to the image readers to handle multiple channels in image
         :return: image (monochrome)
         """
@@ -109,23 +122,37 @@ class VideoReader:
         return image
 
     def _get_frame_from_image(self, frame_number, use_channel='Y'):
-        """Reads the frame from the image stream. If the image is in RGB format,
-        the `use_channel` parameter can be used to select the channel. The supported
-        channels are R, G, B and Y (luma).
+        """Reads the frame from the image stream, or image file containing multiple images. 
+        Colour images are assumed to be in "RGB(A)" format and they are automatically converted
+        to "YUV" and "Y"(luma) channel is used. The 'use_channel' parameter can be used to select
+        other the channels. The supported channels are R, G, B, Y (luma).
 
         :param frame_number: frame number
-        :param use_channel: 'R', 'G', 'B' 'Y', None defaults to 'Y'
+        :type frame_number: int
+        :param use_channel: "R", "G", "B", "Y" (luma), defaults to "Y"
         :return: image (monochrome)
         """
         if self.is_n_images:
             input_file = os.path.join(self.root, self.file)
-            image = iio.imread(input_file, index=frame_number)
+            image = iio.imread(input_file, index=frame_number, plugin='pyav', format=self.image_meta['video_format'])
         else:
             input_file = os.path.join(self.root, self.frame_files[frame_number])
-            image = iio.imread(input_file)
+            image = iio.imread(input_file, index=0, plugin='pyav', format=self.image_meta['video_format'])
+        
+        im_bit_depth = int(np.ceil(np.log2(image.max())))
+        if im_bit_depth <= 8 and image.dtype != np.uint8:
+            image = np.asarray(image, dtype=np.uint8)
+        elif 8 < im_bit_depth <= 16 and image.dtype != np.uint16:
+            image = np.asarray(image, dtype=np.uint16)
+        elif im_bit_depth == 8 and image.dtype == np.uint8:
+            pass
+        elif im_bit_depth == 16 and image.dtype == np.uint16:
+            pass
+        else:
+            raise ValueError('image format is not 8 or 16 bit depth! Image format: {}'.format(image.dtype))
 
         
-        if use_channel is None or len(image.shape) == 2:
+        if len(image.shape) == 2:
             pass
         
         elif use_channel.upper() == 'Y':
@@ -135,17 +162,18 @@ class VideoReader:
             image = image[:, :, CHANNELS.get(use_channel.upper())]
         
         else:
-            raise ValueError('Unsupported channel! Only R, G, B and Y are supported.')
+            raise ValueError('Unsupported channel! Only R, G, B, Y are supported.')
         
         return image
     
     def _get_frame_from_video_file(self, frame_number, use_channel='Y'):
         """Reads the frame from the video file which is supported by the
-        `imagio.v3` `pyav` plug-in.
+        "imagio.v3" "pyav" plug-in.
 
         :param frame_number: frame number
-        :param use_channel: convert to grayscale, defaults to True
-        :return: image in 8 bit depth (note: needs upgrade to support higher bit depth)
+        :type frame_number: int
+        :param use_channel: "R", "G", "B", "Y" (luma), defaults to "Y"
+        :return: monochrome image in 8 bit depth (note: needs upgrade to support higher bit depth)
         """
         input_file = os.path.join(self.root, self.file)
         if use_channel == 'Y':
@@ -157,19 +185,23 @@ class VideoReader:
             image = iio.imread(input_file, index=frame_number, plugin='pyav')
             image = image[:, :, CHANNELS.get(use_channel.upper())]
         
-        elif use_channel is None:
-            image = iio.imread(input_file, index=frame_number, plugin='pyav')
-        
+        else:
+            raise ValueError('Unsupported channel! Only R, G, B and Y are supported.')
+
         return image
 
 def _rgb2luma(rgb_image):
-    """Converts RGB image to YUV and returns only y Y (luma) component.
+    """Converts "RGB" image to "YUV" and returns only "Y" (luma) component.
 
-    :param rgb_image: RGB image (w, h, channels)
+    :param rgb_image: "RGB" image "(w, h, channels)"
+    :type rgb_image: numpy.array
     :return: luma image
     """
     T = np.array([[ 0.29900, -0.16874,  0.50000],
                  [0.58700, -0.33126, -0.41869],
                  [ 0.11400, 0.50000, -0.08131]])
-    yuv_image = rgb_image @ T
-    return np.asarray(np.around(yuv_image[:, :, 0]), dtype=rgb_image.dtype)
+    
+    yuv_image = np.dot(rgb_image, T)
+    y = np.asarray(np.around(yuv_image[:, :, 0]), dtype=rgb_image.dtype)
+
+    return y
