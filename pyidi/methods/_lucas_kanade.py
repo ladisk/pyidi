@@ -298,17 +298,17 @@ class LucasKanade(IDIMethod):
 
 
     def _padded_slice(self, point, roi_size, image_shape, pad=None):
-        '''
-        Returns a slice that crops an image around a given `point` center, 
-        `roi_size` and `pad` size. If the resulting slice would be out of
-        bounds of the image to be sliced (given by `image_shape`), the
+        '''Returns a slice that crops an image around a given ``point`` center, 
+        ``roi_size`` and ``pad`` size. If the resulting slice would be out of
+        bounds of the image to be sliced (given by ``image_shape``), the
         slice is snifted to be on the image edge and a warning is issued.
+        
         :param point: The center point coordiante of the desired ROI.
         :type point: array_like of size 2, (y, x)
         :param roi_size: Size of desired cropped image (y, x).
-        type roi_size: array_like of size 2, (h, w)
+            type roi_size: array_like of size 2, (h, w)
         :param image_shape: Shape of the image to be sliced, (h, w).
-        type image_shape: array_like of size 2, (h, w)
+            type image_shape: array_like of size 2, (h, w)
         :param pad: Pad border size in pixels. If None, the video.pad
             attribute is read.
         :type pad: int, optional, defaults to None
@@ -668,6 +668,7 @@ def multi(video, processes):
     
     idi_kwargs = {
         'input_file': video.cih_file,
+        'root': video.reader.root,
     }
     
     method_kwargs = {

@@ -34,6 +34,7 @@ class SimplifiedOpticalFlow(IDIMethod):
         progress_bar=True, reference_range=(0, 100)):
         """
         Set the attributes, compute reference image and gradients.
+        
         :param video: 'parent' object
         :type video: object
         :param subset_size: size of the averaging subset, defaults to 3

@@ -17,7 +17,7 @@ class VideoReader:
     """
     Manages reading of high-speed video recordings. The video recording can be any
     of the supported file formats which includes image streams, video files or memory 
-    map for `mraw` file format.
+    map for "mraw" file format.
     """
     def __init__(self, input_file, root=None):
         """
@@ -88,10 +88,10 @@ class VideoReader:
     
     def get_frame(self, frame_number, *args):
         """
-        Returns the `frame_number`-th frame from the video.
+        Returns the ``frame_number``-th frame from the video.
 
         :param frame_number: frame number (int)
-        :param *args: additional arguments to be passed to the image readers to handle multiple channels in image
+        :param args: additional arguments to be passed to the image readers to handle multiple channels in image
         :return: image (monochrome)
         """
         if not 0 <= frame_number < self.N:
