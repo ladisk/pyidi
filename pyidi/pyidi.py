@@ -30,12 +30,19 @@ class pyIDI():
     """
     The pyIDI base class represents the video to be analysed.
     """
-    def __init__(self, input_file):
+    def __init__(self, input_file, root=None):
+        """Constructor of the pyIDI class.
         
-        if type(input_file) == str:
-            self.reader = VideoReader(input_file)
+        :param input_file: the video file to be analysed. Can be a name of the cih/cihx file, path to
+            images directory, video file, or a 3D numpy array.
+        :type input_file: str or np.ndarray
+        :param root: root directory of the video file. Only used when the input file is a np.ndarray. Defaults to None.
+        :type root: str
+        """
+        
+        if type(input_file) in [str, np.ndarray]:
+            self.reader = VideoReader(input_file, root=root)
             self.cih_file = input_file
-
         else:
             raise ValueError('`input_file` must be either a image/video/cih filename or a 3D array (N_time, height, width)')
 
@@ -52,8 +59,8 @@ class pyIDI():
             f"'{key}' ({method_dict['IDIMethod'].__name__}): {method_dict['description']}"
             for key, method_dict in self.available_methods.items()
             ])
-        tools.update_docstring(self.set_method, added_doc=available_methods_doc)  
 
+        tools.update_docstring(self.set_method, added_doc=available_methods_doc)  
 
 
     def set_method(self, method, **kwargs):

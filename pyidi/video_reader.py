@@ -19,21 +19,32 @@ class VideoReader:
     of the supported file formats which includes image streams, video files or memory 
     map for `mraw` file format.
     """
-    def __init__(self, input_file):
+    def __init__(self, input_file, root=None):
         """
         The video recording is initialized by providing the path to the image/video file or 
-        `cih(x)` file from Photron. For image stream it is enough to provide the path to the
+        "cih(x)" file from Photron. For image stream it is enough to provide the path to the
         any image file in the sequence. Image formats that support multiple images, such as 
-        `gif`, `tif` are supported too. 
-        Video files are supported by the `pyav` plug-in and to allow support of higher bit depth
+        "gif", "tif" are supported too. 
+        Video files are supported by the "pyav" plug-in and to allow support of higher bit depth
         then 8 bit upgrade is needed.
 
-        :param input_file: path to the image/video or `cih(x)` file
+        :param input_file: path to the image/video or "cih(x)" file
         :type input_file: str
+        :param root: root directory of the image/video file. Only used when the 
+            input file is a np.ndarray. Defaults to None.
+        :type root: str
         """
 
-        self.root, self.file = os.path.split(input_file)
-        self.file_format = self.file.split('.')[-1].lower()
+        if isinstance(input_file, np.ndarray):
+            if root is None:
+                raise ValueError('Root directory must be provided for np.ndarray input file!')
+            
+            self.root = root
+            self.file_format = 'np.ndarray'
+        else:
+            self.root, self.file = os.path.split(input_file)
+            self.file_format = self.file.split('.')[-1].lower()
+
 
         if self.file_format in PHORTRON_HEADER_FILE:
             self.mraw, info = pyMRAW.load_video(input_file)
@@ -64,6 +75,12 @@ class VideoReader:
             self.image_width = video_prop.shape[2]
             self.image_height = video_prop.shape[1]
 
+        elif self.file_format == 'np.ndarray':
+            self.mraw = input_file
+            self.N = input_file.shape[0]
+            self.image_width = input_file.shape[2]
+            self.image_height = input_file.shape[1]
+
         else:
             raise ValueError('Unsupported file format!')
 
@@ -80,7 +97,7 @@ class VideoReader:
         if not 0 <= frame_number < self.N:
             raise ValueError('Frame number exceeds total frame number!')
 
-        if self.file_format in PHORTRON_HEADER_FILE:
+        if self.file_format in PHORTRON_HEADER_FILE or self.file_format == 'np.ndarray':
             image = self.mraw[frame_number]
 
         elif self.file_format in SUPPORTED_IMAGE_FORMATS:
