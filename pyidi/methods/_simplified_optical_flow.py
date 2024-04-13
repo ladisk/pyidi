@@ -182,15 +182,17 @@ class SimplifiedOpticalFlow(IDIMethod):
         """
         if self.pixel_shift:
             reference_image = self.subset(self.video.reader.get_frame(self.reference_range[0]), self.subset_size)
-        elif self.reference_range[1] <= self.video.reader.N:
+            warnings.warn('Pixel shift is set to True. The reference image is set to the first frame.')
+        else:
+            if self.reference_range[1] >= self.video.reader.N:
+                self.reference_range = (0, self.video.reader.N)
+                warnings.warn('Reference range is larger than the number of images. The reference range is set to (0, N).')
             reference_image = np.zeros((self.video.reader.image_height, \
                                         self.video.reader.image_width), dtype=float)
             for frame in range(self.reference_range[0], self.reference_range[1]):
                 reference_image += self.video.reader.get_frame(frame)
             reference_image /= (self.reference_range[1] - self.reference_range[0])
             reference_image = self.subset(reference_image, self.subset_size)
-        else:
-            raise Exception('Reference range exceeds the total number of frames. Please set a valid range.')
 
         gradient_0, gradient_1 = np.gradient(reference_image)
         gradient_magnitude = np.sqrt(gradient_0**2 + gradient_1**2)
