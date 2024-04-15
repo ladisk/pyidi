@@ -3,7 +3,6 @@ import numpy as np
 import collections
 import matplotlib.pyplot as plt
 import pickle
-import pyMRAW
 import datetime
 import json
 import glob
@@ -12,7 +11,8 @@ from magicgui import magicgui
 import warnings
 warnings.simplefilter("default")
 
-from .methods import IDIMethod, SimplifiedOpticalFlow, GradientBasedOpticalFlow, LucasKanadeSc, LucasKanade, LucasKanadeSc2
+from .methods import IDIMethod, SimplifiedOpticalFlow, LucasKanade, LucasKanadeSc, LucasKanadeSc2, GradientBasedOpticalFlow
+from .video_reader import VideoReader
 from . import tools
 from . import selection
 from . import gui
@@ -20,38 +20,31 @@ from . import gui
 available_method_shortcuts = [
     ('sof', SimplifiedOpticalFlow),
     ('lk', LucasKanade),
-    ('lk_scipy', LucasKanadeSc),
-    ('lk_scipy2', LucasKanadeSc2)
+    # ('lk_scipy', LucasKanadeSc),
+    # ('lk_scipy2', LucasKanadeSc2)
     # ('gb', GradientBasedOpticalFlow)
     ]
 
 
-class pyIDI:
+class pyIDI():
     """
     The pyIDI base class represents the video to be analysed.
     """
-    def __init__(self, cih_file):
+    def __init__(self, input_file, root=None):
+        """Constructor of the pyIDI class.
         
-        if type(cih_file) == str:
-            self.cih_file = cih_file
-            self.root = os.path.split(self.cih_file)[0]
-            # Load selected video
-            self.mraw, self.info = pyMRAW.load_video(self.cih_file)
-            self.N = self.info['Total Frame']
-            self.image_width = self.info['Image Width']
-            self.image_height = self.info['Image Height']
-
-        elif type(cih_file) in [np.ndarray, np.memmap]:
-            self.root = ''
-            self.mraw = cih_file
-            self.cih_file = 'ndarray_video.cih'
-            self.N = cih_file.shape[0]
-            self.image_height = cih_file.shape[1]
-            self.image_width = cih_file.shape[2]
-            self.info = {}
-
+        :param input_file: the video file to be analysed. Can be a name of the cih/cihx file, path to
+            images directory, video file, or a 3D numpy array.
+        :type input_file: str or np.ndarray
+        :param root: root directory of the video file. Only used when the input file is a np.ndarray. Defaults to None.
+        :type root: str
+        """
+        
+        if type(input_file) in [str, np.ndarray]:
+            self.reader = VideoReader(input_file, root=root)
+            self.cih_file = input_file
         else:
-            raise ValueError('`cih_file` must be either a cih filename or a 3D array (N_time, height, width)')
+            raise ValueError('`input_file` must be either a image/video/cih filename or a 3D array (N_time, height, width)')
 
         self.available_methods = dict([ 
             (key, {
@@ -66,8 +59,8 @@ class pyIDI:
             f"'{key}' ({method_dict['IDIMethod'].__name__}): {method_dict['description']}"
             for key, method_dict in self.available_methods.items()
             ])
-        tools.update_docstring(self.set_method, added_doc=available_methods_doc)  
 
+        tools.update_docstring(self.set_method, added_doc=available_methods_doc)  
 
 
     def set_method(self, method, **kwargs):
@@ -135,7 +128,7 @@ class pyIDI:
             marker = kwargs.get('marker', '.')
             color = kwargs.get('color', 'r')
             fig, ax = plt.subplots(figsize=figsize)
-            ax.imshow(self.mraw[0].astype(float), cmap=cmap)
+            ax.imshow(self.reader.get_frame(0).astype(float), cmap=cmap)
             ax.scatter(self.points[:, 1], self.points[:, 0], 
                 marker=marker, color=color)
             plt.grid(False)
@@ -156,7 +149,7 @@ class pyIDI:
         max_L = np.max(field[:, 0]**2 + field[:, 1]**2)
 
         fig, ax = plt.subplots(1)
-        ax.imshow(self.mraw[0], 'gray')
+        ax.imshow(self.reader.get_frame(0), 'gray')
         for i, ind in enumerate(self.points):
             f0 = field[i, 0]
             f1 = field[i, 1]
@@ -194,13 +187,13 @@ class pyIDI:
             raise ValueError('IDI method has not yet been set. Please call `set_method()` first.')
 
 
-    def close_video(self):
-        """
-        Close the .mraw video memmap.
-        """
-        if hasattr(self, 'mraw'):
-            self.mraw._mmap.close()
-            del self.mraw
+    # def close_video(self):
+    #     """
+    #     Close the .mraw video memmap.
+    #     """
+    #     if hasattr(self, 'mraw'):
+    #         self.mraw._mmap.close()
+    #         del self.mraw
     
 
     def create_analysis_directory(self):
@@ -208,7 +201,7 @@ class pyIDI:
             cih_file_ = os.path.split(self.cih_file)[-1].split('.')[0]
         else:
             cih_file_ = 'ndarary_video'
-        self.root_analysis = os.path.join(self.root, f'{cih_file_}_pyidi_analysis')
+        self.root_analysis = os.path.join(self.reader.root, f'{cih_file_}_pyidi_analysis')
         if not os.path.exists(self.root_analysis):
             os.mkdir(self.root_analysis)
         
@@ -231,7 +224,11 @@ class pyIDI:
             pickle.dump(self.points, f, protocol=-1)
 
         out = {
-            'info': self.info,
+            'info': {
+                'width': self.reader.image_width,
+                'height': self.reader.image_height,
+                'N': self.reader.N
+            },
             'createdate': datetime.datetime.now().strftime("%Y %m %d    %H:%M:%S"),
             'cih_file': self.cih_file,
             'settings': self.method.create_settings_dict(),
@@ -267,6 +264,11 @@ class pyIDI:
     
     def gui(self):
         self.gui_obj = gui.gui(self)
+
+    @property
+    def mraw(self):
+        warnings.warn('`self.mraw` is deprecated and will be removed in the next version. Please use `self.reader.mraw` instead.', DeprecationWarning)
+        return self.reader.mraw
 
 #     def gui(self):
 #         """Napari interface.

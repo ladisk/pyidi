@@ -118,7 +118,7 @@ class LucasKanade(IDIMethod):
         
         self._set_mraw_range()
 
-        self.temp_dir = os.path.join(self.video.root, 'temp_file')
+        self.temp_dir = os.path.join(self.video.reader.root, 'temp_file')
         self.settings_filename = os.path.join(self.temp_dir, 'settings.pkl')
         self.analysis_run = 0
         
@@ -130,17 +130,17 @@ class LucasKanade(IDIMethod):
 
         if self.mraw_range == 'full':
             self.start_time = 1
-            self.stop_time = self.video.mraw.shape[0]
+            self.stop_time = self.video.reader.N
             
         elif type(self.mraw_range) == tuple:
             if len(self.mraw_range) >= 2:
                 if self.mraw_range[0] < self.mraw_range[1] and self.mraw_range[0] > 0:
                     self.start_time = self.mraw_range[0] + self.step_time
                     
-                    if self.mraw_range[1] <= self.video.mraw.shape[0]:
+                    if self.mraw_range[1] <= self.video.reader.N:
                         self.stop_time = self.mraw_range[1]
                     else:
-                        raise ValueError(f'mraw_range can only go to end of video - index {self.video.mraw.shape[0]}')
+                        raise ValueError(f'mraw_range can only go to end of video - index {self.video.reader.N}')
                 else:
                     raise ValueError(f'Wrong mraw_range definition.')
 
@@ -189,7 +189,7 @@ class LucasKanade(IDIMethod):
             # return?
 
         else:
-            self.image_size = video.mraw.shape[-2:]
+            self.image_size = (video.reader.image_height, video.reader.image_width)
 
             if self.resume_analysis:
                 self.resume_temp_files()
@@ -221,7 +221,7 @@ class LucasKanade(IDIMethod):
                     d_res  = self.displacements[p, ii-1, :] - d_init
 
                     yslice, xslice = self._padded_slice(point+d_init, self.roi_size, self.image_size, 1)
-                    G = video.mraw[i, yslice, xslice]
+                    G = video.reader.get_frame(i)[yslice, xslice]
 
                     displacements = self.optimize_translations(
                         G=G, 
@@ -300,17 +300,17 @@ class LucasKanade(IDIMethod):
 
 
     def _padded_slice(self, point, roi_size, image_shape, pad=None):
-        '''
-        Returns a slice that crops an image around a given `point` center, 
-        `roi_size` and `pad` size. If the resulting slice would be out of
-        bounds of the image to be sliced (given by `image_shape`), the
+        '''Returns a slice that crops an image around a given ``point`` center, 
+        ``roi_size`` and ``pad`` size. If the resulting slice would be out of
+        bounds of the image to be sliced (given by ``image_shape``), the
         slice is snifted to be on the image edge and a warning is issued.
+        
         :param point: The center point coordiante of the desired ROI.
         :type point: array_like of size 2, (y, x)
         :param roi_size: Size of desired cropped image (y, x).
-        type roi_size: array_like of size 2, (h, w)
+            type roi_size: array_like of size 2, (h, w)
         :param image_shape: Shape of the image to be sliced, (h, w).
-        type image_shape: array_like of size 2, (h, w)
+            type image_shape: array_like of size 2, (h, w)
         :param pad: Pad border size in pixels. If None, the video.pad
             attribute is read.
         :type pad: int, optional, defaults to None
@@ -356,12 +356,18 @@ class LucasKanade(IDIMethod):
         """Set the reference image.
         """
         if type(reference_image) == int:
-            ref = video.mraw[reference_image].copy().astype(float)
+            ref = video.reader.get_frame(reference_image).astype(float)
+
         elif type(reference_image) == tuple:
             if len(reference_image) == 2:
-                ref = np.mean(video.mraw[reference_image[0]:reference_image[1]].copy().astype(float), axis=0)
+                ref = np.zeros((video.reader.image_height, video.reader.image_width), dtype=float)
+                for frame in range(reference_image[0], reference_image[1]):
+                    ref += video.reader.get_frame(frame)
+                ref /= (reference_image[1] - reference_image[0])
+  
         elif type(reference_image) == np.ndarray:
             ref = reference_image
+
         else:
             raise Exception('reference_image must be index of frame, tuple (slice) or ndarray.')
         
@@ -429,7 +435,7 @@ class LucasKanade(IDIMethod):
         roi_size = self.roi_size
 
         fig, ax = plt.subplots(figsize=figsize)
-        ax.imshow(video.mraw[0].astype(float), cmap=cmap)
+        ax.imshow(video.reader.get_frame(0).astype(float), cmap=cmap)
         ax.scatter(video.points[:, 1],
                    video.points[:, 0], marker='.', color=color)
 
@@ -627,7 +633,11 @@ class LucasKanade(IDIMethod):
         settings = {
             # 'configure': dict([(var, None) for var in self.configure.__code__.co_varnames]),
             'configure': self.create_settings_dict(),
-            'info': self.video.info
+            'info': {
+                'width': self.video.reader.image_width,
+                'height': self.video.reader.image_height,
+                'N': self.video.reader.N
+            }
         }
         return settings
 
@@ -659,7 +669,8 @@ def multi(video, processes):
     points_split = tools.split_points(points, processes=processes)
     
     idi_kwargs = {
-        'cih_file': video.cih_file,
+        'input_file': video.cih_file,
+        'root': video.reader.root,
     }
     
     method_kwargs = {

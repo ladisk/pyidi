@@ -10,5 +10,5 @@ atpbar
 numba
 napari[all]
 magicgui
+imageio[pyav]
 opencv-python
-imageio[ffmpeg]

@@ -7,7 +7,7 @@ sys.path.insert(0, my_path + '/../')
 import pyidi
 
 def test_multiprocessing():
-    video = pyidi.pyIDI(input_file='./data/data_synthetic.cih')
+    video = pyidi.pyIDI(input_file='./data/data_synthetic_img_0.png')
     video.set_method(method='lk', int_order=1, roi_size=(9, 9))
 
     points = np.array([

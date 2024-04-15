@@ -59,6 +59,11 @@ def gui(self):
                 default_values[k] = self.method.__dict__[k]
         except:
             pass
+        
+    try:
+        self.reader.mraw
+    except:
+        raise ValueError('Only `mraw` files are supported for GUI at the moment.')
     
     if hasattr(self, 'method'):
         if hasattr(self.method, 'mraw_range'):
@@ -66,7 +71,7 @@ def gui(self):
                 if self.method.mraw_range == 'full':
                     default_values['mraw_ranage_full'] = True
                     default_values['mraw_range_from'] = 0
-                    default_values['mraw_range_to'] = self.mraw.shape[0]
+                    default_values['mraw_range_to'] = self.reader.mraw.shape[0]
                     default_values['mraw_range_step'] = 1
             else:
                 default_values['mraw_ranage_full'] = False
@@ -79,7 +84,7 @@ def gui(self):
             
     # Start gui
     viewer = napari.Viewer(title='pyIDI interface')
-    image_layer = viewer.add_image(self.mraw)
+    image_layer = viewer.add_image(self.reader.mraw)
 
     if not hasattr(self, 'method_name'):
         self.method_name = NO_METHOD
@@ -298,9 +303,9 @@ def napari_show_disp_field(self, viewer):
     if hasattr(self, 'displacements'):
         vectors_all = np.empty((0,2,3))
         for i in range(len(self.points)):
-            vectors = np.zeros((len(self.mraw),2,3), dtype=float)
-            vectors[:,0,0] = np.arange(len(self.mraw))
-            vectors[:,1,0] = np.arange(len(self.mraw))
+            vectors = np.zeros((len(self.reader.mraw),2,3), dtype=float)
+            vectors[:,0,0] = np.arange(len(self.reader.mraw))
+            vectors[:,1,0] = np.arange(len(self.reader.mraw))
             vectors[:,0,1:] = self.points[i]
             vectors[:,1,1:] = self.displacements[i]
 
