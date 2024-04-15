@@ -180,7 +180,6 @@ class SimplifiedOpticalFlow(IDIMethod):
         :param subset_size: Size of the subset to average.
         :return: Reference image, image gradient in 0 direction, image gradient in 1 direction, gradient magnitude
         """
-
         if self.reference_range[1] >= self.video.reader.N:
             self.reference_range = (0, self.video.reader.N)
             warnings.warn('Reference range is larger than the number of images. The reference range is set to (0, N).')

@@ -11,3 +11,4 @@ numba
 napari[all]
 magicgui
 imageio[pyav]
+opencv-python
