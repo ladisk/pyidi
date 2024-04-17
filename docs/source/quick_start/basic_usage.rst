@@ -8,11 +8,17 @@ pyIDI
 Currently the pyIDI method works with Photron ``.cih`` and ``.cihx`` files, however, ``numpy.ndarray`` can
 also be passed as ``cih_file`` argument. If an array is passed, it must have a shape of: ``(n time points, image height, image width)``.
 
+.. note::
+
+    In version 0.30.0, the argument ``cih_file`` was renamed to ``input_file``. This was done
+    because we introduced the :py:class:`VideoReader <pyidi.video_reader.VideoReader>` class, 
+    which can read multiple file formats such as ``.cih``, ``.cihx``, ``.avi``, ``.mp4``, ``.png``, ``.jpg``, ``numpy.ndarray`` etc.
+
 The basic usage of the package is presented.
 
 Loading the video
 -----------------
-First create the ``pyIDI`` object:
+First create the :py:class:`pyIDI <pyidi.pyidi.pyIDI>` object:
 
 .. code:: python
 

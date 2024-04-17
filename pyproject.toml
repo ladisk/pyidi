@@ -1,0 +1,55 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "pyidi"
+version = "0.30.0"
+authors = [{name = "Klemen Zaletelj, Domen Gorjup, Janko Slavič et al.", email = "janko.slavic@fs.uni-lj.si"}]
+maintainers = [{name = "Klemen Zaletelj, Domen Gorjup, Janko Slavič et al.", email = "janko.slavic@fs.uni-lj.si"}]
+license = "MIT"
+description = "Python Image Displacement Identification."
+readme = "README.md"
+keywords = ['computer vision', 'dic', 'gradient-based', 'displacement identification']
+requires-python = ">=3.10"
+dependencies = [
+    "matplotlib>=3.0.0",
+    "numpy>=1.15.4",
+    "scipy>=1.0.0",
+    "pyMRAW>=0.30",
+    "psutil",
+    "tqdm",
+    "mantichora==0.9.7",
+    "atpbar",
+    "numba",
+    "napari[all]",
+    "magicgui",
+    "imageio[pyav]",
+    "opencv-python",
+]
+
+classifiers = [
+    'Development Status :: 5 - Production/Stable',
+    'Intended Audience :: Developers',
+    'Topic :: Scientific/Engineering',
+    'Programming Language :: Python :: 3.10',
+    "License :: OSI Approved :: MIT License",
+]
+
+[project.optional-dependencies]
+dev = [
+    "sphinx",
+    "twine",
+    "wheel",
+    "build",
+    "pytest",
+    "sphinx-book-theme",
+    "sphinx-copybutton",
+    "nbsphinx",
+    "nbsphinx_link",
+]
+
+[project.urls]
+homepage = "https://github.com/ladisk/pyidi"
+documentation = "https://pyidi.readthedocs.io/en/latest/"
+source = "https://github.com/ladisk/pyidi"

@@ -144,9 +144,9 @@ class VideoReader:
             image = np.asarray(image, dtype=np.uint8)
         elif 8 < im_bit_depth <= 16 and image.dtype != np.uint16:
             image = np.asarray(image, dtype=np.uint16)
-        elif im_bit_depth == 8 and image.dtype == np.uint8:
+        elif im_bit_depth <= 8 and image.dtype == np.uint8:
             pass
-        elif im_bit_depth == 16 and image.dtype == np.uint16:
+        elif 8 < im_bit_depth <= 16 and image.dtype == np.uint16:
             pass
         else:
             raise ValueError('image format is not 8 or 16 bit depth! Image format: {}'.format(image.dtype))
