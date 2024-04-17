@@ -1,5 +1,3 @@
 pyidi
 sphinx-book-theme
 sphinx-copybutton
-nbsphinx
-nbsphinx-link

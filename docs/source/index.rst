@@ -14,7 +14,6 @@ Welcome to pyIDI's documentation!
    quick_start/points_selection
    quick_start/napari
    quick_start/disp_id_methods
-   Showcase_MS_mag.nblink
    code/modules
    contributing/documenting
 

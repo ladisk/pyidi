@@ -45,8 +45,6 @@ extensions = [
     'sphinx.ext.viewcode',
     'sphinx.ext.githubpages',
     'sphinx_copybutton',
-    'nbsphinx',
-    'nbsphinx_link',
 ]
 
 autodoc_default_options = {
