@@ -1,3 +1,5 @@
+[![Documentation Status](https://readthedocs.org/projects/pyidi/badge/?version=latest)](https://pyidi.readthedocs.io/en/latest/?badge=latest)
+
 # pyidi
 Image-based Displacement Identification (IDI) implementation in python.
 
