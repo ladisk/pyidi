@@ -2,4 +2,4 @@ pyidi
 sphinx-book-theme
 sphinx-copybutton
 nbsphinx
-nbsphinx_link
+nbsphinx-link
