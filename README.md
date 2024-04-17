@@ -10,10 +10,11 @@ See the [documentation](https://pyidi.readthedocs.io/en/latest/index.html) for `
 # BASIC USAGE:
 Create an instance:
 ```
-video = pyidi.pyIDI(cih_file='video.cih')
+video = pyidi.pyIDI(input_file='video.cih')
 ```
-Currently the pyIDI method works with Photron ``.cih`` and ``.cihx`` files, however, ``numpy.ndarray`` can
-also be passed as ``cih_file`` argument. If an array is passed, it must have a shape of: ``(n time points, image height, image width)``.
+
+The `pyIDI` method works with various formats: `.cih`, `.cihx`, `.png`, `.avi` etc. Additionally, it can also work with `numpy.ndarray` as input.
+If an array is passed, it must have a shape of: ``(n time points, image height, image width)``.
 
 Set the points where displacements will be determined:
 ```
