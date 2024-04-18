@@ -40,7 +40,6 @@ classifiers = [
 dev = [
     "sphinx",
     "twine",
-    "wheel",
     "build",
     "pytest",
     "sphinx-book-theme",

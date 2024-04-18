@@ -1,6 +1,5 @@
 matplotlib>=3.0.0
 numpy>=1.15.4
-pytest>=3.0.5
 scipy>=1.0.0
 pyMRAW>=0.30
 psutil
@@ -12,3 +11,11 @@ napari[all]
 magicgui
 imageio[pyav]
 opencv-python
+sphinx
+twine
+build
+pytest
+sphinx-book-theme
+sphinx-copybutton
+nbsphinx
+nbsphinx_link
