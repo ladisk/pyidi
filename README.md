@@ -1,4 +1,5 @@
 [![Documentation Status](https://readthedocs.org/projects/pyidi/badge/?version=latest)](https://pyidi.readthedocs.io/en/latest/?badge=latest)
+![example workflow](https://github.com/ladisk/pyidi/actions/workflows/python_package_testing.yaml/badge.svg)
 
 # pyidi
 Image-based Displacement Identification (IDI) implementation in python.
