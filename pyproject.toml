@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "pyidi"
-version = "0.30.0"
+version = "0.30.1"
 authors = [{name = "Klemen Zaletelj, Domen Gorjup, Janko Slavič et al.", email = "janko.slavic@fs.uni-lj.si"}]
 maintainers = [{name = "Klemen Zaletelj, Domen Gorjup, Janko Slavič et al.", email = "janko.slavic@fs.uni-lj.si"}]
 license = "MIT"

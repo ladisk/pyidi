@@ -1,4 +1,4 @@
-__version__ = '0.30.0'
+__version__ = '0.30.1'
 from .pyidi import *
 from . import tools
 from . import postprocessing
