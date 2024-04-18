@@ -53,3 +53,8 @@ dev = [
 homepage = "https://github.com/ladisk/pyidi"
 documentation = "https://pyidi.readthedocs.io/en/latest/"
 source = "https://github.com/ladisk/pyidi"
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "pyidi/*"
+]
