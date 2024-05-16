@@ -60,6 +60,7 @@ class VideoReader:
             self.N = info['Total Frame']
             self.image_width = info['Image Width']
             self.image_height = info['Image Height']
+            self.info = info
         
         elif self.file_format in SUPPORTED_IMAGE_FORMATS:
             image_prop = iio.improps(input_file)
@@ -189,6 +190,15 @@ class VideoReader:
             raise ValueError('Unsupported channel! Only R, G, B and Y are supported.')
 
         return image
+    
+    def close(self):
+        """
+        Close the video and clear the resources.
+        In case of a MRAW video, closes the memory map for "mraw" file format.
+        """
+        if hasattr(self, 'mraw') and self.file_format in PHORTRON_HEADER_FILE:
+            self.mraw._mmap.close()
+            del self.mraw
 
 def _rgb2luma(rgb_image):
     """Converts "RGB" image to "YUV" and returns only "Y" (luma) component.

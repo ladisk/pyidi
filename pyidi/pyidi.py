@@ -187,13 +187,11 @@ class pyIDI():
             raise ValueError('IDI method has not yet been set. Please call `set_method()` first.')
 
 
-    # def close_video(self):
-    #     """
-    #     Close the .mraw video memmap.
-    #     """
-    #     if hasattr(self, 'mraw'):
-    #         self.mraw._mmap.close()
-    #         del self.mraw
+    def close_video(self):
+        """
+        Close the .mraw video memmap.
+        """
+        self.reader.close()
     
 
     def create_analysis_directory(self):
@@ -230,7 +228,7 @@ class pyIDI():
                 'N': self.reader.N
             },
             'createdate': datetime.datetime.now().strftime("%Y %m %d    %H:%M:%S"),
-            'cih_file': self.cih_file,
+            'cih_file': self.cih_file if type(self.cih_file) == str else 'ndarray',
             'settings': self.method.create_settings_dict(),
             'method': self.method_name
         }
@@ -269,6 +267,11 @@ class pyIDI():
     def mraw(self):
         warnings.warn('`self.mraw` is deprecated and will be removed in the next version. Please use `self.reader.mraw` instead.', DeprecationWarning)
         return self.reader.mraw
+    
+    @property
+    def info(self):
+        #warnings.warn('`self.info` is deprecated and will be removed in the next version. Please use `self.reader.info` instead.', DeprecationWarning)
+        return self.reader.info
 
 #     def gui(self):
 #         """Napari interface.
