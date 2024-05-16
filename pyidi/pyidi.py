@@ -270,7 +270,7 @@ class pyIDI():
     
     @property
     def info(self):
-        warnings.warn('`self.info` is deprecated and will be removed in the next version. Please use `self.reader.info` instead.', DeprecationWarning)
+        #warnings.warn('`self.info` is deprecated and will be removed in the next version. Please use `self.reader.info` instead.', DeprecationWarning)
         return self.reader.info
 
 #     def gui(self):
