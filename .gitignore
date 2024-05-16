@@ -122,3 +122,5 @@ dmypy.json
 
 #other
 server_user_id.txt
+
+/temp
