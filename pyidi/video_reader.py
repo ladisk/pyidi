@@ -56,7 +56,7 @@ class VideoReader:
 
 
         if self.file_format in PHORTRON_HEADER_FILE:
-            self.mraw, info = pyMRAW.load_video(input_file)
+            self.mraw, self.info = pyMRAW.load_video(input_file)
             self.N = info['Total Frame']
             self.image_width = info['Image Width']
             self.image_height = info['Image Height']
