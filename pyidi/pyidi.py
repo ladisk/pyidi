@@ -11,7 +11,7 @@ from magicgui import magicgui
 import warnings
 warnings.simplefilter("default")
 
-from .methods import IDIMethod, SimplifiedOpticalFlow, LucasKanade, LucasKanadeSc, LucasKanadeSc2, GradientBasedOpticalFlow
+from .methods import IDIMethod, SimplifiedOpticalFlow, LucasKanade, LucasKanadeSc, LucasKanadeSc2, GradientBasedOpticalFlow, LucasKanade_1D
 from .video_reader import VideoReader
 from . import tools
 from . import selection
@@ -20,6 +20,7 @@ from . import gui
 available_method_shortcuts = [
     ('sof', SimplifiedOpticalFlow),
     ('lk', LucasKanade),
+    ('lk_1D', LucasKanade_1D)
     # ('lk_scipy', LucasKanadeSc),
     # ('lk_scipy2', LucasKanadeSc2)
     # ('gb', GradientBasedOpticalFlow)
