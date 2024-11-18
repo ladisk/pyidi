@@ -31,11 +31,11 @@ import warnings
 
 class DirectionalLucasKanade(IDIMethod):
     """
-    Translation identification based on the Directional Lucas-Kanade method using least-squares
-    iterative optimization with the Zero Normalized Cross Correlation optimization
-    criterium.
-    When using this method consider citing the following paper:
-    Masmeijer, Thijs and Zaletelj, Klemen and Slavič, Janko and Habtour, Ed, Directional DIC Method with Automatic Feature Selection. Available at SSRN: https://ssrn.com/abstract=4907539 or http://dx.doi.org/10.2139/ssrn.4907539
+    Unidirectional translation identification as introduced in:
+    Masmeijer T., Habtour E., Zaletelj, K., & Slavič, J., (2024). Directional DIC method with automatic feature selection. MSSP.
+    "https://doi.org/10.1016/j.ymssp.2024.112080".
+    The implementation is based on the Lucas-Kanade method using least-squares iterative optimization with the Zero Normalized
+    Cross Correlation optimization criterium.
     """  
     def configure(
         self, roi_size=(9, 9), dij = (1,0), pad=(2,2), max_nfev=20, 
