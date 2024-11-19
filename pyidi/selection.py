@@ -58,7 +58,7 @@ class ROISelect:
         self.fig = Figure(figsize=(10, 7))
         self.ax = self.fig.add_subplot(111)
         self.ax.grid(False)
-        self.ax.imshow(video.reader.mraw[0], cmap='gray')
+        self.ax.imshow(video.reader.get_frame(0), cmap='gray')
 
         # Initiate polygon
         self.line, = self.ax.plot(self.polygon[1], self.polygon[0], 'C1.-')

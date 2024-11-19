@@ -29,11 +29,13 @@ from .idi_method import IDIMethod
 import warnings
 
 
-class LucasKanade_1D(IDIMethod):
+class DirectionalLucasKanade(IDIMethod):
     """
-    Translation identification based on the Lucas-Kanade method using least-squares
-    iterative optimization with the Zero Normalized Cross Correlation optimization
-    criterium.
+    Unidirectional translation identification as introduced in:
+    Masmeijer T., Habtour E., Zaletelj, K., & Slavič, J., (2024). Directional DIC method with automatic feature selection. MSSP.
+    "https://doi.org/10.1016/j.ymssp.2024.112080".
+    The implementation is based on the Lucas-Kanade method using least-squares iterative optimization with the Zero Normalized
+    Cross Correlation optimization criterium.
     """  
     def configure(
         self, roi_size=(9, 9), dij = (1,0), pad=(2,2), max_nfev=20, 
@@ -681,7 +683,8 @@ def multi(video, processes):
     points_split = tools.split_points(points, processes=processes)
     
     idi_kwargs = {
-        'cih_file': video.cih_file,
+        'input_file': video.cih_file,
+        'root': video.reader.root,
     }
     
     method_kwargs = {
@@ -749,7 +752,7 @@ def worker(points, idi_kwargs, method_kwargs, i):
     """
     method_kwargs['process_number'] = i+1
     _video = pyidi.pyIDI(**idi_kwargs)
-    _video.set_method(LucasKanade_1D)
+    _video.set_method(DirectionalLucasKanade)
     _video.method.configure(**method_kwargs)
     _video.set_points(points)
     
