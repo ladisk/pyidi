@@ -14,11 +14,11 @@ import scipy.optimize
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 from tqdm import tqdm
-from multiprocessing import Pool
+# from multiprocessing import Pool
 import pickle
 import numba as nb
 
-from atpbar import atpbar
+# from atpbar import atpbar
 import mantichora
 
 from psutil import cpu_count
@@ -40,9 +40,8 @@ class DirectionalLucasKanade(IDIMethod):
     def configure(
         self, roi_size=(9, 9), dij = (1,0), pad=(2,2), max_nfev=20, 
         tol=1e-8, int_order=3, verbose=1, show_pbar=True, 
-        processes=1, pbar_type='atpbar', multi_type='mantichora',
-        resume_analysis=True, process_number=0, reference_image=0,
-        mraw_range='full', use_numba=False
+        processes=1, resume_analysis=True, process_number=0, reference_image=0,
+        mraw_range='full', use_numba=False, progress=None, task_id=None
     ):
         """
         Displacement identification based on Directional Lucas-Kanade method,
@@ -72,10 +71,6 @@ class DirectionalLucasKanade(IDIMethod):
         :type show_pbar: bool, optional
         :param processes: number of processes to run
         :type processes: int, optional, defaults to 1.
-        :param pbar_type: type of the progress bar ('tqdm' or 'atpbar'), defaults to 'atpbar'
-        :type pbar_type: str, optional
-        :param multi_type: type of multiprocessing used ('multiprocessing' or 'mantichora'), defaults to 'mantichora'
-        :type multi_type: str, optional
         :param resume_analysis: if True, the last analysis results are loaded and computation continues from last computed time point.
         :type resum_analysis: bool, optional
         :param process_number: User should not change this (for multiprocessing purposes - to indicate the process number)
@@ -88,6 +83,10 @@ class DirectionalLucasKanade(IDIMethod):
         :type mraw_range: tuple or "full"
         :param use_numba: Use numba.njit for computation speedup. Currently not implemented.
         :type use_numba: bool
+        :param progress: progress dictionary for multiprocessing. Is intended for internal use only.
+        :type progress: dict
+        :param task_id: task id for multiprocessing. Is intended for internal use only.
+        :type task_id: int
         """
         if pad is not None:
             self.pad = pad
@@ -103,10 +102,6 @@ class DirectionalLucasKanade(IDIMethod):
             self.roi_size = roi_size
         if int_order is not None:
             self.int_order = int_order
-        if pbar_type is not None:
-            self.pbar_type = pbar_type
-        if multi_type is not None:
-            self.multi_type = multi_type
         if processes is not None:
             self.processes = processes
         if resume_analysis is not None:
@@ -119,6 +114,10 @@ class DirectionalLucasKanade(IDIMethod):
             self.mraw_range = mraw_range
         if use_numba is not None:
             self.use_numba = use_numba
+        if progress is not None:
+            self.progress = progress
+        if task_id is not None:
+            self.task_id = task_id
         if dij is not None:
             self.dij = np.array(dij)
             if np.linalg.norm(self.dij) != 1:
@@ -218,6 +217,7 @@ class DirectionalLucasKanade(IDIMethod):
                 print(f'...done in {time.time() - t:.2f} s')
 
             # Time iteration.
+            len_of_task = len(range(self.start_time, self.stop_time, self.step_time))
             for ii, i in enumerate(self._pbar_range(self.start_time, self.stop_time, self.step_time)):
                 ii = ii + 1
 
@@ -244,6 +244,10 @@ class DirectionalLucasKanade(IDIMethod):
                 # temp
                 self.temp_disp[:, ii, :] = self.displacements[:, ii, :]
                 self.update_log(ii)
+
+                # Update progress bar if multiple processes
+                if hasattr(self, "progress") and hasattr(self, "task_id"):
+                    self.progress[self.task_id] = {"progress": ii + 1, "total": len_of_task}
                     
             del self.temp_disp
 
@@ -353,13 +357,14 @@ class DirectionalLucasKanade(IDIMethod):
         Set progress bar range or normal range.
         """
         if self.show_pbar:
-            if self.pbar_type == 'tqdm':
-                return tqdm(range(*args, **kwargs), ncols=100, leave=True)
-            elif self.pbar_type == 'atpbar':
-                try:
-                    return atpbar(range(*args, **kwargs), name=f'{self.video.points.shape[0]} points', time_track=True)
-                except:
-                    return atpbar(range(*args, **kwargs), name=f'{self.video.points.shape[0]} points')
+            return tqdm(range(*args, **kwargs), ncols=100, leave=True)
+            # if self.pbar_type == 'tqdm':
+            #     return tqdm(range(*args, **kwargs), ncols=100, leave=True)
+            # elif self.pbar_type == 'atpbar':
+            #     try:
+            #         return atpbar(range(*args, **kwargs), name=f'{self.video.points.shape[0]} points', time_track=True)
+            #     except:
+            #         return atpbar(range(*args, **kwargs), name=f'{self.video.points.shape[0]} points')
         else:
             return range(*args, **kwargs)
 
@@ -674,6 +679,10 @@ def multi(video, processes):
     :return: displacements
     :rtype: ndarray
     """
+    from concurrent.futures import ProcessPoolExecutor
+    from rich import progress
+    import multiprocessing
+
     if processes < 0:
         processes = cpu_count() + processes
     elif processes == 0:
@@ -696,45 +705,50 @@ def multi(video, processes):
         'verbose': video.method.verbose, 
         'show_pbar': video.method.show_pbar,
         'int_order': video.method.int_order,
-        'pbar_type': video.method.pbar_type,
+        # 'pbar_type': video.method.pbar_type,
         'resume_analysis': video.method.resume_analysis,
         'reference_image': video.method.reference_image,
         'mraw_range': video.method.mraw_range,
     }
-    if video.method.pbar_type == 'atpbar':
-        print(f'Computation start: {datetime.datetime.now()}')
+
+    print(f'Computation start: {datetime.datetime.now()}')
+
     t_start = time.time()
 
-    if video.method.multi_type == 'multiprocessing':
-        if method_kwargs['pbar_type'] == 'atpbar':
-            method_kwargs['pbar_type'] = 'tqdm'
-            warnings.warn('"atpbar" pbar_type was used with "multiprocessing". This is not supported. Changed pbar_type to "tqdm"')
+    with progress.Progress(
+        "[progress.description]{task.description}",
+        progress.BarColumn(),
+        "[progress.percentage]{task.percentage:>3.0f}%",
+        progress.TimeRemainingColumn(),
+        progress.TimeElapsedColumn(),
+        refresh_per_second=1,  # bit slower updates
+    ) as progress:
+        futures = []
+        with multiprocessing.Manager() as manager:
+            # this is the key - we share some state between our 
+            # main process and our worker functions
+            _progress = manager.dict()
 
-        pool = Pool(processes=processes)
-        results = [pool.apply_async(worker, args=(p, idi_kwargs, method_kwargs, i)) for i, p in enumerate(points_split)]
-        pool.close()
-        pool.join()
+            with ProcessPoolExecutor(max_workers=processes) as executor:
+                for n in range(0, len(points_split)):  # iterate over the jobs we need to run
+                    # set visible false so we don't have a lot of bars all at once:
+                    task_id = progress.add_task(f"task {n}")
+                    futures.append(executor.submit(worker, points_split[n], idi_kwargs, method_kwargs, n, _progress, task_id))
 
-        out = []
-        for r in results:
-            out.append(r.get())
+                # monitor the progress:
+                while sum([future.done() for future in futures]) < len(futures):
+                    for task_id, update_data in _progress.items():
+                        latest = update_data["progress"]
+                        total = update_data["total"]
+                        # update the progress bar for this task:
+                        progress.update(task_id, completed=latest, total=total)
 
-        out1 = sorted(out, key=lambda x: x[1])
-        out1 = np.concatenate([d[0] for d in out1])
-    
-    elif video.method.multi_type == 'mantichora':
-        with mantichora.mantichora(nworkers=processes) as mcore:
-            for i, p in enumerate(points_split):
-                mcore.run(worker, p, idi_kwargs, method_kwargs, i)
-            returns = mcore.returns()
-        
-        out = []
-        for r in returns:
-            out.append(r)
-        
-        out1 = sorted(out, key=lambda x: x[1])
-        out1 = np.concatenate([d[0] for d in out1])
+                out = []
+                for future in futures:
+                    out.append(future.result())
 
+                out1 = sorted(out, key=lambda x: x[1])
+                out1 = np.concatenate([d[0] for d in out1])
 
     t = time.time() - t_start
     minutes = t//60
@@ -746,17 +760,117 @@ def multi(video, processes):
     return out1
 
 
-def worker(points, idi_kwargs, method_kwargs, i):
+def worker(points, idi_kwargs, method_kwargs, i, progress, task_id):
     """
     A function that is called when for each job in multiprocessing.
     """
     method_kwargs['process_number'] = i+1
+    method_kwargs['progress'] = progress
+    method_kwargs['task_id'] = task_id
+    method_kwargs['show_pbar'] = False # use the rich progress bar insted of tqdm
     _video = pyidi.pyIDI(**idi_kwargs)
     _video.set_method(DirectionalLucasKanade)
     _video.method.configure(**method_kwargs)
     _video.set_points(points)
     
     return _video.get_displacements(verbose=0), i
+
+# def multi(video, processes):
+#     """
+#     Splitting the points to multiple processes and creating a
+#     pool of workers.
+    
+#     :param video: the video object with defined attributes
+#     :type video: object
+#     :param processes: number of processes. If negative, the number
+#         of processes is set to `psutil.cpu_count + processes`.
+#     :type processes: int
+#     :return: displacements
+#     :rtype: ndarray
+#     """
+#     if processes < 0:
+#         processes = cpu_count() + processes
+#     elif processes == 0:
+#         raise ValueError('Number of processes must not be zero.')
+
+#     points = video.points
+#     points_split = tools.split_points(points, processes=processes)
+    
+#     idi_kwargs = {
+#         'input_file': video.cih_file,
+#         'root': video.reader.root,
+#     }
+    
+#     method_kwargs = {
+#         'roi_size': video.method.roi_size, 
+#         'pad': video.method.pad, 
+#         'dij': video.method.dij,
+#         'max_nfev': video.method.max_nfev, 
+#         'tol': video.method.tol, 
+#         'verbose': video.method.verbose, 
+#         'show_pbar': video.method.show_pbar,
+#         'int_order': video.method.int_order,
+#         'pbar_type': video.method.pbar_type,
+#         'resume_analysis': video.method.resume_analysis,
+#         'reference_image': video.method.reference_image,
+#         'mraw_range': video.method.mraw_range,
+#     }
+#     if video.method.pbar_type == 'atpbar':
+#         print(f'Computation start: {datetime.datetime.now()}')
+#     t_start = time.time()
+
+#     if video.method.multi_type == 'multiprocessing':
+#         if method_kwargs['pbar_type'] == 'atpbar':
+#             method_kwargs['pbar_type'] = 'tqdm'
+#             warnings.warn('"atpbar" pbar_type was used with "multiprocessing". This is not supported. Changed pbar_type to "tqdm"')
+
+#         pool = Pool(processes=processes)
+#         results = [pool.apply_async(worker, args=(p, idi_kwargs, method_kwargs, i)) for i, p in enumerate(points_split)]
+#         pool.close()
+#         pool.join()
+
+#         out = []
+#         for r in results:
+#             out.append(r.get())
+
+#         out1 = sorted(out, key=lambda x: x[1])
+#         out1 = np.concatenate([d[0] for d in out1])
+    
+#     elif video.method.multi_type == 'mantichora':
+#         with mantichora.mantichora(nworkers=processes) as mcore:
+#             for i, p in enumerate(points_split):
+#                 mcore.run(worker, p, idi_kwargs, method_kwargs, i)
+#             returns = mcore.returns()
+        
+#         out = []
+#         for r in returns:
+#             out.append(r)
+        
+#         out1 = sorted(out, key=lambda x: x[1])
+#         out1 = np.concatenate([d[0] for d in out1])
+
+
+#     t = time.time() - t_start
+#     minutes = t//60
+#     seconds = t%60
+#     hours = minutes//60
+#     minutes = minutes%60
+#     print(f'Computation duration: {hours:0>2.0f}:{minutes:0>2.0f}:{seconds:.2f}')
+    
+#     return out1
+
+
+# def worker(points, idi_kwargs, method_kwargs, i):
+#     """
+#     A function that is called when for each job in multiprocessing.
+#     """
+#     method_kwargs['process_number'] = i+1
+#     _video = pyidi.pyIDI(**idi_kwargs)
+#     _video.set_method(DirectionalLucasKanade)
+#     _video.method.configure(**method_kwargs)
+#     _video.set_points(points)
+    
+#     return _video.get_displacements(verbose=0), i
 
 # @nb.njit
 def compute_delta_numba(F, G, Gd, Gd2_inv, dij):
