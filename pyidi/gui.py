@@ -1,8 +1,6 @@
-from napari.components import viewer_model
 import numpy as np
 import napari
 from magicgui import magicgui
-import pathlib
 
 import warnings
 warnings.simplefilter("default")

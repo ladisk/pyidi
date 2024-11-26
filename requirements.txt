@@ -4,8 +4,6 @@ scipy>=1.0.0
 pyMRAW>=0.30
 psutil
 tqdm
-mantichora==0.9.7
-atpbar
 numba
 napari[all]
 magicgui
@@ -19,3 +17,4 @@ sphinx-book-theme
 sphinx-copybutton
 nbsphinx
 nbsphinx_link
+rich
