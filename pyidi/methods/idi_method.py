@@ -8,7 +8,7 @@ import shutil
 import inspect
 import matplotlib.pyplot as plt
 
-
+from ..selection import SubsetSelection
 from ..video_reader import VideoReader
 
 class IDIMethod:
@@ -245,6 +245,11 @@ class IDIMethod:
         return settings
     
     def set_points(self, points):
+        if isinstance(points, list):
+            points = np.array(points)
+        elif isinstance(points, SubsetSelection):
+            points = np.array(points.points)
+
         points = np.array(points)
         if points.shape[1] != 2:
             raise ValueError("Points must have two columns.")
