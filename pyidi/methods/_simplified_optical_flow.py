@@ -54,27 +54,34 @@ class SimplifiedOpticalFlow(IDIMethod):
         :param reference_range: what range of images is averaged into reference image, defaults to (0, 100)
         :param reference_range: tuple, optional
         """
-
-        self.subset_size = subset_size
-        self.pixel_shift = pixel_shift
-        self.convert_from_px = convert_from_px
-        self.mraw_range = mraw_range
-        self.mean_n_neighbours = mean_n_neighbours
-        self.zero_shift = zero_shift
-        self.progress_bar = progress_bar
-        self.reference_range = reference_range
+        if subset_size is not None:
+            self.subset_size = subset_size
+        if pixel_shift is not None:
+            self.pixel_shift = pixel_shift
+        if convert_from_px is not None:
+            self.convert_from_px = convert_from_px
+        if mraw_range is not None:
+            self.mraw_range = mraw_range
+        if mean_n_neighbours is not None:
+            self.mean_n_neighbours = mean_n_neighbours
+        if zero_shift is not None:
+            self.zero_shift = zero_shift
+        if progress_bar is not None:
+            self.progress_bar = progress_bar
+        if reference_range is not None:
+            self.reference_range = reference_range
 
         # Get reference image and gradients
         self.reference_image, self.gradient_0, self.gradient_1, self.gradient_magnitude = self._reference()
 
-    def calculate_displacements(self, video):
-        if not hasattr(video, 'points'):
+    def calculate_displacements(self):
+        if not hasattr(self, 'points'):
             raise Exception('Please set points for analysis!')
 
         if self.pixel_shift:
-            self.delta_0    = np.zeros((video.points.shape[0],)).astype(int)
-            self.delta_1    = np.zeros((video.points.shape[0],)).astype(int)
-            self.valid_points = np.ones((video.points.shape[0],)).astype(bool)
+            self.delta_0    = np.zeros((self.points.shape[0],)).astype(int)
+            self.delta_1    = np.zeros((self.points.shape[0],)).astype(int)
+            self.valid_points = np.ones((self.points.shape[0],)).astype(bool)
         else:
             self.delta_0 = 0
             self.delta_1 = 0
@@ -83,22 +90,22 @@ class SimplifiedOpticalFlow(IDIMethod):
         gradient_1_direction = np.copy(self.gradient_1)
 
         signs_0 = np.sign(
-            gradient_0_direction[video.points[:, 0], video.points[:, 1]])
+            gradient_0_direction[self.points[:, 0], self.points[:, 1]])
         signs_1 = np.sign(
-            gradient_1_direction[video.points[:, 0], video.points[:, 1]])
+            gradient_1_direction[self.points[:, 0], self.points[:, 1]])
 
         self.direction_correction_0 = np.abs(
-            gradient_0_direction[video.points[:, 0], video.points[:, 1]] / self.gradient_magnitude[video.points[:, 0], video.points[:, 1]])
+            gradient_0_direction[self.points[:, 0], self.points[:, 1]] / self.gradient_magnitude[self.points[:, 0], self.points[:, 1]])
         self.direction_correction_1 = np.abs(
-            gradient_1_direction[video.points[:, 0], video.points[:, 1]] / self.gradient_magnitude[video.points[:, 0], video.points[:, 1]])
+            gradient_1_direction[self.points[:, 0], self.points[:, 1]] / self.gradient_magnitude[self.points[:, 0], self.points[:, 1]])
 
         # limited range of mraw can be observed
         if self.mraw_range != 'all':
             limited_mraw = range(self.mraw_range[0], self.mraw_range[1])
-            self.displacements  = np.zeros((video.points.shape[0], self.mraw_range[1]-self.mraw_range[0], 2))
+            self.displacements  = np.zeros((self.points.shape[0], self.mraw_range[1]-self.mraw_range[0], 2))
         else:
-            limited_mraw = range(video.reader.N)
-            self.displacements  = np.zeros((video.points.shape[0], video.reader.N, 2))
+            limited_mraw = range(self.video.N)
+            self.displacements  = np.zeros((self.points.shape[0], self.video.N, 2))
 
         # Progress bar
         if self.progress_bar:
@@ -108,18 +115,18 @@ class SimplifiedOpticalFlow(IDIMethod):
 
         # calculating the displacements
         for i, frame_number in enumerate(p_bar(limited_mraw, ncols=100)):
-            image = video.reader.get_frame(frame_number)
+            image = self.video.get_frame(frame_number)
             image_filtered = self.subset(image, self.subset_size)
 
-            self.image_roi = image_filtered[video.points[:,0] + self.delta_0, video.points[:, 1] + self.delta_1]
-            self.latest_displacements = (self.reference_image[video.points[:,0] , video.points[:, 1] ] - self.image_roi) / \
-                self.gradient_magnitude[video.points[:,0], video.points[:, 1]]
+            self.image_roi = image_filtered[self.points[:,0] + self.delta_0, self.points[:, 1] + self.delta_1]
+            self.latest_displacements = (self.reference_image[self.points[:,0] , self.points[:, 1] ] - self.image_roi) / \
+                self.gradient_magnitude[self.points[:,0], self.points[:, 1]]
 
             self.displacements[:, i, 0] = signs_0 * (self.direction_correction_0 * self.latest_displacements) + self.delta_0
             self.displacements[:, i, 1] = signs_1 * (self.direction_correction_1 * self.latest_displacements) + self.delta_1
 
             if self.pixel_shift:
-                self.pixel_shift_fun(i, video.points, image.shape)
+                self.pixel_shift_fun(i, self.points, image.shape)
 
         # Convert the displacements from pixels to physical units:
         self.displacements *= self.convert_from_px
@@ -139,9 +146,6 @@ class SimplifiedOpticalFlow(IDIMethod):
         #check for large displacements
         if np.max(self.displacements)/self.convert_from_px>0.5 and self.pixel_shift is False:
             warnings.warn('Displacement larger than 0.5 pixel')
-
-    def calculate_displacements_multiprocessing(self):
-        raise Exception('SimplifiedOpticalFLow method does not contain a multiprocessing option.')
 
     def displacement_averaging(self):
         """Calculate the average of displacements.
@@ -180,13 +184,13 @@ class SimplifiedOpticalFlow(IDIMethod):
         :param subset_size: Size of the subset to average.
         :return: Reference image, image gradient in 0 direction, image gradient in 1 direction, gradient magnitude
         """
-        if self.reference_range[1] >= self.video.reader.N:
-            self.reference_range = (0, self.video.reader.N)
+        if self.reference_range[1] >= self.video.N:
+            self.reference_range = (0, self.video.N)
             warnings.warn('Reference range is larger than the number of images. The reference range is set to (0, N).')
-        reference_image = np.zeros((self.video.reader.image_height, \
-                                    self.video.reader.image_width), dtype=float)
+        reference_image = np.zeros((self.video.image_height, \
+                                    self.video.image_width), dtype=float)
         for frame in range(self.reference_range[0], self.reference_range[1]):
-            reference_image += self.video.reader.get_frame(frame)
+            reference_image += self.video.get_frame(frame)
         reference_image /= (self.reference_range[1] - self.reference_range[0])
         reference_image = self.subset(reference_image, self.subset_size)
 
@@ -215,31 +219,31 @@ class SimplifiedOpticalFlow(IDIMethod):
 
         return np.sum(np.asarray(subset_image), axis=0)
 
-    @staticmethod
-    def get_points(video, **kwargs):
-        """Determine the points.
-        """
-        options = {
-            'subset': (20, 20),
-            'axis': 0,
-            'min_grad': 0.,
-        }
+    # @staticmethod
+    # def get_points(video, **kwargs):
+    #     """Determine the points.
+    #     """
+    #     options = {
+    #         'subset': (20, 20),
+    #         'axis': 0,
+    #         'min_grad': 0.,
+    #     }
 
-        # # Change the docstring in `set_points` to show the options
-        # docstring = video.set_points.__doc__.split('---')
-        # docstring[1] = '- ' + '\n\t- '.join(options) + '\n\t'
-        # video.set_points.__func__.__doc__ = '---\n\t'.join(docstring)
+    #     # # Change the docstring in `set_points` to show the options
+    #     # docstring = video.set_points.__doc__.split('---')
+    #     # docstring[1] = '- ' + '\n\t- '.join(options) + '\n\t'
+    #     # video.set_points.__func__.__doc__ = '---\n\t'.join(docstring)
 
-        options.update(kwargs)
+    #     options.update(kwargs)
 
-        if isinstance(options['subset'], int):
-            options['subset'] = 2*(options['subset'], )
-        elif type(options['subset']) not in [list, tuple]:
-            raise Exception(
-                f'keyword argument "subset" must be int, list or tuple (not {type(options["subset"])})')
+    #     if isinstance(options['subset'], int):
+    #         options['subset'] = 2*(options['subset'], )
+    #     elif type(options['subset']) not in [list, tuple]:
+    #         raise Exception(
+    #             f'keyword argument "subset" must be int, list or tuple (not {type(options["subset"])})')
 
-        polygon = PickPoints(
-            video, subset=options['subset'], axis=options['axis'], min_grad=options['min_grad'])
+    #     polygon = PickPoints(
+    #         video, subset=options['subset'], axis=options['axis'], min_grad=options['min_grad'])
 
 
 class PickPoints:
