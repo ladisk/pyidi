@@ -16,12 +16,14 @@ import matplotlib.patches as patches
 from tqdm import tqdm
 import pickle
 import numba as nb
+import rich.progress
 
 from psutil import cpu_count
 from .. import tools
 from ..video_reader import VideoReader
 
 from .idi_method import IDIMethod
+from ..progress_bar import progress_bar, rich_progress_bar_setup
 
 class LucasKanade(IDIMethod):
     """
@@ -187,7 +189,7 @@ class LucasKanade(IDIMethod):
 
         # Time iteration.
         len_of_task = len(range(self.start_time, self.stop_time, self.step_time))
-        for ii, i in enumerate(self._pbar_range(self.start_time, self.stop_time, self.step_time)):
+        for ii, i in enumerate(progress_bar(self.start_time, self.stop_time, self.step_time)):
             ii = ii + 1
 
             # Iterate over points.
@@ -321,16 +323,6 @@ class LucasKanade(IDIMethod):
         return yslice, xslice
 
 
-    def _pbar_range(self, *args, **kwargs):
-        """
-        Set progress bar range or normal range.
-        """
-        if self.show_pbar:
-            return tqdm(range(*args, **kwargs), ncols=100, leave=True)
-        else:
-            return range(*args, **kwargs)
-
-
     def _set_reference_image(self, video: VideoReader, reference_image):
         """Set the reference image.
         """
@@ -422,7 +414,6 @@ def multi(video: VideoReader, idi_method: LucasKanade, processes, configuration_
     :type configuration_keys: list
     """
     from concurrent.futures import ProcessPoolExecutor
-    from rich import progress
     import multiprocessing
 
     if processes < 0:
@@ -450,15 +441,7 @@ def multi(video: VideoReader, idi_method: LucasKanade, processes, configuration_
 
     t_start = time.time()
 
-    with progress.Progress(
-        "[progress.description]{task.description}",
-        progress.MofNCompleteColumn(),
-        progress.BarColumn(),
-        "[progress.percentage]{task.percentage:>3.0f}%",
-        progress.TimeRemainingColumn(),
-        progress.TimeElapsedColumn(),
-        refresh_per_second=1,  # bit slower updates
-    ) as progress:
+    with rich_progress_bar_setup() as progress:
         futures = []
         with multiprocessing.Manager() as manager:
             # this is the key - we share some state between our 
