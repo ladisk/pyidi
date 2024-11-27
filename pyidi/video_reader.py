@@ -52,6 +52,8 @@ class VideoReader:
             self.root = root
             self.file_format = 'np.ndarray'
             self.input_file = 'ndarray'
+            self.name = 'ndarray_video'
+
         elif isinstance(input_file, str):
             if not os.path.exists(input_file):
                 raise FileNotFoundError(f'File "{input_file}" not found!')
@@ -59,7 +61,8 @@ class VideoReader:
             self.root, self.file = os.path.split(input_file)
             self.file_format = self.file.split('.')[-1].lower()
             self.input_file = input_file
-            
+            self.name = self.file.split('.')[0]
+
 
         if self.file_format in PHORTRON_HEADER_FILE:
             self.mraw, info = pyMRAW.load_video(input_file)
@@ -208,8 +211,9 @@ class VideoReader:
 
     def gui(self):
         """Starts the GUI for pyIDI."""
-        from . import gui
-        self.gui_obj = gui.gui(self)
+        raise NotImplementedError('GUI is not implemented yet. Stay tuned!')
+        # from . import gui
+        # self.gui_obj = gui.gui(self)
 
 
 def _rgb2luma(rgb_image):

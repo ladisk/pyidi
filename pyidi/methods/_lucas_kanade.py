@@ -21,8 +21,8 @@ import numba as nb
 # from atpbar import atpbar
 
 from psutil import cpu_count
-from .. import pyidi
 from .. import tools
+from ..video_reader import VideoReader
 
 from .idi_method import IDIMethod
 
@@ -125,7 +125,7 @@ class LucasKanade(IDIMethod):
         
         self._set_mraw_range()
 
-        self.temp_dir = os.path.join(self.video.reader.root, 'temp_file')
+        self.temp_dir = os.path.join(self.video.root, 'temp_file')
         self.settings_filename = os.path.join(self.temp_dir, 'settings.pkl')
         self.analysis_run = 0
         
@@ -137,19 +137,19 @@ class LucasKanade(IDIMethod):
 
         if self.mraw_range == 'full':
             self.start_time = 1
-            self.stop_time = self.video.reader.N
+            self.stop_time = self.video.N
             
-        elif type(self.mraw_range) == tuple:
+        elif type(self.mraw_range) is tuple:
             if len(self.mraw_range) >= 2:
                 if self.mraw_range[0] < self.mraw_range[1] and self.mraw_range[0] > 0:
                     self.start_time = self.mraw_range[0] + self.step_time
                     
-                    if self.mraw_range[1] <= self.video.reader.N:
+                    if self.mraw_range[1] <= self.video.N:
                         self.stop_time = self.mraw_range[1]
                     else:
-                        raise ValueError(f'mraw_range can only go to end of video - index {self.video.reader.N}')
+                        raise ValueError(f'mraw_range can only go to end of video - index {self.video.N}')
                 else:
-                    raise ValueError(f'Wrong mraw_range definition.')
+                    raise ValueError('Wrong mraw_range definition.')
 
                 if len(self.mraw_range) == 3:
                     self.step_time = self.mraw_range[2]
@@ -162,7 +162,7 @@ class LucasKanade(IDIMethod):
         self.N_time_points = len(range(self.start_time-self.step_time, self.stop_time, self.step_time))
 
 
-    def calculate_displacements(self, video, **kwargs):
+    def calculate_displacements(self, **kwargs):
         """
         Calculate displacements for set points and roi size.
 
@@ -170,6 +170,8 @@ class LucasKanade(IDIMethod):
         are NOT changed!
         
         """
+        video = self.video
+
         # Updating the atributes
         config_kwargs = dict([(var, None) for var in self.configure.__code__.co_varnames])
         config_kwargs.pop('self', None)
@@ -188,77 +190,77 @@ class LucasKanade(IDIMethod):
                     print('--- Starting new analysis ---')
                     print(' ')
 
-        if self.processes != 1:
+        if self.processes != 1: # multiprocessing
             if not self.resume_analysis:
                 self.create_temp_files(init_multi=True)
             
-            self.displacements = multi(video, self.processes)
-            # return?
+            self.displacements = multi(self.video, self, self.processes)
+            return
 
+        # For a single process
+        self.image_size = (video.image_height, video.image_width)
+
+        if self.resume_analysis:
+            self.resume_temp_files()
         else:
-            self.image_size = (video.reader.image_height, video.reader.image_width)
+            self.displacements = np.zeros((self.points.shape[0], self.N_time_points, 2))
+            self.create_temp_files(init_multi=False)
 
-            if self.resume_analysis:
-                self.resume_temp_files()
+        self.warnings = []
+
+        # Precomputables
+        start_time = time.time()
+
+        if self.verbose:
+            t = time.time()
+            print('Interpolating the reference image...')
+        self._interpolate_reference(video)
+        if self.verbose:
+            print(f'...done in {time.time() - t:.2f} s')
+
+        # Time iteration.
+        len_of_task = len(range(self.start_time, self.stop_time, self.step_time))
+        for ii, i in enumerate(self._pbar_range(self.start_time, self.stop_time, self.step_time)):
+            ii = ii + 1
+
+            # Iterate over points.
+            for p, point in enumerate(self.points):
+                
+                # start optimization with previous optimal parameter values
+                d_init = np.round(self.displacements[p, ii-1, :]).astype(int)
+                d_res  = self.displacements[p, ii-1, :] - d_init
+
+                yslice, xslice = self._padded_slice(point+d_init, self.roi_size, self.image_size, 1)
+                G = video.get_frame(i)[yslice, xslice]
+
+                displacements = self.optimize_translations(
+                    G=G, 
+                    F_spline=self.interpolation_splines[p], 
+                    maxiter=self.max_nfev,
+                    tol=self.tol,
+                    d_subpixel_init = -d_res
+                    )
+
+                self.displacements[p, ii, :] = displacements + d_init
+
+            # temp
+            self.temp_disp[:, ii, :] = self.displacements[:, ii, :]
+            self.update_log(ii)
+
+            # Update progress bar if multiple processes
+            if hasattr(self, "progress") and hasattr(self, "task_id"):
+                self.progress[self.task_id] = {"progress": ii + 1, "total": len_of_task}
+                
+        del self.temp_disp
+
+        if self.verbose:
+            full_time = time.time() - start_time
+            if full_time > 60:
+                full_time_m = full_time//60
+                full_time_s = full_time%60
+                print(f'Time to complete: {full_time_m:.0f} min, {full_time_s:.1f} s')
             else:
-                self.displacements = np.zeros((video.points.shape[0], self.N_time_points, 2))
-                self.create_temp_files(init_multi=False)
-
-            self.warnings = []
-
-            # Precomputables
-            start_time = time.time()
-
-            if self.verbose:
-                t = time.time()
-                print(f'Interpolating the reference image...')
-            self._interpolate_reference(video)
-            if self.verbose:
-                print(f'...done in {time.time() - t:.2f} s')
-
-            # Time iteration.
-            len_of_task = len(range(self.start_time, self.stop_time, self.step_time))
-            for ii, i in enumerate(self._pbar_range(self.start_time, self.stop_time, self.step_time)):
-                ii = ii + 1
-
-                # Iterate over points.
-                for p, point in enumerate(video.points):
-                    
-                    # start optimization with previous optimal parameter values
-                    d_init = np.round(self.displacements[p, ii-1, :]).astype(int)
-                    d_res  = self.displacements[p, ii-1, :] - d_init
-
-                    yslice, xslice = self._padded_slice(point+d_init, self.roi_size, self.image_size, 1)
-                    G = video.reader.get_frame(i)[yslice, xslice]
-
-                    displacements = self.optimize_translations(
-                        G=G, 
-                        F_spline=self.interpolation_splines[p], 
-                        maxiter=self.max_nfev,
-                        tol=self.tol,
-                        d_subpixel_init = -d_res
-                        )
-
-                    self.displacements[p, ii, :] = displacements + d_init
-
-                # temp
-                self.temp_disp[:, ii, :] = self.displacements[:, ii, :]
-                self.update_log(ii)
-
-                # Update progress bar if multiple processes
-                if hasattr(self, "progress") and hasattr(self, "task_id"):
-                    self.progress[self.task_id] = {"progress": ii + 1, "total": len_of_task}
-                    
-            del self.temp_disp
-
-            if self.verbose:
-                full_time = time.time() - start_time
-                if full_time > 60:
-                    full_time_m = full_time//60
-                    full_time_s = full_time%60
-                    print(f'Time to complete: {full_time_m:.0f} min, {full_time_s:.1f} s')
-                else:
-                    print(f'Time to complete: {full_time:.1f} s')
+                print(f'Time to complete: {full_time:.1f} s')
 
 
     def optimize_translations(self, G, F_spline, maxiter, tol, d_subpixel_init=(0, 0)):
@@ -354,30 +356,21 @@ class LucasKanade(IDIMethod):
         """
         if self.show_pbar:
             return tqdm(range(*args, **kwargs), ncols=100, leave=True)
-        
-            # NOTE: with multiprocessing, the progress bar is handled differently.
-            # if self.pbar_type == 'tqdm':
-            #     return tqdm(range(*args, **kwargs), ncols=100, leave=True)
-            # elif self.pbar_type == 'atpbar':
-            #     try:
-            #         return atpbar(range(*args, **kwargs), name=f'{self.video.points.shape[0]} points', time_track=True)
-            #     except:
-            #         return atpbar(range(*args, **kwargs), name=f'{self.video.points.shape[0]} points')
         else:
             return range(*args, **kwargs)
 
 
-    def _set_reference_image(self, video, reference_image):
+    def _set_reference_image(self, video: VideoReader, reference_image):
         """Set the reference image.
         """
         if type(reference_image) == int:
-            ref = video.reader.get_frame(reference_image).astype(float)
+            ref = video.get_frame(reference_image).astype(float)
 
         elif type(reference_image) == tuple:
             if len(reference_image) == 2:
-                ref = np.zeros((video.reader.image_height, video.reader.image_width), dtype=float)
+                ref = np.zeros((video.image_height, video.image_width), dtype=float)
                 for frame in range(reference_image[0], reference_image[1]):
-                    ref += video.reader.get_frame(frame)
+                    ref += video.get_frame(frame)
                 ref /= (reference_image[1] - reference_image[0])
   
         elif type(reference_image) == np.ndarray:
@@ -389,7 +382,7 @@ class LucasKanade(IDIMethod):
         return ref
 
 
-    def _interpolate_reference(self, video):
+    def _interpolate_reference(self, video: VideoReader):
         """
         Interpolate the reference image.
 
@@ -403,7 +396,7 @@ class LucasKanade(IDIMethod):
         pad = self.pad
         f = self._set_reference_image(video, self.reference_image)
         splines = []
-        for point in video.points:
+        for point in self.points:
             yslice, xslice = self._padded_slice(point, self.roi_size, self.image_size, pad)
 
             spl = RectBivariateSpline(
@@ -439,7 +432,7 @@ class LucasKanade(IDIMethod):
             raise ValueError(f'Invalid input. ROI size must be scalar or a size 2 array-like.')
 
     
-    def show_points(self, video, figsize=(15, 5), cmap='gray', color='r'):
+    def show_points(self, figsize=(15, 5), cmap='gray', color='r'):
         """
         Shoe points to be analyzed, together with ROI borders.
         
@@ -450,11 +443,11 @@ class LucasKanade(IDIMethod):
         roi_size = self.roi_size
 
         fig, ax = plt.subplots(figsize=figsize)
-        ax.imshow(video.reader.get_frame(0).astype(float), cmap=cmap)
-        ax.scatter(video.points[:, 1],
-                   video.points[:, 0], marker='.', color=color)
+        ax.imshow(self.video.get_frame(0).astype(float), cmap=cmap)
+        ax.scatter(self.points[:, 1],
+                   self.points[:, 0], marker='.', color=color)
 
-        for point in video.points:
+        for point in self.points:
             roi_border = patches.Rectangle((point - self.roi_size//2 - 0.5)[::-1], self.roi_size[1], self.roi_size[0],
                                             linewidth=1, edgecolor=color, facecolor='none')
             ax.add_patch(roi_border)
@@ -489,7 +482,7 @@ class LucasKanade(IDIMethod):
             
             self.points_filename = os.path.join(temp_dir, 'points.pkl')
             with open(self.points_filename, 'wb') as f:
-                pickle.dump(self.video.points, f)
+                pickle.dump(self.points, f)
 
         if not init_multi:
             token = f'{self.process_number:0>3.0f}'
@@ -500,15 +493,15 @@ class LucasKanade(IDIMethod):
 
             with open(self.process_log, 'w', encoding='utf-8') as f:
                 f.writelines([
-                    f'cih_file: {self.video.cih_file}\n',
+                    f'input_file: {self.video.input_file}\n',
                     f'token: {token}\n',
                     f'points_filename: {self.points_filename}\n',
                     f'disp_filename: {self.disp_filename}\n',
-                    f'disp_shape: {(self.video.points.shape[0], self.N_time_points, 2)}\n',
+                    f'disp_shape: {(self.points.shape[0], self.N_time_points, 2)}\n',
                     f'analysis_run <{self.analysis_run}>:'
                 ])
 
-            self.temp_disp = np.memmap(self.disp_filename, dtype=np.float64, mode='w+', shape=(self.video.points.shape[0], self.N_time_points, 2))
+            self.temp_disp = np.memmap(self.disp_filename, dtype=np.float64, mode='w+', shape=(self.points.shape[0], self.N_time_points, 2))
             
 
     def clear_temp_files(self):
@@ -579,7 +572,8 @@ class LucasKanade(IDIMethod):
         """
         # if settings file exists
         if os.path.exists(self.settings_filename):
-            settings_old = pickle.load(open(self.settings_filename, 'rb'))
+            with open(self.settings_filename, 'rb') as f:
+                settings_old = pickle.load(f)
             json_old = json.dumps(settings_old, sort_keys=True, indent=2)
             
             settings_new = self._make_comparison_dict()
@@ -591,8 +585,9 @@ class LucasKanade(IDIMethod):
             
             # if points file exists and points are the same
             if os.path.exists(os.path.join(self.temp_dir, 'points.pkl')):
-                points = pickle.load(open(os.path.join(self.temp_dir, 'points.pkl'), 'rb'))
-                if np.array_equal(points, self.video.points):
+                with open(os.path.join(self.temp_dir, 'points.pkl'), 'rb') as f:
+                    points = pickle.load(f)
+                if np.array_equal(points, self.points):
                     return True
                 else:
                     return False
@@ -649,9 +644,9 @@ class LucasKanade(IDIMethod):
             # 'configure': dict([(var, None) for var in self.configure.__code__.co_varnames]),
             'configure': self.create_settings_dict(),
             'info': {
-                'width': self.video.reader.image_width,
-                'height': self.video.reader.image_height,
-                'N': self.video.reader.N
+                'width': self.video.image_width,
+                'height': self.video.image_height,
+                'N': self.video.N
             }
         }
         return settings
@@ -662,7 +657,7 @@ class LucasKanade(IDIMethod):
         raise Exception('Choose a method from `tools` module.')
 
 
-def multi(video, processes):
+def multi(video: VideoReader, idi_method: LucasKanade, processes):
     """
     Splitting the points to multiple processes and creating a
     pool of workers.
@@ -684,26 +679,27 @@ def multi(video, processes):
     elif processes == 0:
         raise ValueError('Number of processes must not be zero.')
 
-    points = video.points
+    points = idi_method.points
     points_split = tools.split_points(points, processes=processes)
-    
+
     idi_kwargs = {
-        'input_file': video.cih_file,
-        'root': video.reader.root,
+        'input_file': video.input_file,
+        'root': video.root,
     }
+
+    if video.file_format == 'np.ndarray':
+        idi_kwargs['input_file'] = video.mraw # if the input is np.ndarray, the input_file is the actual data
     
     method_kwargs = {
-        'roi_size': video.method.roi_size, 
-        'pad': video.method.pad, 
-        'max_nfev': video.method.max_nfev, 
-        'tol': video.method.tol, 
-        'verbose': video.method.verbose, 
-        'show_pbar': video.method.show_pbar,
-        'int_order': video.method.int_order,
-        'pbar_type': video.method.pbar_type,
-        'resume_analysis': video.method.resume_analysis,
-        'reference_image': video.method.reference_image,
-        'mraw_range': video.method.mraw_range,
+        'roi_size': idi_method.roi_size, 
+        'pad': idi_method.pad, 
+        'max_nfev': idi_method.max_nfev, 
+        'tol': idi_method.tol, 
+        'verbose': idi_method.verbose, 
+        'int_order': idi_method.int_order,
+        'resume_analysis': idi_method.resume_analysis,
+        'reference_image': idi_method.reference_image,
+        'mraw_range': idi_method.mraw_range,
     }
 
     print(f'Computation start: {datetime.datetime.now()}')
@@ -763,12 +759,12 @@ def worker(points, idi_kwargs, method_kwargs, i, progress, task_id):
     method_kwargs['progress'] = progress
     method_kwargs['task_id'] = task_id
     method_kwargs['show_pbar'] = False # use the rich progress bar insted of tqdm
-    _video = pyidi.pyIDI(**idi_kwargs)
-    _video.set_method(LucasKanade)
-    _video.method.configure(**method_kwargs)
-    _video.set_points(points)
     
-    return _video.get_displacements(verbose=0), i
+    video = VideoReader(**idi_kwargs)
+    idi = LucasKanade(video)
+    idi.configure(**method_kwargs)
+    idi.set_points(points)
+    return idi.get_displacements(), i
 
 
 # @nb.njit
