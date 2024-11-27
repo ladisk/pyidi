@@ -14,11 +14,8 @@ import scipy.optimize
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 from tqdm import tqdm
-# from multiprocessing import Pool
 import pickle
 import numba as nb
-
-# from atpbar import atpbar
 
 from psutil import cpu_count
 from .. import tools
@@ -26,6 +23,20 @@ from ..video_reader import VideoReader
 
 from .idi_method import IDIMethod
 
+# The keys that the ``configure`` method can set. (Important for multiprocessing!)
+configuration_keys = [
+    'roi_size',
+    'pad',
+    'max_nfev',
+    'tol',
+    'int_order',
+    'verbose',
+    'show_pbar',
+    'processes',
+    'reference_image',
+    'mraw_range',
+    'resume_analysis',
+]
 
 class LucasKanade(IDIMethod):
     """
@@ -36,17 +47,13 @@ class LucasKanade(IDIMethod):
     def configure(
         self, roi_size=(9, 9), pad=2, max_nfev=20, 
         tol=1e-8, int_order=3, verbose=1, show_pbar=True, 
-        processes=1, pbar_type='tqdm', multi_type='multiprocessing',
-        resume_analysis=True, process_number=0, reference_image=0,
-        mraw_range='full', use_numba=False, progress=None, task_id=None
+        processes=1, resume_analysis=True, reference_image=0, mraw_range='full'
     ):
         """
         Displacement identification based on Lucas-Kanade method,
         using iterative least squares optimization of translatory transformation
         parameters to determine image ROI translations.
         
-        :param video: parent object
-        :type video: object
         :param roi_size: (h, w) height and width of the region of interest.
             ROI dimensions should be odd numbers. Defaults to (9, 9)
         :type roi_size: tuple, list, optional
@@ -66,26 +73,14 @@ class LucasKanade(IDIMethod):
         :type show_pbar: bool, optional
         :param processes: number of processes to run
         :type processes: int, optional, defaults to 1.
-        :param pbar_type: type of the progress bar. A legacy option, does not affect the progress bar.
-        :type pbar_type: str, optional
-        :param multi_type: type of multiprocessing used. A legacy option, does not affect the multiprocessing type.
-        :type multi_type: str, optional
         :param resume_analysis: if True, the last analysis results are loaded and computation continues from last computed time point.
         :type resum_analysis: bool, optional
-        :param process_number: User should not change this (for multiprocessing purposes - to indicate the process number)
-        :type process_number: int, optional
         :param reference_image: The reference image for computation. Can be index of a frame, tuple (slice) or numpy.ndarray that
             is taken as a reference.
         :type reference_image: int or tuple or ndarray
         :param mraw_range: Part of the video to process. If "full", a full video is processed. If first element of tuple is not 0,
             a appropriate reference image should be chosen.
         :type mraw_range: tuple or "full"
-        :param use_numba: Use numba.njit for computation speedup. Currently not implemented.
-        :type use_numba: bool
-        :param progress: progress dictionary for multiprocessing. Is intended for internal use only.
-        :type progress: dict
-        :param task_id: task id for multiprocessing. Is intended for internal use only.
-        :type task_id: int
         """
 
         if pad is not None:
@@ -102,26 +97,14 @@ class LucasKanade(IDIMethod):
             self.roi_size = roi_size
         if int_order is not None:
             self.int_order = int_order
-        if pbar_type is not None:
-            self.pbar_type = pbar_type
-        if multi_type is not None:
-            self.multi_type = multi_type
         if processes is not None:
             self.processes = processes
         if resume_analysis is not None:
             self.resume_analysis = resume_analysis
-        if process_number is not None:
-            self.process_number = process_number
         if reference_image is not None:
             self.reference_image = reference_image
         if mraw_range is not None:
             self.mraw_range = mraw_range
-        if use_numba is not None:
-            self.use_numba = use_numba
-        if progress is not None:
-            self.progress = progress
-        if task_id is not None:
-            self.task_id = task_id
         
         self._set_mraw_range()
 
@@ -174,7 +157,7 @@ class LucasKanade(IDIMethod):
 
         if self.process_number == 0:
             # Happens only once per analysis
-            if self.temp_files_check() and self.resume_analysis:
+            if self.resume_analysis and self.temp_files_check():
                 if self.verbose:
                     print('-- Resuming last analysis ---')
                     print(' ')
@@ -188,7 +171,10 @@ class LucasKanade(IDIMethod):
             if not self.resume_analysis:
                 self.create_temp_files(init_multi=True)
             
-            self.displacements = multi(self.video, self, self.processes)
+            self.displacements = multi(self.video, self, self.processes, configuration_keys=configuration_keys)
+
+            # Clear the temporary files (only once per analysis)
+            self.clear_temp_files()
             return
 
         # For a single process
@@ -257,6 +243,10 @@ class LucasKanade(IDIMethod):
                 print(f'Time to complete: {full_time_m:.0f} min, {full_time_s:.1f} s')
             else:
                 print(f'Time to complete: {full_time:.1f} s')
+
+        # Clear the temporary files (when multiprocessing is not used)
+        if self.process_number == 0:
+            self.clear_temp_files()
 
 
     def optimize_translations(self, G, F_spline, maxiter, tol, d_subpixel_init=(0, 0)):
@@ -653,7 +643,7 @@ class LucasKanade(IDIMethod):
         raise Exception('Choose a method from `tools` module.')
 
 
-def multi(video: VideoReader, idi_method: LucasKanade, processes):
+def multi(video: VideoReader, idi_method: LucasKanade, processes, configuration_keys: list):
     """
     Splitting the points to multiple processes and creating a
     pool of workers.
@@ -686,17 +676,10 @@ def multi(video: VideoReader, idi_method: LucasKanade, processes):
     if video.file_format == 'np.ndarray':
         idi_kwargs['input_file'] = video.mraw # if the input is np.ndarray, the input_file is the actual data
     
-    method_kwargs = {
-        'roi_size': idi_method.roi_size, 
-        'pad': idi_method.pad, 
-        'max_nfev': idi_method.max_nfev, 
-        'tol': idi_method.tol, 
-        'verbose': idi_method.verbose, 
-        'int_order': idi_method.int_order,
-        'resume_analysis': idi_method.resume_analysis,
-        'reference_image': idi_method.reference_image,
-        'mraw_range': idi_method.mraw_range,
-    }
+
+    # Set the parameters that are passed to the configure method
+    exclude_keys = ["processes"]
+    method_kwargs = dict([(k, idi_method.__dict__.get(k, None)) for k in configuration_keys if k not in exclude_keys])
 
     print(f'Computation start: {datetime.datetime.now()}')
 
@@ -751,14 +734,12 @@ def worker(points, idi_kwargs, method_kwargs, i, progress, task_id):
     """
     A function that is called when for each job in multiprocessing.
     """
-    method_kwargs['process_number'] = i+1
-    method_kwargs['progress'] = progress
-    method_kwargs['task_id'] = task_id
     method_kwargs['show_pbar'] = False # use the rich progress bar insted of tqdm
     
     video = VideoReader(**idi_kwargs)
     idi = LucasKanade(video)
     idi.configure(**method_kwargs)
+    idi.configure_multiprocessing(i+1, progress, task_id) # configure the multiprocessing settings
     idi.set_points(points)
     return idi.get_displacements(autosave=False), i
 

@@ -18,6 +18,7 @@ class IDIMethod:
         For more configuration options, see `method.configure()`
         """
         self.video = video
+        self.process_number = 0
         self.configure(*args, **kwargs)
 
     def method_name(self):
@@ -29,7 +30,21 @@ class IDIMethod:
         """
         pass
 
-    
+    def configure_multiprocessing(self, process_number, progress, task_id):
+        """
+        Configure the multiprocessing settings here.
+
+        :param process_number: The number of the process.
+        :type process_number: int
+        :param progress: The progress object.
+        :type progress: multiprocessing.Value
+        :param task_id: The task ID.
+        :type task_id: multiprocessing.Value
+        """
+        self.process_number = process_number
+        self.progress = progress
+        self.task_id = task_id
+
     def calculate_displacements(self):
         """
         Calculate the displacements of set points here.
