@@ -30,7 +30,7 @@ class IDIMethod:
         pass
 
     
-    def calculate_displacements(self, video, *args, **kwargs):
+    def calculate_displacements(self):
         """
         Calculate the displacements of set points here.
         The result should be saved into the `self.displacements` attribute.
@@ -63,16 +63,20 @@ class IDIMethod:
         :param kwargs: Additional keyword arguments that are ultimately passed to the ``configure`` method.
         :type kwargs: dict
         """
-        self.calculate_displacements(**kwargs)
-        
-        # auto-save and clearing temp files
-        if hasattr(self, 'process_number') and self.process_number == 0:
-            if autosave:
-                self.create_analysis_directory()
-                self.save(root=self.root_this_analysis)
+        # Updating the attributes with the new configuration
+        config_kwargs = dict([(var, None) for var in self.configure.__code__.co_varnames])
+        config_kwargs.pop('self', None)
+        config_kwargs.update((k, kwargs[k]) for k in config_kwargs.keys() & kwargs.keys())
+        self.configure(**config_kwargs)
 
-            self.clear_temp_files()
-                
+        # Compute the displacements
+        self.calculate_displacements()
+        
+        # auto-save
+        if autosave:
+            self.create_analysis_directory()
+            self.save(root=self.root_this_analysis)
+
         return self.displacements
     
 

@@ -162,7 +162,7 @@ class LucasKanade(IDIMethod):
         self.N_time_points = len(range(self.start_time-self.step_time, self.stop_time, self.step_time))
 
 
-    def calculate_displacements(self, **kwargs):
+    def calculate_displacements(self):
         """
         Calculate displacements for set points and roi size.
 
@@ -171,12 +171,6 @@ class LucasKanade(IDIMethod):
         
         """
         video = self.video
-
-        # Updating the atributes
-        config_kwargs = dict([(var, None) for var in self.configure.__code__.co_varnames])
-        config_kwargs.pop('self', None)
-        config_kwargs.update((k, kwargs[k]) for k in config_kwargs.keys() & kwargs.keys())
-        self.configure(**config_kwargs)
 
         if self.process_number == 0:
             # Happens only once per analysis
@@ -214,7 +208,9 @@ class LucasKanade(IDIMethod):
         if self.verbose:
             t = time.time()
             print('Interpolating the reference image...')
+
         self._interpolate_reference(video)
+        
         if self.verbose:
             print(f'...done in {time.time() - t:.2f} s')
 
@@ -764,7 +760,7 @@ def worker(points, idi_kwargs, method_kwargs, i, progress, task_id):
     idi = LucasKanade(video)
     idi.configure(**method_kwargs)
     idi.set_points(points)
-    return idi.get_displacements(), i
+    return idi.get_displacements(autosave=False), i
 
 
 # @nb.njit
