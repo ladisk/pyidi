@@ -23,21 +23,6 @@ from ..video_reader import VideoReader
 
 from .idi_method import IDIMethod
 
-# The keys that the ``configure`` method can set. (Important for multiprocessing!)
-configuration_keys = [
-    'roi_size',
-    'pad',
-    'max_nfev',
-    'tol',
-    'int_order',
-    'verbose',
-    'show_pbar',
-    'processes',
-    'reference_image',
-    'mraw_range',
-    'resume_analysis',
-]
-
 class LucasKanade(IDIMethod):
     """
     Translation identification based on the Lucas-Kanade method using least-squares
@@ -82,7 +67,10 @@ class LucasKanade(IDIMethod):
             a appropriate reference image should be chosen.
         :type mraw_range: tuple or "full"
         """
-
+        # The arguments are mapped to the class attributes
+        # The class attributes are only overwritten if the argument is not None.
+        # This enables the ``get_displacements`` method to update only the necessary
+        # parameters, while keeping the rest of the configuration unchanged.
         if pad is not None:
             self.pad = pad
         if max_nfev is not None:
@@ -106,12 +94,9 @@ class LucasKanade(IDIMethod):
         if mraw_range is not None:
             self.mraw_range = mraw_range
         
+        # After the attributes are set, other computation can be carried out.
         self._set_mraw_range()
 
-        self.temp_dir = os.path.join(self.video.root, 'temp_file')
-        self.settings_filename = os.path.join(self.temp_dir, 'settings.pkl')
-        self.analysis_run = 0
-        
 
     def _set_mraw_range(self):
         """Set the range of the video to be processed.
@@ -171,7 +156,7 @@ class LucasKanade(IDIMethod):
             if not self.resume_analysis:
                 self.create_temp_files(init_multi=True)
             
-            self.displacements = multi(self.video, self, self.processes, configuration_keys=configuration_keys)
+            self.displacements = multi(self.video, self, self.processes, configuration_keys=self.configuration_keys)
 
             # Clear the temporary files (only once per analysis)
             self.clear_temp_files()
@@ -421,201 +406,20 @@ class LucasKanade(IDIMethod):
         plt.show()
 
 
-    def create_temp_files(self, init_multi=False):
-        """Temporary files to track the solving process.
-
-        This is done in case some error occures. In this eventuality the calculation
-        can be resumed from the last computed time point.
-        
-        :param init_multi: when initialization multiprocessing, defaults to False
-        :type init_multi: bool, optional
-        """
-        temp_dir = self.temp_dir
-        
-        if not os.path.exists(temp_dir):
-            os.mkdir(temp_dir)
-        else:
-            if self.process_number == 0:
-                shutil.rmtree(temp_dir)
-                os.mkdir(temp_dir)
-        
-        if self.process_number == 0:
-            # Write all the settings of the analysis
-            settings = self._make_comparison_dict()
-            with open(self.settings_filename, 'wb') as f:
-                pickle.dump(settings, f)
-            
-            self.points_filename = os.path.join(temp_dir, 'points.pkl')
-            with open(self.points_filename, 'wb') as f:
-                pickle.dump(self.points, f)
-
-        if not init_multi:
-            token = f'{self.process_number:0>3.0f}'
-
-            self.process_log = os.path.join(temp_dir, 'process_log_' + token + '.txt')
-            self.points_filename = os.path.join(temp_dir, 'points.pkl')
-            self.disp_filename = os.path.join(temp_dir, 'disp_' + token + '.pkl')
-
-            with open(self.process_log, 'w', encoding='utf-8') as f:
-                f.writelines([
-                    f'input_file: {self.video.input_file}\n',
-                    f'token: {token}\n',
-                    f'points_filename: {self.points_filename}\n',
-                    f'disp_filename: {self.disp_filename}\n',
-                    f'disp_shape: {(self.points.shape[0], self.N_time_points, 2)}\n',
-                    f'analysis_run <{self.analysis_run}>:'
-                ])
-
-            self.temp_disp = np.memmap(self.disp_filename, dtype=np.float64, mode='w+', shape=(self.points.shape[0], self.N_time_points, 2))
-            
-
-    def clear_temp_files(self):
-        """Clearing the temporary files.
-        """
-        shutil.rmtree(self.temp_dir)
-
-
-    def update_log(self, last_time):
-        """Updating the log file. 
-
-        A new last time is written in the log file in order to
-        track the solution process.
-        
-        :param last_time: Last computed time point (index)
-        :type last_time: int
-        """
-        with open(self.process_log, 'r', encoding='utf-8') as f:
-            log = f.readlines()
-        
-        log_entry = f'analysis_run <{self.analysis_run}>: finished: {datetime.datetime.now()}\tlast time point: {last_time}'
-        if f'<{self.analysis_run}>' in log[-1]:
-            log[-1] = log_entry
-        else:
-            log.append('\n' + log_entry)
-
-        with open(self.process_log, 'w', encoding='utf-8') as f:
-            f.writelines(log)
-
-
-    def resume_temp_files(self):
-        """Reload the settings written in the temporary files.
-
-        When resuming the computation of displacement, the settings are
-        loaded from the previously created temporary files.
-        """
-        temp_dir = self.temp_dir
-        token = f'{self.process_number:0>3.0f}'
-
-        self.process_log = os.path.join(temp_dir, 'process_log_' + token + '.txt')
-        self.disp_filename = os.path.join(temp_dir, 'disp_' + token + '.pkl')
-
-        with open(self.process_log, 'r', encoding='utf-8') as f:
-            log = f.readlines()
-
-        shape = tuple([int(_) for _ in log[4].replace(' ', '').split(':')[1].replace('(', '').replace(')', '').split(',')])
- 
-        self.temp_disp = np.memmap(self.disp_filename, dtype=np.float64, mode='r+', shape=shape)
-        self.displacements = np.array(self.temp_disp).copy()
-
-        self.start_time = int(log[-1].replace(' ', '').rstrip().split('\t')[1].split(':')[1]) + 1
-        self.analysis_run = int(log[-1].split('<')[1].split('>')[0]) + 1
-
-
-    def temp_files_check(self):
-        """Checking the settings of computation.
-
-        The computation can only be resumed if all the settings and data
-        are the same as with the original analysis.
-        This function checks that (writing all the setting to dict and
-        comparing the json dump of the dicts).
-
-        If the settings are the same but the points are not, a new analysis is
-        also started. To set the same points, check the `temp_pyidi` folder.
-        
-        :return: Whether to resume analysis or not
-        :rtype: bool
-        """
-        # if settings file exists
-        if os.path.exists(self.settings_filename):
-            with open(self.settings_filename, 'rb') as f:
-                settings_old = pickle.load(f)
-            json_old = json.dumps(settings_old, sort_keys=True, indent=2)
-            
-            settings_new = self._make_comparison_dict()
-            json_new = json.dumps(settings_new, sort_keys=True, indent=2)
-
-            # if settings are different - new analysis
-            if json_new != json_old:
-                return False
-            
-            # if points file exists and points are the same
-            if os.path.exists(os.path.join(self.temp_dir, 'points.pkl')):
-                with open(os.path.join(self.temp_dir, 'points.pkl'), 'rb') as f:
-                    points = pickle.load(f)
-                if np.array_equal(points, self.points):
-                    return True
-                else:
-                    return False
-            else:
-                return False
-        else:
-            return False
-
-
-    def create_settings_dict(self):
-        """Make a dictionary of the chosen settings.
-        """
-        INCLUDE_KEYS = configuration_keys
-
-        settings = dict()
-        data = self.__dict__
-        for k, v in data.items():
-            if k in INCLUDE_KEYS:
-                if k == '_roi_size':
-                    k = 'roi_size'
-                if type(v) in [int, float, str]:
-                    settings[k] = v
-                elif type(v) in [list, tuple]:
-                    if len(v) < 10:
-                        settings[k] = v
-                elif type(v) is np.ndarray:
-                    if v.size < 10:
-                        settings[k] = v.tolist()
-        return settings
-
-
-    def _make_comparison_dict(self):
-        """Make a dictionary for comparing the original settings with the
-        current settings.
-
-        Used for finding out if the analysis should be resumed or not.
-        
-        :return: Settings
-        :rtype: dict
-        """
-        settings = {
-            'configure': self.create_settings_dict(),
-            'info': {
-                'width': self.video.image_width,
-                'height': self.video.image_height,
-                'N': self.video.N
-            }
-        }
-        return settings
-
 
 def multi(video: VideoReader, idi_method: LucasKanade, processes, configuration_keys: list):
     """
     Splitting the points to multiple processes and creating a
     pool of workers.
     
-    :param video: the video object with defined attributes
-    :type video: object
-    :param processes: number of processes. If negative, the number
-        of processes is set to `psutil.cpu_count + processes`.
+    :param video: VideoReader object
+    :type video: VideoReader
+    :param idi_method: IDIMethod object
+    :type idi_method: IDIMethod
+    :param processes: number of processes to run
     :type processes: int
-    :return: displacements
-    :rtype: ndarray
+    :param configuration_keys: list of configuration keys
+    :type configuration_keys: list
     """
     from concurrent.futures import ProcessPoolExecutor
     from rich import progress
