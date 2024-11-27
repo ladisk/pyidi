@@ -94,7 +94,7 @@ class LucasKanade(IDIMethod):
         if show_pbar is not None:
             self.show_pbar = show_pbar
         if roi_size is not None:
-            self.roi_size = roi_size
+            self.roi_size = np.array(roi_size, dtype=int)
         if int_order is not None:
             self.int_order = int_order
         if processes is not None:
@@ -396,27 +396,6 @@ class LucasKanade(IDIMethod):
             splines.append(spl)
         self.interpolation_splines = splines
 
-    @property
-    def roi_size(self):
-        """
-        `roi_size` attribute getter
-        """
-        return self._roi_size
-        
-    @roi_size.setter
-    def roi_size(self, size):
-        """
-        ROI size setter. The values in `roi_size` must be odd integers. If not,
-        the inputs will be rounded to nearest valid values.
-        """
-        size = (np.array(size)//2 * 2 + 1).astype(int)
-        if np.ndim(size) == 0:
-            self._roi_size = np.repeat(size, 2)
-        elif np.ndim(size) == 1 and np.size(size) == 2:
-            self._roi_size = size
-        else:
-            raise ValueError(f'Invalid input. ROI size must be scalar or a size 2 array-like.')
-
     
     def show_points(self, figsize=(15, 5), cmap='gray', color='r'):
         """
@@ -586,19 +565,7 @@ class LucasKanade(IDIMethod):
     def create_settings_dict(self):
         """Make a dictionary of the chosen settings.
         """
-        INCLUDE_KEYS = [
-            '_roi_size',
-            'pad',
-            'max_nfev',
-            'tol',
-            'int_order',
-            'show_pbar',
-            'processes',
-            'pbar_type',
-            'multi_type',
-            'reference_image',
-            'mraw_range',
-        ]
+        INCLUDE_KEYS = configuration_keys
 
         settings = dict()
         data = self.__dict__
@@ -611,7 +578,7 @@ class LucasKanade(IDIMethod):
                 elif type(v) in [list, tuple]:
                     if len(v) < 10:
                         settings[k] = v
-                elif type(v) == np.ndarray:
+                elif type(v) is np.ndarray:
                     if v.size < 10:
                         settings[k] = v.tolist()
         return settings
@@ -627,7 +594,6 @@ class LucasKanade(IDIMethod):
         :rtype: dict
         """
         settings = {
-            # 'configure': dict([(var, None) for var in self.configure.__code__.co_varnames]),
             'configure': self.create_settings_dict(),
             'info': {
                 'width': self.video.image_width,
@@ -636,11 +602,6 @@ class LucasKanade(IDIMethod):
             }
         }
         return settings
-
-
-    @staticmethod
-    def get_points():
-        raise Exception('Choose a method from `tools` module.')
 
 
 def multi(video: VideoReader, idi_method: LucasKanade, processes, configuration_keys: list):
