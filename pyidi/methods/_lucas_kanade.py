@@ -109,7 +109,7 @@ class LucasKanade(IDIMethod):
             
         elif type(self.mraw_range) is tuple:
             if len(self.mraw_range) >= 2:
-                if self.mraw_range[0] < self.mraw_range[1] and self.mraw_range[0] > 0:
+                if self.mraw_range[0] < self.mraw_range[1] and self.mraw_range[0] >= 0:
                     self.start_time = self.mraw_range[0] + self.step_time
                     
                     if self.mraw_range[1] <= self.video.N:
@@ -452,6 +452,7 @@ def multi(video: VideoReader, idi_method: LucasKanade, processes, configuration_
 
     with progress.Progress(
         "[progress.description]{task.description}",
+        progress.MofNCompleteColumn(),
         progress.BarColumn(),
         "[progress.percentage]{task.percentage:>3.0f}%",
         progress.TimeRemainingColumn(),
@@ -467,7 +468,7 @@ def multi(video: VideoReader, idi_method: LucasKanade, processes, configuration_
             with ProcessPoolExecutor(max_workers=processes) as executor:
                 for n in range(0, len(points_split)):  # iterate over the jobs we need to run
                     # set visible false so we don't have a lot of bars all at once:
-                    task_id = progress.add_task(f"task {n}")
+                    task_id = progress.add_task(f"task {n} ({len(points_split[n])} points)")
                     futures.append(executor.submit(worker, points_split[n], idi_kwargs, method_kwargs, n, _progress, task_id))
 
                 # monitor the progress:
@@ -476,7 +477,7 @@ def multi(video: VideoReader, idi_method: LucasKanade, processes, configuration_
                         latest = update_data["progress"]
                         total = update_data["total"]
                         # update the progress bar for this task:
-                        progress.update(task_id, completed=latest, total=total)
+                        progress.update(task_id, completed=latest, total=total+1) # add one for the first frame
 
                 out = []
                 for future in futures:
