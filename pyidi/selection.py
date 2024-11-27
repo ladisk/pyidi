@@ -286,6 +286,9 @@ class SubsetSelection:
             self.points = self.points.T
         root.destroy()
 
+    def __repr__(self):
+        return f"SubsetSelection(roi_size={self.roi_size}, noverlap={self.noverlap}, n_points={len(self.points)})"
+
 class SelectOptions:
     def __init__(self, parent_frame, parent):
         self.running_options = True
