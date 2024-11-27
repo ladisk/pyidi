@@ -6,6 +6,7 @@ import json
 import glob
 import shutil
 import inspect
+import matplotlib.pyplot as plt
 
 
 from ..video_reader import VideoReader
@@ -249,6 +250,22 @@ class IDIMethod:
             raise ValueError("Points must have two columns.")
         
         self.points = points
+
+    def show_points(self, figsize=(15, 5), cmap='gray', color='r'):
+        """
+        Shoe points to be analyzed, together with ROI borders.
+        
+        :param figsize: matplotlib figure size, defaults to (15, 5)
+        :param cmap: matplotlib colormap, defaults to 'gray'
+        :param color: marker and border color, defaults to 'r'
+        """
+        fig, ax = plt.subplots(figsize=figsize)
+        ax.imshow(self.video.get_frame(0).astype(float), cmap=cmap)
+        ax.scatter(self.points[:, 1],
+                   self.points[:, 0], marker='.', color=color)
+
+        plt.grid(False)
+        plt.show()
 
     def get_displacements(self, autosave=True, **kwargs):
         """
