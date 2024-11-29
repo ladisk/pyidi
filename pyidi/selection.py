@@ -49,7 +49,7 @@ class SubsetSelection:
         root.geometry(f'{int(0.9*self.screen_width)}x{int(0.9*self.screen_height)}')
 
         # Create left frame for options
-        left_frame = tk.Frame(root, width=int(0.15 * self.screen_width))
+        left_frame = tk.Frame(root, width=int(0.2 * self.screen_width))
         left_frame.pack(side='left', fill='y', padx=5, pady=5)
         left_frame.grid_propagate(False)
 
