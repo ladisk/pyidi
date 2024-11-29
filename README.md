@@ -6,6 +6,52 @@ Image-based Displacement Identification (IDI) implementation in python.
 
 See the [documentation](https://pyidi.readthedocs.io/en/latest/index.html) for `pyIDI`.
 
+## Now version 1.0!
+
+In version 1.0, **we overhauled the package API**. With growing usage in IDEs other than
+jupyter notebooks, we have made the package more user-friendly. The new API allows the
+autocompletion and documentation of the package to be more accessible in IDEs like
+VSCode, Cursor, PyCharm, etc.
+
+To install the new version, use the following command:
+
+```bash
+pip install pyidi
+```
+or to upgrade (if already installed):
+```bash
+pip install -U pyidi
+```
+
+Whats different?
+
+For the user, the main difference is that instead of calling the `pyIDI` class where the
+method is set, first, the `VideoReader` class is called. Then, this instance is passed
+to the specific method class. Here is an example:
+
+```python
+from pyidi import VideoReader, SimplifiedOpticalFlow
+
+# Read the video
+video = VideoReader('video.cih')
+
+# Pass the video to the selected method class
+sof = SimplifiedOpticalFlow(video)
+
+sof.set_points(points=[[0, 1], [1, 1], [2, 1]])
+sof.configure(...)
+displacements = sof.get_displacements()
+```
+
+The methods themselves have not changed, only the way they are called. Unfortunately, this
+breaks the backward compatibility with the previous version. We apologize for any
+inconvenience this may cause. To keep using the old version, please install the package
+with the following command:
+
+```bash
+pip install pyidi==0.30.2
+```
+
 ### Use Napari UI for quick displacement identification:
 <img src="docs/source/quick_start/gifs/napari_full_sof.gif" width="800" />
 
