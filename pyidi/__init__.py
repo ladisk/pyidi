@@ -1,5 +1,6 @@
 __version__ = '0.30.2'
 # from .pyidi import *
+from .pyidi_legacy import pyIDI
 from . import tools
 from . import postprocessing
 from .selection import SubsetSelection
