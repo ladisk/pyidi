@@ -7,7 +7,7 @@ sys.path.insert(0, my_path + '/../../')
 import pyidi
 
 def test_1():
-    video = pyidi.VideoReader(input_file='../../data/data_synthetic_img_0.png')
+    video = pyidi.VideoReader(input_file='../data/data_synthetic_img_0.png')
 
     assert video.file_format == 'png'
     assert hasattr(video, "N")

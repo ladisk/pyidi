@@ -122,6 +122,8 @@ class pyIDI:
         For more information, see the documentation at https://pyidi.readthedocs.io/en/latest/
         """
         warnings.warn("This method is no longer used in the new version of pyIDI. For more information, see the documentation at https://pyidi.readthedocs.io/en/latest/", DeprecationWarning)
+        if not hasattr(self, 'method'):
+            raise ValueError('Please first set the method')
         self.method.set_points(points)
 
     def get_displacements(self, *args, **kwargs):
