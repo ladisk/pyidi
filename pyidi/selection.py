@@ -60,7 +60,7 @@ class SubsetSelection:
         main_frame = tk.Frame(root)
         main_frame.pack(side='right', fill='both', expand=1)
 
-        button1 = tk.Button(main_frame, text='Confirm selection', command=lambda: self.on_closing(root))
+        button1 = ttk.Button(main_frame, text='Confirm selection', command=lambda: self.on_closing(root))
         button1.pack(side='top', pady=5)
 
         self.fig = Figure(figsize=(10, 7))
@@ -290,7 +290,7 @@ class SubsetSelection:
         return f"SubsetSelection(roi_size={self.roi_size}, noverlap={self.noverlap}, n_points={len(self.points)})"
 
 class SelectOptions:
-    def __init__(self, parent_frame, parent):
+    def __init__(self, parent_frame, parent: SubsetSelection):
         self.running_options = True
         self.parent = parent
 
@@ -299,50 +299,53 @@ class SelectOptions:
         noverlap = tk.StringVar(parent_frame, value=str(parent.noverlap))
 
         row = 0
-        tk.Label(parent_frame, text='Selection mode:').grid(row=row, column=0, padx=5, pady=5, sticky='W')
+        ttk.Label(parent_frame, text='Selection mode:').grid(row=row, column=0, padx=5, pady=5, sticky='W')
         self.combobox = ttk.Combobox(parent_frame, values=list(SELECTION_MODES.keys()))
         self.combobox.current(0)
         self.combobox.grid(row=row, column=1, sticky='wens', padx=5, pady=5)
+        self.combobox.bind("<<ComboboxSelected>>", self.apply) # Auto apply when changing mode
 
         row = 1
-        tk.Label(parent_frame, text='Horizontal ROI size').grid(row=row, column=0, sticky='E')
+        ttk.Label(parent_frame, text='Horizontal ROI size').grid(row=row, column=0, sticky='E')
         self.roi_entry_x = tk.Entry(parent_frame, textvariable=roi_x)
         self.roi_entry_x.grid(row=row, column=1, padx=5, pady=5, sticky='W')
 
         row = 2
-        tk.Label(parent_frame, text='Vertical ROI size').grid(row=row, column=0, sticky='E')
+        ttk.Label(parent_frame, text='Vertical ROI size').grid(row=row, column=0, sticky='E')
         self.roi_entry_y = tk.Entry(parent_frame, textvariable=roi_y)
         self.roi_entry_y.grid(row=row, column=1, padx=5, pady=5, sticky='W')
 
         row = 3
-        tk.Label(parent_frame, text='Overlap pixels').grid(row=row, column=0, sticky='E')
+        ttk.Label(parent_frame, text='Overlap pixels').grid(row=row, column=0, sticky='E')
         self.noverlap_entry = tk.Entry(parent_frame, textvariable=noverlap)
         self.noverlap_entry.grid(row=row, column=1, padx=5, pady=5, sticky='W')
 
         row = 4
-        tk.Label(parent_frame, text='Show ROI box').grid(row=row, column=0, sticky='E')
+        ttk.Label(parent_frame, text='Show ROI box').grid(row=row, column=0, sticky='E')
         self.show_box_checkbox = tk.Checkbutton(parent_frame, text='', variable=self.parent.show_box)
         self.show_box_checkbox.grid(row=row, column=1, padx=5, pady=5, sticky='W')
 
         row = 5
-        apply_button = tk.Button(parent_frame, text='Apply', command=parent.update_variables)
+        apply_button = ttk.Button(parent_frame, text='Apply', command=parent.update_variables)
         apply_button.grid(row=row, column=0, sticky='we', padx=5, pady=5)
 
-        clear_button = tk.Button(parent_frame, text='Clear', command=parent.clear_selection)
+        clear_button = ttk.Button(parent_frame, text='Clear', command=parent.clear_selection)
         clear_button.grid(row=row, column=1, sticky='w', padx=5, pady=5)
 
         row = 6
-        tk.Label(parent_frame, text='Number of selected points:').grid(row=row, column=0, sticky='E')
-        self.nr_points_label = tk.Label(parent_frame, text='0')
+        ttk.Label(parent_frame, text='Number of selected points:').grid(row=row, column=0, sticky='E')
+        self.nr_points_label = ttk.Label(parent_frame, text='0')
         self.nr_points_label.grid(row=row, column=1, sticky='W')
 
         row = 7
-        tk.Label(parent_frame, text=' ').grid(row=row, column=0)
+        ttk.Label(parent_frame, text=' ').grid(row=row, column=0)
 
         row = 8
-        self.description = tk.Label(parent_frame, text='Description')
+        self.description = ttk.Label(parent_frame, text='Description')
         self.description.grid(row=row, column=0, columnspan=2, pady=5)
 
+    def apply(self, *args):
+        self.parent.update_variables()
     
     def on_closing(self):
         self.running_options = False
