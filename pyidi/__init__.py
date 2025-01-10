@@ -7,3 +7,4 @@ from .selection import SubsetSelection
 from .load_analysis import load_analysis
 from .video_reader import VideoReader
 from .methods import *
+from .gui import GUI
