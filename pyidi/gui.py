@@ -71,15 +71,15 @@ class GUI:
         else:
             #possible upgrade: method added in init
             pass
-
-        if hasattr(self, 'points'):
-            points_layer = viewer.add_points(self.method.points, size=1, edge_color='white', face_color='coral', symbol='cross', name='Points')
+        # if method will be added at init, points and roi should be displayed already at the start
+        # if hasattr(self.method, 'points'):
+        #     points_layer = viewer.add_points(self.method.points, size=1, edge_color='white', face_color='coral', symbol='cross', name='Points')
         
-            if hasattr(self.method, 'roi_size') or hasattr(self.method, 'subset_size'):
-                subset_layer = viewer.add_shapes(self.view_ROI(), shape_type='rectangle', edge_width=0.2, edge_color='coral', face_color='#4169e164', opacity=0.8, name='Subsets')
+        #     if hasattr(self.method, 'roi_size') or hasattr(self.method, 'subset_size'):
+        #         subset_layer = viewer.add_shapes(self.view_ROI(), shape_type='rectangle', edge_width=0.2, edge_color='coral', face_color='#4169e164', opacity=0.8, name='Subsets')
 
-        else:
-            points_layer = viewer.add_points(name='Points', size=1, face_color='coral', symbol='cross')
+        # else:
+        points_layer = viewer.add_points(name='Points', size=1, face_color='coral', symbol='cross')
 
         deselect_layer = viewer.add_shapes(name='Area Deselection', edge_color='red', face_color='#ffffff00')
         select_layer = viewer.add_shapes(name='Area Selection', edge_color='red', face_color='#ffffff00')
@@ -117,36 +117,32 @@ class GUI:
                     elif self.method_name == 'lk':
                         self.method = LucasKanade(self.video)
                         self.PointsWidget = viewer.window.add_dock_widget(lk_set_points_widget, name='Set points - LK', add_vertical_stretch=add_vertical_stretch)
+                    
+                    if hasattr(self.method, 'mraw_range'):
+                        if type(self.method.mraw_range) == str:
+                            if self.method.mraw_range == 'full':
+                                default_values['mraw_ranage_full'] = True
+                                default_values['mraw_range_from'] = 0
+                                default_values['mraw_range_to'] = self.video.mraw.shape[0]
+                                default_values['mraw_range_step'] = 1
+                        else:
+                            default_values['mraw_ranage_full'] = False
+                            default_values['mraw_range_from'] = self.method.mraw_range[0]
+                            default_values['mraw_range_to'] = self.method.mraw_range[1]
+                            if len(self.method.mraw_range) == 3:
+                                default_values['mraw_range_step'] = self.method.mraw_range[2]
+                            else:
+                                default_values['mraw_range_step'] = 1
 
+                    if self.method != None:
+                    # Update default values
+                        for k in default_values:
+                            if k in self.method.__dict__.keys():
+                                default_values[k] = self.method.__dict__[k]
+     
             else:
                 warnings.warn('Select one of the methods first')
-        
-        
-        
-            if self.method != None:
-                # Update default values
-                for k in default_values:
-                    if k in self.method.__dict__.keys():
-                        default_values[k] = self.method.__dict__[k]
-                
-                if hasattr(self.method, 'mraw_range'):
-                    if type(self.method.mraw_range) == str:
-                        if self.method.mraw_range == 'full':
-                            default_values['mraw_ranage_full'] = True
-                            default_values['mraw_range_from'] = 0
-                            default_values['mraw_range_to'] = self.video.mraw.shape[0]
-                            default_values['mraw_range_step'] = 1
-                    else:
-                        default_values['mraw_ranage_full'] = False
-                        default_values['mraw_range_from'] = self.method.mraw_range[0]
-                        default_values['mraw_range_to'] = self.method.mraw_range[1]
-                        if len(self.method.mraw_range) == 3:
-                            default_values['mraw_range_step'] = self.method.mraw_range[2]
-                        else:
-                            default_values['mraw_range_step'] = 1
-
-
-
+   
         @magicgui(call_button='Set points')
         def sof_set_points_widget(subset_size:int=default_values['subset_size'], noverlap:int=default_values['noverlap'], show_subset_box:bool=default_values['show_subset_box']):
             self.method.subset_size = subset_size
