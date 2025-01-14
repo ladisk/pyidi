@@ -57,9 +57,22 @@ pip install pyidi==0.30.2
 
 
 # BASIC USAGE:
-Create an instance:
+Run GUI by instantiating GUI class (input is VideoReader object):
+```python
+from pyidi import VideoReader, GUI
+
+# Read the video
+video = VideoReader('data/data_synthetic.cih')
+
+# Run GUI
+gui = GUI(video)
 ```
-video = pyidi.pyIDI(input_file='video.cih')
+
+Method class (e.g. `SimplifiedOpticalFlow`) is instantiated during the use of GUI. It is accessible in `gui.method`. To get displacements:
+
+```python
+method = gui.method
+displacements = method.displacements
 ```
 
 The `pyIDI` method works with various formats: `.cih`, `.cihx`, `.png`, `.avi` etc. Additionally, it can also work with `numpy.ndarray` as input.
