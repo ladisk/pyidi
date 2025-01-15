@@ -1,7 +1,8 @@
 import numpy as np
 import napari
 from magicgui import magicgui
-
+import sys
+from qtpy.QtWidgets import QTextEdit, QVBoxLayout, QWidget, QApplication
 import warnings
 warnings.simplefilter("default")
 
@@ -66,6 +67,15 @@ class GUI:
         viewer = napari.Viewer(title='pyIDI interface')
         image_layer = viewer.add_image(self.video.mraw)
 
+        # Add the text widget
+        text_widget = TextDisplayWidget()
+        viewer.window.add_dock_widget(text_widget, name="Output", area="bottom")
+
+        # Redirect outputs to the Napari widget
+        output_redirect = NapariOutputRedirect(text_widget)
+        sys.stdout = output_redirect
+        sys.stderr = output_redirect
+
         if self.method == None:
             self.method_name = NO_METHOD
         else:
@@ -91,8 +101,6 @@ class GUI:
         def set_method_widget(Method=[_[0] for _ in available_gui_methods if _[1] == default_values['method_name']][0]):
             if Method != NO_METHOD:
                 if self.method_name != dict(available_gui_methods)[Method]:
-                    #self.set_method(dict(available_gui_methods)[Method])
-                    
                     self.method_name = dict(available_gui_methods)[Method]
 
                     try:
@@ -139,7 +147,7 @@ class GUI:
                         for k in default_values:
                             if k in self.method.__dict__.keys():
                                 default_values[k] = self.method.__dict__[k]
-     
+                print(f'Method selected: {Method}')
             else:
                 warnings.warn('Select one of the methods first')
    
@@ -148,7 +156,8 @@ class GUI:
             self.method.subset_size = subset_size
             self.base_set_points_widget(viewer, (subset_size, subset_size), noverlap, show_subset_box)
             self.ConfigWidget = viewer.window.add_dock_widget(sof_config_widget, name='Configure - SOF', add_vertical_stretch=add_vertical_stretch)
-        
+            print(f'{len(self.method.points)} points selected')
+
         @magicgui(call_button='Set points')
         def lk_set_points_widget(vertical_subset_size:int=default_values['vertical_subset_size'], horizontal_subset_size:int=default_values['horizontal_subset_size'], 
             noverlap:int=default_values['noverlap'], show_subset_box:bool=default_values['show_subset_box']):
@@ -156,7 +165,7 @@ class GUI:
             self.method.roi_size = (vertical_subset_size, horizontal_subset_size)
             self.base_set_points_widget(viewer, (vertical_subset_size, horizontal_subset_size), noverlap, show_subset_box)
             self.ConfigWidget = viewer.window.add_dock_widget(lk_config_widget, name='Configure - LK', add_vertical_stretch=add_vertical_stretch)
-
+            print(f'{len(self.method.points)} Points selected')
 
         @magicgui(call_button="Configure")
         def sof_config_widget(
@@ -173,14 +182,12 @@ class GUI:
                                 mean_n_neighbours=mean_n_neighbours,
                                 zero_shift=zero_shift,
                                 reference_range=(reference_range_from,reference_range_to))
-            
+            print(f'Configuration updated')
             try:
                 viewer.window.remove_dock_widget(self.DisplacementWidget)
             except:
                 pass
             self.DisplacementWidget = viewer.window.add_dock_widget(displacement_widget, name='Calculate displacements', add_vertical_stretch=add_vertical_stretch)
-
-        
 
         @magicgui(call_button="Configure", Tolerance={"choices": [1e-3,1e-5,1e-8,1e-10]})
         def lk_config_widget(
@@ -195,7 +202,7 @@ class GUI:
             mraw_range_from: int=default_values['mraw_range_from'],
             mraw_range_to: int=default_values['mraw_range_to'],
             mraw_range_step: int=default_values['mraw_range_step']):
-                
+
             if mraw_range_full:
                 mraw_range='full'
             else:
@@ -210,21 +217,26 @@ class GUI:
                                 #reference_image=(reference_range_from, reference_range_to),
                                 mraw_range=mraw_range 
                                 )
-                                
+            print(f'Configuration updated')
             try:
                 viewer.window.remove_dock_widget(self.DisplacementWidget)
             except:
                 pass
             self.DisplacementWidget = viewer.window.add_dock_widget(displacement_widget, name='Calculate displacements', add_vertical_stretch=add_vertical_stretch)
 
-
-
         @magicgui(call_button="Calculate displacements")
         def displacement_widget():
+            print(f'Calculating displacements...')
+            #update progress bar
+            QApplication.processEvents()
+            #set system output only to jupyter, not GUI to avoid rich progress error rendering in GUI
+            sys.stdout = output_redirect.original_stdout
             self.method.get_displacements() #calculate displacements
             self.napari_show_disp_field(viewer)
-        
-        
+            #set system output back to GUI
+            sys.stdout = output_redirect
+            print(f'Displacements calculated')
+
         self.SetMethodWidget = viewer.window.add_dock_widget(set_method_widget, name='Method selection', add_vertical_stretch=add_vertical_stretch)
         if self.method_name == 'sof':
             self.PointsWidget = viewer.window.add_dock_widget(sof_set_points_widget, name='Set points - SOF', add_vertical_stretch=add_vertical_stretch)
@@ -234,9 +246,6 @@ class GUI:
             self.PointsWidget = viewer.window.add_dock_widget(lk_set_points_widget, name='Set points - LK', add_vertical_stretch=add_vertical_stretch)
             if hasattr(self.method, 'points'):
                 self.ConfigWidget = viewer.window.add_dock_widget(lk_config_widget, name='Configure - LK', add_vertical_stretch=add_vertical_stretch)
-
-        #return viewer
-
 
 
     def base_set_points_widget(self,viewer, subset_size, noverlap, show_subset_box):
@@ -258,7 +267,6 @@ class GUI:
                 roi_size=subset_size,
                 noverlap=noverlap, 
                 deselect_polygon=deselect_border) # get grid points
-
 
         if 'Subsets' in viewer.layers:
             viewer.layers.pop('Subsets') # refresh ROI layer
@@ -330,3 +338,35 @@ class GUI:
                 pass
             viewer.add_vectors(vectors_all, length=0, name='Displacement Field',vector_style='arrow')
             viewer.layers['Displacement Field'].length = scale
+
+
+class TextDisplayWidget(QWidget):
+    def __init__(self):
+        super().__init__()
+        self.layout = QVBoxLayout()
+
+        # Create a QTextEdit widget
+        self.text_edit = QTextEdit()
+        self.text_edit.setReadOnly(True)  # Make it read-only for displaying text
+
+        self.layout.addWidget(self.text_edit)
+        self.setLayout(self.layout)
+
+    def update_text(self, text):
+        self.text_edit.append(text)  # Append text to the widget
+
+# Custom stream to redirect stdout and stderr to Napari's text widget
+class NapariOutputRedirect:
+    def __init__(self, text_widget):
+        self.text_widget = text_widget
+        self.original_stdout = sys.stdout  # Save the original stdout
+        self.original_stderr = sys.stderr  # Save the original stderr
+
+    def write(self, message):
+        if message.strip():  # Only process non-empty messages
+            self.text_widget.update_text(message)  # Update the Napari text widget
+        self.original_stdout.write(message)  # Still print to Jupyter
+
+    def flush(self):
+        self.original_stdout.flush()
+        self.original_stderr.flush()

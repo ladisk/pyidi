@@ -24,6 +24,7 @@ from ..video_reader import VideoReader
 
 from .idi_method import IDIMethod
 from ..progress_bar import progress_bar, rich_progress_bar_setup
+from qtpy.QtWidgets import QApplication
 
 class LucasKanade(IDIMethod):
     """
@@ -219,6 +220,8 @@ class LucasKanade(IDIMethod):
             # Update progress bar if multiple processes
             if hasattr(self, "progress") and hasattr(self, "task_id"):
                 self.progress[self.task_id] = {"progress": ii + 1, "total": len_of_task}
+            # Update progress bar in the GUI
+            QApplication.processEvents()
                 
         del self.temp_disp
 

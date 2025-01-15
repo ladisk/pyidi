@@ -18,3 +18,4 @@ sphinx-copybutton
 nbsphinx
 nbsphinx_link
 rich
+qtpy
