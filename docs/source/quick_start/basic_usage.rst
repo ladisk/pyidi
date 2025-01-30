@@ -18,11 +18,36 @@ The basic usage of the package is presented.
 
 Loading the video
 -----------------
-First create the :py:class:`pyIDI <pyidi.pyidi.pyIDI>` object:
+First create the :py:class:`VideoReader <pyidi.video_reader.VideoReader>` object:
 
 .. code:: python
 
-    video = pyidi.pyIDI('filename.cih')
+    from pyidi import VideoReader
+
+    video = VideoReader('filename.cih')
+
+Setting the method
+------------------
+The video object must be passed to the :py:class:`IDIMethod <pyidi.methods.idi_method.IDIMethod>` class.
+Available methods are: 
+
+* :py:class:`SimplifiedOpticalFlow <pyidi.methods._simplified_optical_flow.SimplifiedOpticalFlow>`
+
+* :py:class:`LucasKanade <pyidi.methods._lucas_kanade.LucasKanade>`
+
+* :py:class:`DirectionalLucasKanade <pyidi.methods._directional_lucas_kanade.DirectionalLucasKanade>`
+
+To use the Simplified Optical Flow method, the object must be instantiated:
+
+.. code:: python
+
+    from pyidi import SimplifiedOpticalFlow
+    
+    sof = SimplifiedOpticalFlow(video)
+
+After the method object is instantiated, the points can be set and the arguments can be configured.
+
+For more details on the available methods, see the currently implemented :ref:`implemented_disp_id_methods`.
 
 Setting the points
 ------------------
@@ -38,30 +63,22 @@ Points must be of shape ``n_points x 2``:
 
 where the first column indicates indices along **axis 0**, and the second column indices along **axis 1**.
 
-The points must be passed to ``pyIDI`` object:
+The points must be passed to ``method`` object:
 
 .. code:: python
 
-    video.set_points(points=points)
+    sof.set_points(points=points)
 
 If the points are not known, a :ref:`point-selection` or newer :ref:`napari` can be used to select the points.
 
-Setting the method
-------------------
-The method for displacement identification must be selected:
+Configuring the method
+----------------------
+The method can be configured using:
 
 .. code:: python
+    
+    sof.configure(...)
 
-    video.set_method(method='sof') # Simplified optical flow method
-
-After the method is selected, the arguments can be configured. Note that the docstring is now
-showing the required arguments for the selected method.
-
-.. code:: python
-
-    video.method.configure(*args, **kwargs)
-
-For more details on the available methods, see the currently implemented :ref:`implemented_disp_id_methods`.
 
 Get displacement
 ----------------
@@ -69,7 +86,7 @@ Finally, displacements can be identified:
 
 .. code:: python
 
-    displacements = video.get_displacements()
+    displacements = sof.get_displacements()
 
 Saved analysis
 --------------

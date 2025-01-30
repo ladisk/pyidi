@@ -50,7 +50,7 @@ class DirectionalLucasKanade(IDIMethod):
         :param roi_size: (h, w) height and width of the region of interest.
             ROI dimensions should be odd numbers. Defaults to (9, 9)
         :type roi_size: tuple, list, optional
-        :param dij: Assumed vibration direction. Must be |d|=1. Convention is 'negative down, positive right'.
+        :param dij: Assumed vibration direction. Must be \\|d\\|=1. Convention is 'negative down, positive right'.
         :type dij: tuple, list, optional
         :param pad: size of padding around the region of interest in px, defaults to 2
         :type pad: int, optional
@@ -69,7 +69,7 @@ class DirectionalLucasKanade(IDIMethod):
         :param processes: number of processes to run
         :type processes: int, optional, defaults to 1.
         :param resume_analysis: if True, the last analysis results are loaded and computation continues from last computed time point.
-        :type resum_analysis: bool, optional
+        :type resume_analysis: bool, optional
         :param reference_image: The reference image for computation. Can be index of a frame, tuple (slice) or numpy.ndarray that
             is taken as a reference.
         :type reference_image: int or tuple or ndarray
@@ -306,7 +306,7 @@ class DirectionalLucasKanade(IDIMethod):
 
 
     def _padded_slice(self, point, roi_size, image_shape, pad=None):
-        '''
+        """
         Returns a slice that crops an image around a given `point` center, 
         `roi_size` and `pad` size. If the resulting slice would be out of
         bounds of the image to be sliced (given by `image_shape`), the
@@ -314,14 +314,13 @@ class DirectionalLucasKanade(IDIMethod):
         :param point: The center point coordiante of the desired ROI.
         :type point: array_like of size 2, (y, x)
         :param roi_size: Size of desired cropped image (y, x).
-        type roi_size: array_like of size 2, (h, w)
+        :type roi_size: array_like of size 2, (h, w)
         :param image_shape: Shape of the image to be sliced, (h, w).
-        type image_shape: array_like of size 2, (h, w)
-        :param pad: Pad border size in pixels. If None, the video.pad
-            attribute is read.
+        :type image_shape: array_like of size 2, (h, w)
+        :param pad: Pad border size in pixels. If None, the video.pad attribute is read.
         :type pad: int, optional, defaults to None
         :return crop_slice: tuple (yslice, xslice) to use for image slicing.
-        '''
+        """
 
         if pad is None:
             pad = self.pad

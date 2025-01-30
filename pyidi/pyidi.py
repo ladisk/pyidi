@@ -8,7 +8,7 @@ import glob
 import warnings
 warnings.simplefilter("default")
 
-from .methods import IDIMethod, SimplifiedOpticalFlow, LucasKanade, LucasKanadeSc, LucasKanadeSc2, GradientBasedOpticalFlow, DirectionalLucasKanade
+from .methods import IDIMethod, SimplifiedOpticalFlow, LucasKanade, DirectionalLucasKanade #, LucasKanadeSc, LucasKanadeSc2, GradientBasedOpticalFlow
 from .video_reader import VideoReader
 from . import tools
 from . import selection
