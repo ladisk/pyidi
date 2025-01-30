@@ -6,18 +6,18 @@ sys.path.insert(0, my_path + '/../')
 import pyidi
 
 def test_instance():
-    video = pyidi.pyIDI(input_file='../data/data_synthetic.cih')
+    video = pyidi.pyIDI(input_file='./data/data_synthetic.cih')
     video.set_method(method='sof')
     video.set_method(method='lk')
     assert True
 
 def test_points():
-    video = pyidi.pyIDI(input_file='../data/data_synthetic.cih')
+    video = pyidi.pyIDI(input_file='./data/data_synthetic.cih')
     video.set_method(method='sof')
     video.set_points(points=[(0, 1), (1, 1)])
 
 def test_points_1():
-    video = pyidi.pyIDI(input_file='../data/data_synthetic.cih')
+    video = pyidi.pyIDI(input_file='./data/data_synthetic.cih')
     video.set_method(method='sof')
     video.set_points(points=[(0, 1), (1, 1)])
 

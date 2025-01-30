@@ -9,10 +9,10 @@ import pyidi
 
 def test_multiprocessing():
     # data = np.load(r".\data\data_synthetic_generated.npy")
-    data, _ = pyMRAW.load_video('../data/data_synthetic.cih')
+    data, _ = pyMRAW.load_video('./data/data_synthetic.cih')
     data = np.array(data.tolist())
 
-    video = pyidi.pyIDI(input_file=data, root='../data')
+    video = pyidi.pyIDI(input_file=data, root='./data')
     video.set_method(method='lk')
     video.method.configure(int_order=1, roi_size=(9, 9))
 
