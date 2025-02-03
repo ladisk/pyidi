@@ -42,7 +42,7 @@ class pyIDI:
         """
         warnings.warn("This class is no longer used in the new version of pyIDI. For more information, see the documentation at https://pyidi.readthedocs.io/en/latest/", DeprecationWarning)
         self.video = VideoReader(input_file, root=root)
-        self.mraw = self.video.mraw
+        self.reader = self.video # for compatibility with old code
 
     def set_method(self, method):
         """This method is no longer used in the new version of pyIDI.
