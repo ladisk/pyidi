@@ -7,10 +7,11 @@ sys.path.insert(0, my_path + '/../')
 
 import pyidi
 
-def test_multiprocessing():
+def test():
     # data = np.load(r".\data\data_synthetic_generated.npy")
     data, _ = pyMRAW.load_video('./data/data_synthetic.cih')
     data = np.array(data.tolist())
+
 
     video = pyidi.pyIDI(input_file=data, root='./data')
     video.set_method(method='lk')
@@ -24,8 +25,8 @@ def test_multiprocessing():
     ])
 
     video.set_points(points)
-    res_1 = video.get_displacements(processes=2, resume_analysis=False, autosave=False)
+    res_1 = video.get_displacements(resume_analysis=False, autosave=False)
 
 
 if __name__ == '__main__':
-    test_multiprocessing()
+    test()
