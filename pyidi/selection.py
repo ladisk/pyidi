@@ -22,11 +22,11 @@ MODE_DESCRIPTION = {
     3: 'Use SHIFT + LEFT CLICK\nto manually position ROIs.'
 }
 
-class ROISelect:
+class SubsetSelection:
     def __init__(self, video=None, roi_size=(11, 11), noverlap=0, polygon=None):
         self.verbose = 0
         self.shift_is_held = False
-        
+
         self.roi_size = roi_size
         self.noverlap = int(noverlap)
         self.cent_dist_0 = self.roi_size[0] - self.noverlap
@@ -42,23 +42,31 @@ class ROISelect:
         root = tk.Tk()
         root.title('Selection')
 
-        self.show_box = tk.IntVar()
+        self.show_box = tk.IntVar(value=1)
 
         self.screen_width = root.winfo_screenwidth()
         self.screen_height = root.winfo_screenheight()
         root.geometry(f'{int(0.9*self.screen_width)}x{int(0.9*self.screen_height)}')
 
-        self.options = SelectOptions(root, self)
-        button1 = tk.Button(root, text='Open options', command=lambda: self.open_options(root))
-        button1.pack(side='top')
+        # Create left frame for options
+        left_frame = tk.Frame(root, width=int(0.2 * self.screen_width))
+        left_frame.pack(side='left', fill='y', padx=5, pady=5)
+        left_frame.grid_propagate(False)
 
-        button2 = tk.Button(root, text='Confirm selection', command=lambda : self.on_closing(root))
-        button2.pack(side='top')
+        # Add options to the left frame
+        self.options = SelectOptions(left_frame, self)
+
+        # Create main frame for the canvas and controls
+        main_frame = tk.Frame(root)
+        main_frame.pack(side='right', fill='both', expand=1)
+
+        button1 = ttk.Button(main_frame, text='Confirm selection', command=lambda: self.on_closing(root))
+        button1.pack(side='top', pady=5)
 
         self.fig = Figure(figsize=(10, 7))
         self.ax = self.fig.add_subplot(111)
         self.ax.grid(False)
-        self.ax.imshow(video.reader.get_frame(0), cmap='gray')
+        self.ax.imshow(video.get_frame(0), cmap='gray')
 
         # Initiate polygon
         self.line, = self.ax.plot(self.polygon[1], self.polygon[0], 'C1.-')
@@ -67,21 +75,23 @@ class ROISelect:
 
         plt.show(block=False)
 
-        # Embed figure in tkinter winodw
-        canvas = FigureCanvasTkAgg(self.fig, root)
-        canvas.get_tk_widget().pack(side='top', fill='both', expand=1, padx=5, pady=5)
-        NavigationToolbar2Tk(canvas, root)
-        
+        # Embed figure in tkinter window
+        canvas = FigureCanvasTkAgg(self.fig, main_frame)
+        toolbar = NavigationToolbar2Tk(canvas, main_frame)
+        toolbar.pack(side='top', fill='x') # First pack the toolbar (it should be on top)
+        canvas.get_tk_widget().pack(side='top', fill='both', expand=1, padx=5, pady=5) # Then pack the canvas
+
         if self.verbose:
             print('SHIFT + LEFT mouse button to pick a pole.\nRIGHT mouse button to erase the last pick.')
 
         # Connecting functions to event manager
         self.fig.canvas.mpl_connect('key_press_event', self.on_key_press)
         self.fig.canvas.mpl_connect('key_release_event', self.on_key_release)
-        
+
         self.update_variables()
-        root.protocol("WM_DELETE_WINDOW", lambda : self.on_closing(root))
+        root.protocol("WM_DELETE_WINDOW", lambda: self.on_closing(root))
         tk.mainloop()
+
 
     def _mode_selection_polygon(self, get_rois=True):
         """Select polygon to compute the points based on ROI size and
@@ -270,77 +280,72 @@ class ROISelect:
         [p.remove() for p in reversed(self.ax.patches)]
         self.fig.canvas.draw()
 
-    def open_options(self, root):
-        if not self.options.running_options:
-            self.options = SelectOptions(root, self)
-        else:
-            self.options.root1.lift()
-
     def on_closing(self, root):
         self.points = np.array(self.points)
         if self.points.shape[0] == 2:
             self.points = self.points.T
         root.destroy()
 
+    def __repr__(self):
+        return f"SubsetSelection(roi_size={self.roi_size}, noverlap={self.noverlap}, n_points={len(self.points)})"
+
 class SelectOptions:
-    def __init__(self, root, parent):
+    def __init__(self, parent_frame, parent: SubsetSelection):
         self.running_options = True
         self.parent = parent
 
-        self.root1 = tk.Toplevel(root)
-        self.root1.title('Selection options')
-        self.root1.geometry(f'{int(0.2*parent.screen_width)}x{int(0.5*parent.screen_height)}')
-
-        roi_x = tk.StringVar(self.root1, value=str(parent.roi_size[1]))
-        roi_y = tk.StringVar(self.root1, value=str(parent.roi_size[0]))
-        noverlap = tk.StringVar(self.root1, value=str(parent.noverlap))
+        roi_x = tk.StringVar(parent_frame, value=str(parent.roi_size[1]))
+        roi_y = tk.StringVar(parent_frame, value=str(parent.roi_size[0]))
+        noverlap = tk.StringVar(parent_frame, value=str(parent.noverlap))
 
         row = 0
-        tk.Label(self.root1, text='Selection mode:').grid(row=row, column=0)
-        self.combobox = ttk.Combobox(self.root1, values=list(SELECTION_MODES.keys()))
+        ttk.Label(parent_frame, text='Selection mode:').grid(row=row, column=0, padx=5, pady=5, sticky='W')
+        self.combobox = ttk.Combobox(parent_frame, values=list(SELECTION_MODES.keys()))
         self.combobox.current(0)
         self.combobox.grid(row=row, column=1, sticky='wens', padx=5, pady=5)
+        self.combobox.bind("<<ComboboxSelected>>", self.apply) # Auto apply when changing mode
 
         row = 1
-        tk.Label(self.root1, text='Horizontal ROI size').grid(row=row, column=0, sticky='E')
-        self.roi_entry_x = tk.Entry(self.root1, textvariable=roi_x)
+        ttk.Label(parent_frame, text='Horizontal ROI size').grid(row=row, column=0, sticky='E')
+        self.roi_entry_x = tk.Entry(parent_frame, textvariable=roi_x)
         self.roi_entry_x.grid(row=row, column=1, padx=5, pady=5, sticky='W')
 
         row = 2
-        tk.Label(self.root1, text='Vertical ROI size').grid(row=row, column=0, sticky='E')
-        self.roi_entry_y = tk.Entry(self.root1, textvariable=roi_y)
+        ttk.Label(parent_frame, text='Vertical ROI size').grid(row=row, column=0, sticky='E')
+        self.roi_entry_y = tk.Entry(parent_frame, textvariable=roi_y)
         self.roi_entry_y.grid(row=row, column=1, padx=5, pady=5, sticky='W')
 
         row = 3
-        tk.Label(self.root1, text='Overlap pixels').grid(row=row, column=0, sticky='E')
-        self.noverlap_entry = tk.Entry(self.root1, textvariable=noverlap)
+        ttk.Label(parent_frame, text='Overlap pixels').grid(row=row, column=0, sticky='E')
+        self.noverlap_entry = tk.Entry(parent_frame, textvariable=noverlap)
         self.noverlap_entry.grid(row=row, column=1, padx=5, pady=5, sticky='W')
 
         row = 4
-        tk.Label(self.root1, text='Show ROI box').grid(row=row, column=0, sticky='E')
-        self.show_box_checkbox = tk.Checkbutton(self.root1, text='', variable=self.parent.show_box)
+        ttk.Label(parent_frame, text='Show ROI box').grid(row=row, column=0, sticky='E')
+        self.show_box_checkbox = tk.Checkbutton(parent_frame, text='', variable=self.parent.show_box)
         self.show_box_checkbox.grid(row=row, column=1, padx=5, pady=5, sticky='W')
 
         row = 5
-        apply_button = tk.Button(self.root1, text='Apply', command=parent.update_variables)
+        apply_button = ttk.Button(parent_frame, text='Apply', command=parent.update_variables)
         apply_button.grid(row=row, column=0, sticky='we', padx=5, pady=5)
 
-        clear_button = tk.Button(self.root1, text='Clear', command=parent.clear_selection)
+        clear_button = ttk.Button(parent_frame, text='Clear', command=parent.clear_selection)
         clear_button.grid(row=row, column=1, sticky='w', padx=5, pady=5)
 
         row = 6
-        tk.Label(self.root1, text='Number of selected points:').grid(row=row, column=0, sticky='E')
-        self.nr_points_label = tk.Label(self.root1, text='0')
+        ttk.Label(parent_frame, text='Number of selected points:').grid(row=row, column=0, sticky='E')
+        self.nr_points_label = ttk.Label(parent_frame, text='0')
         self.nr_points_label.grid(row=row, column=1, sticky='W')
 
         row = 7
-        tk.Label(self.root1, text=' ').grid(row=row, column=0)
+        ttk.Label(parent_frame, text=' ').grid(row=row, column=0)
 
         row = 8
-        self.description = tk.Label(self.root1, text='Description')
-        self.description.grid(row=row, column=0)
+        self.description = ttk.Label(parent_frame, text='Description')
+        self.description.grid(row=row, column=0, columnspan=2, pady=5)
 
-        self.root1.protocol("WM_DELETE_WINDOW", self.on_closing)
+    def apply(self, *args):
+        self.parent.update_variables()
     
     def on_closing(self):
         self.running_options = False

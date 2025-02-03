@@ -8,6 +8,7 @@ import os
 import pyMRAW
 import numpy as np
 import imageio.v3 as iio
+import warnings
 
 PHORTRON_HEADER_FILE = ['cih', 'cihx']
 SUPPORTED_IMAGE_FORMATS = ['png', 'tif', 'tiff', 'bmp', 'jpg', 'jpeg', 'gif']
@@ -50,9 +51,17 @@ class VideoReader:
             
             self.root = root
             self.file_format = 'np.ndarray'
-        else:
+            self.input_file = 'ndarray'
+            self.name = 'ndarray_video'
+
+        elif isinstance(input_file, str):
+            if not os.path.exists(input_file):
+                raise FileNotFoundError(f'File "{input_file}" not found!')
+            
             self.root, self.file = os.path.split(input_file)
             self.file_format = self.file.split('.')[-1].lower()
+            self.input_file = input_file
+            self.name = self.file.split('.')[0]
 
 
         if self.file_format in PHORTRON_HEADER_FILE:
@@ -199,6 +208,13 @@ class VideoReader:
         if hasattr(self, 'mraw') and self.file_format in PHORTRON_HEADER_FILE:
             self.mraw._mmap.close()
             del self.mraw
+
+    def gui(self):
+        """Starts the GUI for pyIDI."""
+        raise NotImplementedError('GUI is not implemented yet. Stay tuned!')
+        # from . import gui
+        # self.gui_obj = gui.gui(self)
+
 
 def _rgb2luma(rgb_image):
     """Converts "RGB" image to "YUV" and returns only "Y" (luma) component.

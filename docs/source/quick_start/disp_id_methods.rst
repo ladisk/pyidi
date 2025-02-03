@@ -12,3 +12,8 @@ Lucas-Kanade (LK)
 -----------------
 
     [2] Lucas, B. D., & Kanade, T. (1981). An Iterative Image Registration Technique with an Application to Stereo Vision. In Proceedings of the 7th International Joint Conference on Artificial Intelligence - Volume 2 (pp. 674–679). San Francisco, CA, USA: Morgan Kaufmann Publishers Inc. Retrieved from http://dl.acm.org/citation.cfm?id=1623264.1623280
+
+Directional DIC
+------------------------
+
+    [3] Masmeijer T., Habtour E., Zaletelj K. & Slavič J. (2025). Directional DIC method with automatic feature selection. Mechanical Systems and Signal Processing, 224. https://doi.org/10.1016/j.ymssp.2024.112080

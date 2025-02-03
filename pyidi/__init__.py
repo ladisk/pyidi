@@ -1,7 +1,10 @@
 __version__ = '0.30.2'
-from .pyidi import *
+# from .pyidi import *
+from .pyidi_legacy import pyIDI
 from . import tools
 from . import postprocessing
-from .selection import ROISelect
+from .selection import SubsetSelection
 from .load_analysis import load_analysis
-from . import video_reader
+from .video_reader import VideoReader
+from .methods import *
+from .gui import GUI

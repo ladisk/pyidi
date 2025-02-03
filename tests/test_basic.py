@@ -13,8 +13,8 @@ def test_instance():
 
 def test_points():
     video = pyidi.pyIDI(input_file='./data/data_synthetic.cih')
+    video.set_method(method='sof')
     video.set_points(points=[(0, 1), (1, 1)])
-    video.set_method(method='sof', reference_range=(0, 2))
 
 def test_points_1():
     video = pyidi.pyIDI(input_file='./data/data_synthetic.cih')

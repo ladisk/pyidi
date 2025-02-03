@@ -10,8 +10,6 @@ from multiprocessing import Pool
 from tqdm import tqdm
 import numba as nb
 
-from . import pyidi
-
 class ManualROI:
     """Manual ROI selection."""
 

@@ -6,14 +6,83 @@ Image-based Displacement Identification (IDI) implementation in python.
 
 See the [documentation](https://pyidi.readthedocs.io/en/latest/index.html) for `pyIDI`.
 
-### Use Napari UI for quick displacement identification:
+## Now version 1.0!
+
+In version 1.0, **we overhauled the package API**. With growing usage in IDEs other than
+jupyter notebooks, we have made the package more user-friendly. The new API allows the
+autocompletion and documentation of the package to be more accessible in IDEs like
+VSCode, Cursor, PyCharm, etc.
+
+To install the new version, use the following command:
+
+```bash
+pip install pyidi
+```
+or to upgrade (if already installed):
+```bash
+pip install -U pyidi
+```
+
+### Whats different?
+
+For the user, the main difference is that instead of calling the `pyIDI` class where the
+method is set, first, the `VideoReader` class is called. Then, this instance is passed
+to the specific method class. Here is an example:
+
+```python
+from pyidi import VideoReader, SimplifiedOpticalFlow
+
+# Read the video
+video = VideoReader('video.cih')
+
+# Pass the video to the selected method class
+sof = SimplifiedOpticalFlow(video)
+
+sof.set_points(points=[[0, 1], [1, 1], [2, 1]])
+sof.configure(...)
+displacements = sof.get_displacements()
+```
+
+The methods themselves have not changed, only the way they are called. Unfortunately, this
+breaks the backward compatibility with the previous version. We apologize for any
+inconvenience this may cause. To keep using the old version, please install the package
+with the following command:
+
+```bash
+pip install pyidi==0.30.2
+```
+
+or use the legacy `pyIDI` class:
+
+```python
+from pyidi import pyIDI
+```
+
+Note that the legacy `pyIDI` class does not necessarily offer the full functionality of the new version. 
+The legacy `pyIDI` class is only kept for compatibility with the old version and will not be updated.
+
+
+# Use Napari UI for quick displacement identification:
 <img src="docs/source/quick_start/gifs/napari_full_sof.gif" width="800" />
 
 
 # BASIC USAGE:
-Create an instance:
+Run GUI by instantiating GUI class (input is VideoReader object):
+```python
+from pyidi import VideoReader, GUI
+
+# Read the video
+video = VideoReader('data/data_synthetic.cih')
+
+# Run GUI
+gui = GUI(video)
 ```
-video = pyidi.pyIDI(input_file='video.cih')
+
+Method class (e.g. `SimplifiedOpticalFlow`) is instantiated during the use of GUI. It is accessible in `gui.method`. To get displacements:
+
+```python
+method = gui.method
+displacements = method.displacements
 ```
 
 The `pyIDI` method works with various formats: `.cih`, `.cihx`, `.png`, `.avi` etc. Additionally, it can also work with `numpy.ndarray` as input.
@@ -26,22 +95,6 @@ video.set_points(points=p)
 ```
 Or use point selection UI to set individual points or grid inside selected area. For more information about UI see [documentation](https://pyidi.readthedocs.io/en/quick_start/napari.html). Launch viewer with:
 
-```
-video.gui()
-```
-
-The method of identification has to be specified:
-```
-video.set_method(method='sof', **method_kwargs)
-```
-After points are set, displacements can be calculated (using method, set in `set_method`):
-```
-displacements = video.get_displacements()
-```
-Multiprocessing can also be used by passing the `processes` argument:
-```
-displacements = video.get_displacements(processes=4)
-```
 
 # DEVELOPER GUIDELINES:
 * Add _name_of_method.py with class that inherits after `IDIMethods`

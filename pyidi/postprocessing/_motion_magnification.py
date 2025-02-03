@@ -8,14 +8,12 @@ import os
 import copy
 from io import BytesIO
 from typing import Union
-from typing import TYPE_CHECKING
 
-if TYPE_CHECKING:
-    import pyidi
+from ..methods.idi_method import IDIMethod
 
 def mode_shape_magnification(displacements: np.ndarray, 
                              magnification_factor: Union[int, float], 
-                             video: Union["pyidi.pyIDI", None] = None, 
+                             idi: Union[IDIMethod, None] = None, 
                              image: Union[np.ndarray, np.memmap, None] = None,
                              points: Union[np.ndarray, None] = None,
                              background_brightness: float = 0.3,
@@ -76,7 +74,7 @@ def mode_shape_magnification(displacements: np.ndarray,
         raise TypeError("Expected data type for argument 'show_undeformed' is"\
                         " boolean.")
     
-    if video is not None:
+    if idi is not None:
         if image is not None:
             if isinstance(image, (np.ndarray, np.memmap)):
                 img_in = image
@@ -84,7 +82,7 @@ def mode_shape_magnification(displacements: np.ndarray,
                 raise TypeError("Expected object types for argument 'image' are"\
                                 " 'numpy.ndarray' and 'numpy.memmap'.")
         else:
-            img_in = video.mraw[0]
+            img_in = idi.video.mraw[0]
 
         if points is not None:
             if isinstance(points, np.ndarray):
@@ -93,7 +91,7 @@ def mode_shape_magnification(displacements: np.ndarray,
                 raise TypeError("Expected object type for argument 'points' is "\
                                 "'numpy.ndarray'.")
         else:
-            points = video.points
+            points = idi.points
 
     elif image is not None and points is not None:
         if isinstance(image, (np.ndarray, np.memmap)):
@@ -134,7 +132,7 @@ def mode_shape_magnification(displacements: np.ndarray,
 
 def animate(displacements: np.ndarray, 
             magnification_factor: Union[int, float], 
-            video: Union["pyidi.pyIDI", None] = None, 
+            idi: Union[IDIMethod, None] = None, 
             image: Union[np.ndarray, np.memmap, None] = None, 
             points: Union[np.ndarray, None] = None,
             fps: int = 30,
@@ -226,7 +224,7 @@ def animate(displacements: np.ndarray,
         raise TypeError("Expected data type for argument 'background_brightness'"\
                         " is float in range [0, 1].")
     
-    if video is not None:
+    if idi is not None:
         if image is not None:
             if isinstance(image, (np.ndarray, np.memmap)):
                 img_in = image
@@ -234,7 +232,7 @@ def animate(displacements: np.ndarray,
                 raise TypeError("Expected object types for argument 'image' are"\
                                 " 'numpy.ndarray' and 'numpy.memmap'.")
         else:
-            img_in = video.mraw[0]
+            img_in = idi.video.mraw[0]
 
         if points is not None:
             if isinstance(points, np.ndarray):
@@ -243,7 +241,7 @@ def animate(displacements: np.ndarray,
                 raise TypeError("Expected object type for argument 'points' is "\
                                 "'numpy.ndarray'.")
         else:
-            points = video.points
+            points = idi.points
 
     elif image is not None and points is not None:
         if isinstance(image, (np.ndarray, np.memmap)):
