@@ -16,7 +16,7 @@ A ``ROISelect`` object can then be created:
 
 .. code:: python
 
-    Points = pyidi.selection.ROISelect(video, roi_size=(21, 21), noverlap=0)
+    Points = pyidi.selection.SubsetSelect(video, roi_size=(21, 21), noverlap=0)
 
 where ``roi_size`` is the size of a single Region-Of-Interest/subset in ``y`` and
 ``x`` direction respsectivly. The ``noverlap`` argument prescribes the overlap of the
