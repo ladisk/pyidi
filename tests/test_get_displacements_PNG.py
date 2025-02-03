@@ -18,7 +18,7 @@ def test_multiprocessing():
         [ 95,  71],
     ])
     video.set_points(points)
-    video.method.configure(progress_bar=False)
+    video.method.configure(show_pbar=False)
     res_1 = video.get_displacements(processes=2, resume_analysis=False, autosave=False)
 
 if __name__ == '__main__':

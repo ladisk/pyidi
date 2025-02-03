@@ -14,7 +14,7 @@ def test_multiprocessing():
 
     video = pyidi.pyIDI(input_file=data, root='./data')
     video.set_method(method='lk')
-    video.method.configure(int_order=1, roi_size=(9, 9), progress_bar=False)
+    video.method.configure(int_order=1, roi_size=(9, 9), show_pbar=False)
 
     points = np.array([
         [ 31,  35],
