@@ -62,7 +62,7 @@ Note that the legacy `pyIDI` class does not necessarily offer the full functiona
 The legacy `pyIDI` class is only kept for compatibility with the old version and will not be updated.
 
 
-### Use Napari UI for quick displacement identification:
+# Use Napari UI for quick displacement identification:
 <img src="docs/source/quick_start/gifs/napari_full_sof.gif" width="800" />
 
 
