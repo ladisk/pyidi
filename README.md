@@ -23,7 +23,7 @@ or to upgrade (if already installed):
 pip install -U pyidi
 ```
 
-Whats different?
+### Whats different?
 
 For the user, the main difference is that instead of calling the `pyIDI` class where the
 method is set, first, the `VideoReader` class is called. Then, this instance is passed
@@ -51,6 +51,16 @@ with the following command:
 ```bash
 pip install pyidi==0.30.2
 ```
+
+or use the legacy `pyIDI` class:
+
+```python
+from pyidi import pyIDI
+```
+
+Note that the legacy `pyIDI` class does not necessarily offer the full functionality of the new version. 
+The legacy `pyIDI` class is only kept for compatibility with the old version and will not be updated.
+
 
 ### Use Napari UI for quick displacement identification:
 <img src="docs/source/quick_start/gifs/napari_full_sof.gif" width="800" />
