@@ -50,7 +50,8 @@ class DirectionalLucasKanade(IDIMethod):
         :param roi_size: (h, w) height and width of the region of interest.
             ROI dimensions should be odd numbers. Defaults to (9, 9)
         :type roi_size: tuple, list, optional
-        :param dij: Assumed vibration direction. Must be \\|d\\|=1. Convention is 'negative down, positive right'.
+        :param dij: Assumed vibration direction. If \\|d\\| != 1, the vector is normalized. 
+            Convention is 'negative down, positive right'.
         :type dij: tuple, list, optional
         :param pad: size of padding around the region of interest in px, defaults to 2
         :type pad: int, optional
@@ -107,7 +108,7 @@ class DirectionalLucasKanade(IDIMethod):
             self.dij = np.array(dij)
             if np.linalg.norm(self.dij) != 1:
                 self.dij = self.dij/np.linalg.norm(self.dij)
-                warnings.warn('The direction vector d must have a norm of 1. The input vector was normalized.')
+                # warnings.warn('The direction vector d must have a norm of 1. The input vector was normalized.')
         self._set_mraw_range()
 
         self.temp_dir = os.path.join(self.video.root, 'temp_file')
