@@ -28,7 +28,7 @@ class VideoReader:
     "numpy.uint8" or "numpy.uint16" depending on the bit depth of the image file,
     e.g. 12 bit depth images are returned as "numpy.array" of type "numpy.uint16".
     """
-    def __init__(self, input_file, root=None):
+    def __init__(self, input_file, root=None, fps=None):
         """
         The video recording is initialized by providing the path to the image/video file, 
         "cih(x)" file from Photron, or "numpy.ndarray". For image stream it is enough to 
@@ -43,13 +43,24 @@ class VideoReader:
         :param root: root directory of the image/video file. Only used when the 
             input file is a "np.ndarray". Defaults to None.
         :type root: str
+        :param fps: frames per second. If None and Photron file is passed, the fps 
+            is read from the cih/cihx file. Defaults to None.
+        :type fps: int or None
         """
+        if fps:
+            fps = int(fps)
+            
+        self.fps = fps
+
 
         if isinstance(input_file, np.ndarray):
             if root is None:
                 raise ValueError('Root directory must be provided for np.ndarray input file!')
             
             self.root = root
+            if not os.path.exists(self.root): # Create the folder if it does not exist
+                os.mkdir(self.root)
+
             self.file_format = 'np.ndarray'
             self.input_file = 'ndarray'
             self.name = 'ndarray_video'
@@ -69,6 +80,8 @@ class VideoReader:
             self.N = info['Total Frame']
             self.image_width = info['Image Width']
             self.image_height = info['Image Height']
+            if self.fps is None:
+                self.fps = int(info['Record Rate(fps)'])
             self.info = info
         
         elif self.file_format in SUPPORTED_IMAGE_FORMATS:

@@ -47,6 +47,10 @@ extensions = [
     'sphinx_copybutton',
 ]
 
+# Defined here: https://sphinx-copybutton.readthedocs.io/en/latest/use.html#using-regexp-prompt-identifiers (the >>> are not copied)
+copybutton_prompt_text = r">>> |\.\.\. |\$ |In \[\d*\]: | {2,5}\.\.\.: | {5,8}: "
+copybutton_prompt_is_regexp = True
+
 autodoc_default_options = {
     'members': True,
     'private-members': True,

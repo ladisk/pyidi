@@ -29,6 +29,11 @@ class pyIDI():
     """
     def __init__(self, input_file, root=None):
         """Constructor of the pyIDI class.
+
+        .. versionremoved:: 1.0
+            Since version 1.0 of pyIDI, this class is no longer used. Temporarily, the
+            ``pyIDI`` class from "pyidi_legacy.py" is available.
+
         
         :param input_file: the video file to be analysed. Can be a name of the cih/cihx file, path to
             images directory, video file, or a 3D numpy array.
@@ -36,7 +41,10 @@ class pyIDI():
         :param root: root directory of the video file. Only used when the input file is a np.ndarray. Defaults to None.
         :type root: str
         """
-        
+        raise NotImplementedError("This class has been removed in version 1.0. Temporarily, the pyIDI class from 'pyidi_legacy.py' \
+                                  can be used (just import ``from pyidi import pyIDI``). However, the API has changed, \
+                                  see the documentation for details.")
+    
         if type(input_file) in [str, np.ndarray]:
             self.reader = VideoReader(input_file, root=root)
             self.cih_file = input_file
