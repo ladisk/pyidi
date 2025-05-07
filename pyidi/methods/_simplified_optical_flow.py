@@ -189,7 +189,7 @@ class SimplifiedOpticalFlow(IDIMethod):
         """
         if self.reference_range[1] >= self.video.N:
             self.reference_range = (0, self.video.N)
-            warnings.warn('Reference range is larger than the number of images. The reference range is set to (0, N).')
+
         reference_image = np.zeros((self.video.image_height, \
                                     self.video.image_width), dtype=float)
         for frame in range(self.reference_range[0], self.reference_range[1]):

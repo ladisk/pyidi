@@ -58,6 +58,9 @@ class VideoReader:
                 raise ValueError('Root directory must be provided for np.ndarray input file!')
             
             self.root = root
+            if not os.path.exists(self.root): # Create the folder if it does not exist
+                os.mkdir(self.root)
+
             self.file_format = 'np.ndarray'
             self.input_file = 'ndarray'
             self.name = 'ndarray_video'

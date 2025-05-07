@@ -131,7 +131,7 @@ class GUI:
                             if self.method.mraw_range == 'full':
                                 default_values['mraw_ranage_full'] = True
                                 default_values['mraw_range_from'] = 0
-                                default_values['mraw_range_to'] = self.video.mraw.shape[0]
+                                default_values['mraw_range_to'] = self.video.N
                                 default_values['mraw_range_step'] = 1
                         else:
                             default_values['mraw_ranage_full'] = False
@@ -142,7 +142,7 @@ class GUI:
                             else:
                                 default_values['mraw_range_step'] = 1
 
-                    if self.method != None:
+                    if self.method is not None:
                     # Update default values
                         for k in default_values:
                             if k in self.method.__dict__.keys():
