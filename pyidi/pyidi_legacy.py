@@ -12,31 +12,32 @@ class pyIDI:
     def __init__(self, input_file, root=None):
         """This class is no longer used in the new version of pyIDI.
         
+
+        .. deprecated:: 1.0
+            Use ``VideoReader`` and method-specific classes instead.
+
         In version 1.0 of pyIDI, some changes were made in the API.
 
         To convert the old code to the new version, you can use the following example:
 
         Old version:
-        ```
-        from pyidi import pyIDI
-        video = pyIDI("path/to/file")
-        video.set_method(...)
-        video.set_points(...)
-        video.method.configure(...)
-        video.get_displacements()
-        ```
+        
+        >>> from pyidi import pyIDI
+        >>> video = pyIDI("path/to/file")
+        >>> video.set_method(...)
+        >>> video.set_points(...)
+        >>> video.method.configure(...)
+        >>> video.get_displacements()
 
         New version:
-        ```
-        from pyidi import VideoReader, SimplifiedOpticalFlow, LucasKanade
-
-        video = VideoReader("path/to/file")
         
-        idi = SimplifiedOpticalFlow(video)
-        idi.set_points(...)
-        idi.configure(...)
-        idi.get_displacements()
-        ```
+        >>> from pyidi import VideoReader, SimplifiedOpticalFlow, LucasKanade
+        >>> video = VideoReader("path/to/file")
+        
+        >>> idi = SimplifiedOpticalFlow(video)
+        >>> idi.set_points(...)
+        >>> idi.configure(...)
+        >>> idi.get_displacements()
         
         For more information, see the documentation at https://pyidi.readthedocs.io/en/latest/
         """
@@ -52,26 +53,23 @@ class pyIDI:
         To convert the old code to the new version, you can use the following example:
 
         Old version:
-        ```
-        from pyidi import pyIDI
-        video = pyIDI("path/to/file")
-        video.set_method(...)
-        video.set_points(...)
-        video.method.configure(...)
-        video.get_displacements()
-        ```
+
+        >>> from pyidi import pyIDI
+        >>> video = pyIDI("path/to/file")
+        >>> video.set_method(...)
+        >>> video.set_points(...)
+        >>> video.method.configure(...)
+        >>> video.get_displacements()
 
         New version:
-        ```
-        from pyidi import VideoReader, SimplifiedOpticalFlow, LucasKanade
 
-        video = VideoReader("path/to/file")
+        >>> from pyidi import VideoReader, SimplifiedOpticalFlow, LucasKanade
+        >>> video = VideoReader("path/to/file")
         
-        idi = SimplifiedOpticalFlow(video)
-        idi.set_points(...)
-        idi.configure(...)
-        idi.get_displacements()
-        ```
+        >>> idi = SimplifiedOpticalFlow(video)
+        >>> idi.set_points(...)
+        >>> idi.configure(...)
+        >>> idi.get_displacements()
         
         For more information, see the documentation at https://pyidi.readthedocs.io/en/latest/
         """
@@ -99,26 +97,23 @@ class pyIDI:
         To convert the old code to the new version, you can use the following example:
 
         Old version:
-        ```
-        from pyidi import pyIDI
-        video = pyIDI("path/to/file")
-        video.set_method(...)
-        video.set_points(...)
-        video.method.configure(...)
-        video.get_displacements()
-        ```
+
+        >>> from pyidi import pyIDI
+        >>> video = pyIDI("path/to/file")
+        >>> video.set_method(...)
+        >>> video.set_points(...)
+        >>> video.method.configure(...)
+        >>> video.get_displacements()
 
         New version:
-        ```
-        from pyidi import VideoReader, SimplifiedOpticalFlow, LucasKanade
 
-        video = VideoReader("path/to/file")
+        >>> from pyidi import VideoReader, SimplifiedOpticalFlow, LucasKanade
+        >>> video = VideoReader("path/to/file")
         
-        idi = SimplifiedOpticalFlow(video)
-        idi.set_points(...)
-        idi.configure(...)
-        idi.get_displacements()
-        ```
+        >>> idi = SimplifiedOpticalFlow(video)
+        >>> idi.set_points(...)
+        >>> idi.configure(...)
+        >>> idi.get_displacements()
         
         For more information, see the documentation at https://pyidi.readthedocs.io/en/latest/
         """
@@ -135,26 +130,23 @@ class pyIDI:
         To convert the old code to the new version, you can use the following example:
 
         Old version:
-        ```
-        from pyidi import pyIDI
-        video = pyIDI("path/to/file")
-        video.set_method(...)
-        video.set_points(...)
-        video.method.configure(...)
-        video.get_displacements()
-        ```
+
+        >>> from pyidi import pyIDI
+        >>> video = pyIDI("path/to/file")
+        >>> video.set_method(...)
+        >>> video.set_points(...)
+        >>> video.method.configure(...)
+        >>> video.get_displacements()
 
         New version:
-        ```
-        from pyidi import VideoReader, SimplifiedOpticalFlow, LucasKanade
 
-        video = VideoReader("path/to/file")
-        
-        idi = SimplifiedOpticalFlow(video)
-        idi.set_points(...)
-        idi.configure(...)
-        idi.get_displacements()
-        ```
+        >>> from pyidi import VideoReader, SimplifiedOpticalFlow, LucasKanade
+        >>> video = VideoReader("path/to/file")
+
+        >>> idi = SimplifiedOpticalFlow(video)
+        >>> idi.set_points(...)
+        >>> idi.configure(...)
+        >>> idi.get_displacements()
         
         For more information, see the documentation at https://pyidi.readthedocs.io/en/latest/
         """
