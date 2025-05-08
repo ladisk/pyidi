@@ -196,7 +196,8 @@ class SubsetSelection:
         self.fig.canvas.draw()
 
         self.mode = self.options.combobox.get()
-        if SELECTION_MODES[self.mode] == 0:
+        if SELECTION_MODES[self.mode] == 0: # ROI grid
+            self.clear_selection()
             self._disconnect_mpl_onclick()
 
             self._mode_selection_polygon()
@@ -209,7 +210,7 @@ class SubsetSelection:
 
             self.plot_selection()
         
-        elif SELECTION_MODES[self.mode] == 1:
+        elif SELECTION_MODES[self.mode] == 1: # Deselect ROI polygon
             if len(self.points[0]) == 0:
                 tk.messagebox.showwarning("Warning", "No points have been selected yet.")
             else:
@@ -218,11 +219,13 @@ class SubsetSelection:
                 self._mode_selection_deselect_polygon()
                 self.plot_selection()
 
-        elif SELECTION_MODES[self.mode] == 2:
+        elif SELECTION_MODES[self.mode] == 2: # Only polygon
+            self.clear_selection()
             self._disconnect_mpl_onclick()
             self._mode_selection_polygon(get_rois=False)
 
-        elif SELECTION_MODES[self.mode] == 3:
+        elif SELECTION_MODES[self.mode] == 3: # Manual ROI select
+            self.clear_selection()
             self._disconnect_mpl_onclick()
             self._mode_selection_manual_roi()
             self.roi_size = [int(self.options.roi_entry_y.get()), int(self.options.roi_entry_x.get())]
@@ -242,7 +245,7 @@ class SubsetSelection:
     def plot_selection(self):
         if len(self.polygon[0]) > 2 and len(self.polygon[1]) > 2:
 
-            self.points = get_roi_grid(self.polygon, self.roi_size, self.noverlap, self.deselect_polygon).T
+            self.points = (get_roi_grid(self.polygon, self.roi_size, self.noverlap, self.deselect_polygon).T)
 
         if len(self.points[0]) >= 1 and len(self.points[1]) >= 1:
             self.line2.set_xdata(np.array(self.points).T[:, 1])
