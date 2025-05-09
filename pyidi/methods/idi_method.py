@@ -114,7 +114,10 @@ class IDIMethod:
                     f'disp_shape: {(self.points.shape[0], self.N_time_points, 2)}\n',
                     f'analysis_run <{self.analysis_run}>:'
                 ])
-
+            
+            if not self.points.shape[0]:
+                raise Exception("Points not set. Please set the points before running the analysis.")
+            
             self.temp_disp = np.memmap(self.disp_filename, dtype=np.float64, mode='w+', shape=(self.points.shape[0], self.N_time_points, 2))
     
     def clear_temp_files(self):
