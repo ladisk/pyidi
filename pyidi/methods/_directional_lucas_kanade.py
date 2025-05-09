@@ -49,7 +49,7 @@ class DirectionalLucasKanade(IDIMethod):
         :type video: object
         :param roi_size: (h, w) height and width of the region of interest.
             ROI dimensions should be odd numbers. Defaults to (9, 9)
-        :type roi_size: tuple, list, optional
+        :type roi_size: tuple, list, int, optional
         :param dij: Assumed vibration direction. If \\|d\\| != 1, the vector is normalized. 
             Convention is 'negative down, positive right'.
         :type dij: tuple, list, optional
@@ -91,6 +91,8 @@ class DirectionalLucasKanade(IDIMethod):
         if show_pbar is not None:
             self.show_pbar = show_pbar
         if roi_size is not None:
+            if type(roi_size) is int:
+                self.roi_size = [roi_size, roi_size]
             self.roi_size = np.array(roi_size, dtype=int)
         if int_order is not None:
             self.int_order = int_order

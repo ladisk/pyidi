@@ -44,7 +44,7 @@ class LucasKanade(IDIMethod):
         
         :param roi_size: (h, w) height and width of the region of interest.
             ROI dimensions should be odd numbers. Defaults to (9, 9)
-        :type roi_size: tuple, list, optional
+        :type roi_size: tuple, list, int, optional
         :param pad: size of padding around the region of interest in px, defaults to 2
         :type pad: int, optional
         :param max_nfev: maximum number of iterations in least-squares optimization, 
@@ -85,6 +85,8 @@ class LucasKanade(IDIMethod):
         if show_pbar is not None:
             self.show_pbar = show_pbar
         if roi_size is not None:
+            if type(roi_size) is int:
+                self.roi_size = [roi_size, roi_size]
             self.roi_size = np.array(roi_size, dtype=int)
         if int_order is not None:
             self.int_order = int_order
