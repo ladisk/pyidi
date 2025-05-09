@@ -1,4 +1,4 @@
-__version__ = '1.1.0'
+__version__ = '1.1.1'
 # from .pyidi import *
 from .pyidi_legacy import pyIDI
 from . import tools
