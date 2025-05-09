@@ -104,9 +104,11 @@ class VideoReader:
         
         elif self.file_format in PYAV_SUPPORTED_VIDEO_FORMATS:
             video_prop = iio.improps(input_file, plugin='pyav')
+            video_meta = iio.immeta(input_file, plugin='pyav')
             self.N = video_prop.n_images
             self.image_width = video_prop.shape[2]
             self.image_height = video_prop.shape[1]
+            self.fps = video_meta.get("fps", fps)
 
         elif self.file_format == 'np.ndarray':
             self.mraw = input_file
