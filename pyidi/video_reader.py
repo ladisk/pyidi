@@ -76,7 +76,7 @@ class VideoReader:
 
 
         if self.file_format in PHORTRON_HEADER_FILE:
-            self.mraw, info = pyMRAW.load_video(input_file)
+            self.frames, info = pyMRAW.load_video(input_file)
             self.N = info['Total Frame']
             self.image_width = info['Image Width']
             self.image_height = info['Image Height']
@@ -111,7 +111,7 @@ class VideoReader:
             self.fps = video_meta.get("fps", fps)
 
         elif self.file_format == 'np.ndarray':
-            self.mraw = input_file
+            self.frames = input_file
             self.N = input_file.shape[0]
             self.image_width = input_file.shape[2]
             self.image_height = input_file.shape[1]
@@ -136,7 +136,7 @@ class VideoReader:
             raise ValueError('Frame number exceeds total frame number!')
 
         if self.file_format in PHORTRON_HEADER_FILE or self.file_format == 'np.ndarray':
-            image = self.mraw[frame_number]
+            image = self.frames[frame_number]
 
         elif self.file_format in SUPPORTED_IMAGE_FORMATS:
             image = self._get_frame_from_image(frame_number, *args)
@@ -220,15 +220,20 @@ class VideoReader:
         Close the video and clear the resources.
         In case of a MRAW video, closes the memory map for "mraw" file format.
         """
-        if hasattr(self, 'mraw') and self.file_format in PHORTRON_HEADER_FILE:
-            self.mraw._mmap.close()
-            del self.mraw
+        if hasattr(self, 'frames') and self.file_format in PHORTRON_HEADER_FILE:
+            self.frames._mmap.close()
+            del self.frames
 
     def gui(self):
         """Starts the GUI for pyIDI."""
         raise NotImplementedError('GUI is not implemented yet. Stay tuned!')
         # from . import gui
         # self.gui_obj = gui.gui(self)
+
+    @property
+    def mraw(self):
+        warnings.warn('The "mraw" attribute has been deprecated. Use "frames" instead.')
+        return self.frames
 
 
 def _rgb2luma(rgb_image):
