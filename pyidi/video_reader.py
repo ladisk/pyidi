@@ -164,21 +164,29 @@ class VideoReader:
         
         if type(frame_range) in [list, tuple] and len(frame_range) != 2:
             raise ValueError('Length of the frame range must be 2!')
+        
+        if frame_range is None:
+            frames_start = 0
+            frames_end = self.N + 1
+            n_frames = self.N
+        elif type(frame_range) is int:
+            frames_start = 0
+            frames_end = frame_range
+            n_frames = frame_range
+        elif type(frame_range) in [list, tuple]:
+            frames_start = frame_range[0]
+            frames_end = frame_range[1]
+            n_frames = frame_range[1] - frame_range[0]
 
         if self.file_format in PHORTRON_HEADER_FILE or self.file_format == 'np.ndarray':
-            frames = self._frames
+            frames = self._frames[frames_start:frames_end]
         
         else:
-            frames = np.zeros((self.N, self.image_height, self.image_width))
-            for i in self.N:
-                frames[i] = self.get_frame(i, *args, **kwargs)
+            frames = np.zeros((n_frames, self.image_height, self.image_width), dtype=int)
+            for i in range(n_frames):
+                frames[i] = self.get_frame(i+frames_start, *args, **kwargs)
 
-        if frame_range is None:
-            return frames
-        elif type(frame_range) is int:
-            return frames[:frame_range]
-        elif type(frame_range) in [list, tuple]:
-            return frames[frame_range[0]:frame_range[1]]
+        return frames
 
     def _get_frame_from_image(self, frame_number, use_channel='Y'):
         """Reads the frame from the image stream, or image file containing multiple images. 
