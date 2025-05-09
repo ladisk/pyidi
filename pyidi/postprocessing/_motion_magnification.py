@@ -20,19 +20,18 @@ def mode_shape_magnification(displacements: np.ndarray,
                              show_undeformed: bool = False
                              ) -> np.ndarray:
     """
-    Create an image of a magnified mode-shape of a structure. If a 'pyidi.pyIDI' 
-    class instance is input as argument 'video', the argument 'image' is set to 
-    'video.mraw[0]' and the argument 'points' is set to 'video.points'. These 
-    values can be overwritten by specifying the 'image' and 'points' arguments 
-    explicitly.
+    Create an image of a magnified mode-shape of a structure. If a IDI method instance 
+    is passed as argument ``idi``, the argument ``image`` is set to 
+    the first image in sequence and the argument ``points`` is set to the points
+    stored in the IDI method instance. These values can be overwritten by 
+    specifying the ``image`` and ``points`` arguments explicitly.
 
     :param displacements: displacement (mode-shape) vector
     :type displacements: numpy.ndarray
     :param magnification_factor: magnification factor
     :type magnification_factor: int or float
-    :param video: pyIDI class instance,
-        defaults to None
-    :type video: pyidi.pyIDI or None, optional
+    :param idi: IDI method instance, defaults to None
+    :type idi: IDIMethod or None, optional
     :param image: the reference image, on which mode-shape magnification is 
         performed, defaults to None
     :type image: numpy.ndarray, numpy.memmap or None, optional
@@ -82,7 +81,7 @@ def mode_shape_magnification(displacements: np.ndarray,
                 raise TypeError("Expected object types for argument 'image' are"\
                                 " 'numpy.ndarray' and 'numpy.memmap'.")
         else:
-            img_in = idi.video.mraw[0]
+            img_in = idi.video.get_frame(0)
 
         if points is not None:
             if isinstance(points, np.ndarray):
@@ -143,19 +142,18 @@ def animate(displacements: np.ndarray,
             show_undeformed: bool = False
             )-> None:
     """
-    Create a video of a magnified mode-shape of a structure. If a 'pyidi.pyIDI'
-    class instance is input as argument 'video', the argument 'image' is set to 
-    'video.mraw[0]' and the argument 'points' is set to 'video.points'. These 
-    values can be overwritten by specifying the 'image' and 'points' arguments 
-    explicitly.
+    Create a video of a magnified mode-shape of a structure. If a IDI method instance 
+    is passed as argument ``idi``, the argument ``image`` is set to 
+    the first image in sequence and the argument ``points`` is set to the points
+    stored in the IDI method instance. These values can be overwritten by 
+    specifying the ``image`` and ``points`` arguments explicitly.
 
     :param displacements: displacement vector
     :type displacements: numpy.ndarray
     :param magnification_factor: magnification factor
     :type magnification_factor: int or float
-    :param video: pyIDI class instance, 
-        defaults to None
-    :type video: pyidi.pyIDI or None, optional
+    :param idi: IDI method instance, defaults to None
+    :type idi: IDIMethod or None, optional
     :param image: the reference image, on which mode-shape magnification is 
         performed, defaults to None
     :type image: numpy.ndarray, numpy.memmap or None, optional
@@ -232,7 +230,7 @@ def animate(displacements: np.ndarray,
                 raise TypeError("Expected object types for argument 'image' are"\
                                 " 'numpy.ndarray' and 'numpy.memmap'.")
         else:
-            img_in = idi.video.mraw[0]
+            img_in = idi.video.get_frame(0)
 
         if points is not None:
             if isinstance(points, np.ndarray):

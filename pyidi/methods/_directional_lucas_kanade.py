@@ -451,7 +451,7 @@ def multi(video: VideoReader, idi_method: DirectionalLucasKanade, processes, con
     }
 
     if video.file_format == 'np.ndarray':
-        idi_kwargs['input_file'] = video.mraw # if the input is np.ndarray, the input_file is the actual data
+        idi_kwargs['input_file'] = video.get_frames() # if the input is np.ndarray, the input_file is the actual data
     
 
     # Set the parameters that are passed to the configure method
