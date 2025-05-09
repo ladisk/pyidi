@@ -76,7 +76,7 @@ class VideoReader:
 
 
         if self.file_format in PHORTRON_HEADER_FILE:
-            self.mraw, info = pyMRAW.load_video(input_file)
+            self._frames, info = pyMRAW.load_video(input_file)
             self.N = info['Total Frame']
             self.image_width = info['Image Width']
             self.image_height = info['Image Height']
@@ -104,12 +104,14 @@ class VideoReader:
         
         elif self.file_format in PYAV_SUPPORTED_VIDEO_FORMATS:
             video_prop = iio.improps(input_file, plugin='pyav')
+            video_meta = iio.immeta(input_file, plugin='pyav')
             self.N = video_prop.n_images
             self.image_width = video_prop.shape[2]
             self.image_height = video_prop.shape[1]
+            self.fps = video_meta.get("fps", fps)
 
         elif self.file_format == 'np.ndarray':
-            self.mraw = input_file
+            self._frames = input_file
             self.N = input_file.shape[0]
             self.image_width = input_file.shape[2]
             self.image_height = input_file.shape[1]
@@ -119,7 +121,7 @@ class VideoReader:
 
         return None
     
-    def get_frame(self, frame_number, *args):
+    def get_frame(self, frame_number, *args, **kwargs):
         """
         Returns the "frame_number"-th frame from the video. Frames from image and video
         files are checked for the bit depth and converted to 8 or 16 bit depth if needed.
@@ -134,15 +136,49 @@ class VideoReader:
             raise ValueError('Frame number exceeds total frame number!')
 
         if self.file_format in PHORTRON_HEADER_FILE or self.file_format == 'np.ndarray':
-            image = self.mraw[frame_number]
+            image = self._frames[frame_number]
 
         elif self.file_format in SUPPORTED_IMAGE_FORMATS:
-            image = self._get_frame_from_image(frame_number, *args)
+            image = self._get_frame_from_image(frame_number, *args, **kwargs)
 
         elif self.file_format in PYAV_SUPPORTED_VIDEO_FORMATS:
-            image = self._get_frame_from_video_file(frame_number, *args)
+            image = self._get_frame_from_video_file(frame_number, *args, **kwargs)
 
         return image
+    
+    def get_frames(self, frame_range=None, *args, **kwargs):
+        """Returns all the available frames.
+        
+        If "mraw" or "np.ndarray", it returns the frames as they are. If images
+        or mp4, avi, etc., the ``get_frame`` method is called in a loop. In this
+        case, the ``args`` are passed to the ``get_frame`` method (see the ``get_frame``
+        method for details).
+
+        :param frame_range: The range of the frames to return. If None, all frames are returned. 
+            If int, the frames from zero to ``frame_range`` are returned. 
+            If tuple, the frames from first to second index are returned.
+        :type frame_range: tuple, list, int, None, optional
+        """
+        if type(frame_range) not in [int, list, tuple, type(None)]:
+            raise ValueError('Unsupported frame range! Supported types are int, list and tuple.')
+        
+        if type(frame_range) in [list, tuple] and len(frame_range) != 2:
+            raise ValueError('Length of the frame range must be 2!')
+
+        if self.file_format in PHORTRON_HEADER_FILE or self.file_format == 'np.ndarray':
+            frames = self._frames
+        
+        else:
+            frames = np.zeros((self.N, self.image_height, self.image_width))
+            for i in self.N:
+                frames[i] = self.get_frame(i, *args, **kwargs)
+
+        if frame_range is None:
+            return frames
+        elif type(frame_range) is int:
+            return frames[:frame_range]
+        elif type(frame_range) in [list, tuple]:
+            return frames[frame_range[0]:frame_range[1]]
 
     def _get_frame_from_image(self, frame_number, use_channel='Y'):
         """Reads the frame from the image stream, or image file containing multiple images. 
@@ -218,15 +254,20 @@ class VideoReader:
         Close the video and clear the resources.
         In case of a MRAW video, closes the memory map for "mraw" file format.
         """
-        if hasattr(self, 'mraw') and self.file_format in PHORTRON_HEADER_FILE:
-            self.mraw._mmap.close()
-            del self.mraw
+        if hasattr(self, 'frames') and self.file_format in PHORTRON_HEADER_FILE:
+            self._frames._mmap.close()
+            del self._frames
 
     def gui(self):
         """Starts the GUI for pyIDI."""
         raise NotImplementedError('GUI is not implemented yet. Stay tuned!')
         # from . import gui
         # self.gui_obj = gui.gui(self)
+
+    @property
+    def mraw(self):
+        warnings.warn('The "mraw" attribute has been deprecated. Use the "get_frames" method instead.')
+        return self.get_frames()
 
 
 def _rgb2luma(rgb_image):

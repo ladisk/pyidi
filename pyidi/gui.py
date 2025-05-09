@@ -65,7 +65,7 @@ class GUI:
                 
         # Start gui
         viewer = napari.Viewer(title='pyIDI interface')
-        image_layer = viewer.add_image(self.video.mraw)
+        image_layer = viewer.add_image(self.video.get_frames())
 
         # Add the text widget
         text_widget = TextDisplayWidget()
@@ -127,18 +127,18 @@ class GUI:
                         self.PointsWidget = viewer.window.add_dock_widget(lk_set_points_widget, name='Set points - LK', add_vertical_stretch=add_vertical_stretch)
                     
                     if hasattr(self.method, 'mraw_range'):
-                        if type(self.method.mraw_range) == str:
-                            if self.method.mraw_range == 'full':
+                        if type(self.method.frame_range) == str:
+                            if self.method.frame_range == 'full':
                                 default_values['mraw_ranage_full'] = True
                                 default_values['mraw_range_from'] = 0
                                 default_values['mraw_range_to'] = self.video.N
                                 default_values['mraw_range_step'] = 1
                         else:
                             default_values['mraw_ranage_full'] = False
-                            default_values['mraw_range_from'] = self.method.mraw_range[0]
-                            default_values['mraw_range_to'] = self.method.mraw_range[1]
-                            if len(self.method.mraw_range) == 3:
-                                default_values['mraw_range_step'] = self.method.mraw_range[2]
+                            default_values['mraw_range_from'] = self.method.frame_range[0]
+                            default_values['mraw_range_to'] = self.method.frame_range[1]
+                            if len(self.method.frame_range) == 3:
+                                default_values['mraw_range_step'] = self.method.frame_range[2]
                             else:
                                 default_values['mraw_range_step'] = 1
 
@@ -317,11 +317,11 @@ class GUI:
     def napari_show_disp_field(self, viewer):
         if hasattr(self.method, 'displacements'):
             
-            vectors_all = np.empty((0,2,3))
+            vectors_all = np.empty((0, 2, 3))
             for i in range(len(self.method.points)):
-                vectors = np.zeros((len(self.video.mraw),2,3), dtype=float)
-                vectors[:,0,0] = np.arange(len(self.video.mraw))
-                vectors[:,1,0] = np.arange(len(self.video.mraw))
+                vectors = np.zeros((self.video.N, 2, 3), dtype=float)
+                vectors[:,0,0] = np.arange(self.video.N)
+                vectors[:,1,0] = np.arange(self.video.N)
                 vectors[:,0,1:] = self.method.points[i]
                 vectors[:,1,1:] = self.method.displacements[i]
 

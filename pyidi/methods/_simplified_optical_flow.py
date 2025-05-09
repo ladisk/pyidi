@@ -31,7 +31,7 @@ class SimplifiedOpticalFlow(IDIMethod):
             USA: Morgan Kaufmann Publishers Inc.
     """
     def configure(self, subset_size=3, pixel_shift=False, convert_from_px=1.,
-        mraw_range='all', mean_n_neighbours=0, zero_shift=False,
+        frame_range='all', mean_n_neighbours=0, zero_shift=False,
         progress_bar=True, reference_range=(0, 100)):
         """
         Set the attributes, compute reference image and gradients.
@@ -44,8 +44,8 @@ class SimplifiedOpticalFlow(IDIMethod):
         :param pixel_shift: bool, optional
         :param convert_from_px: distance unit per pixel, defaults to 1.
         :param convert_from_px: float or int, optional
-        :param mraw_range: what range of images to calculate into displacements, defaults to 'all'
-        :param mraw_range: str or tuple, optional
+        :param frame_range: what range of images to calculate into displacements, defaults to 'all'
+        :param frame_range: str or tuple, optional
         :param mean_n_neighbours: average the displacements of neighbouring points (how many points), defaults to 0
         :param mean_n_neighbours: int, optional
         :param zero_shift: shift the mean of the signal to zero?, defaults to False
@@ -61,8 +61,8 @@ class SimplifiedOpticalFlow(IDIMethod):
             self.pixel_shift = pixel_shift
         if convert_from_px is not None:
             self.convert_from_px = convert_from_px
-        if mraw_range is not None:
-            self.mraw_range = mraw_range
+        if frame_range is not None:
+            self.frame_range = frame_range
         if mean_n_neighbours is not None:
             self.mean_n_neighbours = mean_n_neighbours
         if zero_shift is not None:
@@ -101,9 +101,9 @@ class SimplifiedOpticalFlow(IDIMethod):
             gradient_1_direction[self.points[:, 0], self.points[:, 1]] / self.gradient_magnitude[self.points[:, 0], self.points[:, 1]])
 
         # limited range of mraw can be observed
-        if self.mraw_range != 'all':
-            limited_mraw = range(self.mraw_range[0], self.mraw_range[1])
-            self.displacements  = np.zeros((self.points.shape[0], self.mraw_range[1]-self.mraw_range[0], 2))
+        if self.frame_range != 'all':
+            limited_mraw = range(self.frame_range[0], self.frame_range[1])
+            self.displacements  = np.zeros((self.points.shape[0], self.frame_range[1]-self.frame_range[0], 2))
         else:
             limited_mraw = range(self.video.N)
             self.displacements  = np.zeros((self.points.shape[0], self.video.N, 2))

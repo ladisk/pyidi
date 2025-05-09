@@ -38,7 +38,7 @@ class DirectionalLucasKanade(IDIMethod):
         self, roi_size=(9, 9), dij = (1,0), pad=(2,2), max_nfev=20, 
         tol=1e-8, int_order=3, verbose=1, show_pbar=True, 
         processes=1, resume_analysis=True, reference_image=0,
-        mraw_range='full', use_numba=False
+        frame_range='full', use_numba=False
     ):
         """
         Displacement identification based on Directional Lucas-Kanade method,
@@ -49,7 +49,7 @@ class DirectionalLucasKanade(IDIMethod):
         :type video: object
         :param roi_size: (h, w) height and width of the region of interest.
             ROI dimensions should be odd numbers. Defaults to (9, 9)
-        :type roi_size: tuple, list, optional
+        :type roi_size: tuple, list, int, optional
         :param dij: Assumed vibration direction. If \\|d\\| != 1, the vector is normalized. 
             Convention is 'negative down, positive right'.
         :type dij: tuple, list, optional
@@ -74,9 +74,9 @@ class DirectionalLucasKanade(IDIMethod):
         :param reference_image: The reference image for computation. Can be index of a frame, tuple (slice) or numpy.ndarray that
             is taken as a reference.
         :type reference_image: int or tuple or ndarray
-        :param mraw_range: Part of the video to process. If "full", a full video is processed. If first element of tuple is not 0,
+        :param frame_range: Part of the video to process. If "full", a full video is processed. If first element of tuple is not 0,
             a appropriate reference image should be chosen.
-        :type mraw_range: tuple or "full"
+        :type frame_range: tuple or "full"
         :param use_numba: Use numba.njit for computation speedup. Currently not implemented.
         :type use_numba: bool
         """
@@ -91,6 +91,8 @@ class DirectionalLucasKanade(IDIMethod):
         if show_pbar is not None:
             self.show_pbar = show_pbar
         if roi_size is not None:
+            if type(roi_size) is int:
+                self.roi_size = [roi_size, roi_size]
             self.roi_size = np.array(roi_size, dtype=int)
         if int_order is not None:
             self.int_order = int_order
@@ -100,8 +102,8 @@ class DirectionalLucasKanade(IDIMethod):
             self.resume_analysis = resume_analysis
         if reference_image is not None:
             self.reference_image = reference_image
-        if mraw_range is not None:
-            self.mraw_range = mraw_range
+        if frame_range is not None:
+            self.frame_range = frame_range
         if use_numba is not None:
             self.use_numba = use_numba
         if dij is not None:
@@ -109,41 +111,41 @@ class DirectionalLucasKanade(IDIMethod):
             if np.linalg.norm(self.dij) != 1:
                 self.dij = self.dij/np.linalg.norm(self.dij)
                 # warnings.warn('The direction vector d must have a norm of 1. The input vector was normalized.')
-        self._set_mraw_range()
+        self._set_frame_range()
 
         self.temp_dir = os.path.join(self.video.root, 'temp_file')
         self.settings_filename = os.path.join(self.temp_dir, 'settings.pkl')
         self.analysis_run = 0
         
 
-    def _set_mraw_range(self):
+    def _set_frame_range(self):
         """Set the range of the video to be processed.
         """
         self.step_time = 1
 
-        if self.mraw_range == 'full':
+        if self.frame_range == 'full':
             self.start_time = 1
             self.stop_time = self.video.N
             
-        elif type(self.mraw_range) == tuple:
-            if len(self.mraw_range) >= 2:
-                if self.mraw_range[0] < self.mraw_range[1] and self.mraw_range[0] >= 0:
-                    self.start_time = self.mraw_range[0] + self.step_time
+        elif type(self.frame_range) == tuple:
+            if len(self.frame_range) >= 2:
+                if self.frame_range[0] < self.frame_range[1] and self.frame_range[0] >= 0:
+                    self.start_time = self.frame_range[0] + self.step_time
                     
-                    if self.mraw_range[1] <= self.video.N:
-                        self.stop_time = self.mraw_range[1]
+                    if self.frame_range[1] <= self.video.N:
+                        self.stop_time = self.frame_range[1]
                     else:
-                        raise ValueError(f'mraw_range can only go to end of video - index {self.video.N}')
+                        raise ValueError(f'frame_range can only go to end of video - index {self.video.N}')
                 else:
-                    raise ValueError(f'Wrong mraw_range definition.')
+                    raise ValueError(f'Wrong frame_range definition.')
 
-                if len(self.mraw_range) == 3:
-                    self.step_time = self.mraw_range[2]
+                if len(self.frame_range) == 3:
+                    self.step_time = self.frame_range[2]
 
             else:
-                raise Exception('Wrong definition of mraw_range.')
+                raise Exception('Wrong definition of frame_range.')
         else:
-            raise TypeError(f'mraw_range must be a tuple of start and stop index or "full" ({type(self.mraw_range)}')
+            raise TypeError(f'frame_range must be a tuple of start and stop index or "full" ({type(self.frame_range)}')
             
         self.N_time_points = len(range(self.start_time-self.step_time, self.stop_time, self.step_time))
 
@@ -449,7 +451,7 @@ def multi(video: VideoReader, idi_method: DirectionalLucasKanade, processes, con
     }
 
     if video.file_format == 'np.ndarray':
-        idi_kwargs['input_file'] = video.mraw # if the input is np.ndarray, the input_file is the actual data
+        idi_kwargs['input_file'] = video.get_frames() # if the input is np.ndarray, the input_file is the actual data
     
 
     # Set the parameters that are passed to the configure method
