@@ -11,7 +11,11 @@ def test_instance():
     sof = pyidi.SimplifiedOpticalFlow(video)
 
     assert True
+<<<<<<< HEAD
     # print('test_instance: passed')
+=======
+    print('test_instance: passed')
+>>>>>>> e8ac912d11d741863a46428a4d83eb0fdc76a4d3
     return None
 
 def test_points_sof():
@@ -20,7 +24,11 @@ def test_points_sof():
     sof.set_points(points=[(0, 1), (1, 1)])
 
     assert True
+<<<<<<< HEAD
     # print('test_points_sof: passed')
+=======
+    print('test_points_sof: passed')
+>>>>>>> e8ac912d11d741863a46428a4d83eb0fdc76a4d3
     return None
 
 def test_points_lk():
@@ -29,7 +37,11 @@ def test_points_lk():
     lk.set_points(points=[(0, 1), (1, 1)])
 
     assert True
+<<<<<<< HEAD
     # print('test_points_lk: passed')
+=======
+    print('test_points_lk: passed')
+>>>>>>> e8ac912d11d741863a46428a4d83eb0fdc76a4d3
     return None
 
 # def test_info():
