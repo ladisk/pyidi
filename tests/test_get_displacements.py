@@ -1,15 +1,13 @@
 import numpy as np
-from numpy.testing import assert_array_equal
 import sys, os
 my_path = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, my_path + '/../')
 
 import pyidi
 
-def test():
-    video = pyidi.pyIDI(input_file='./data/data_synthetic.cih')
-    video.set_method(method='lk')
-    video.method.configure(int_order=1, roi_size=(9, 9))
+def test_cih_lk():
+    video = pyidi.VideoReader(input_file='./data/data_synthetic.cih')
+    lk = pyidi.LucasKanade(video)
 
     points = np.array([
         [ 31,  35],
@@ -17,9 +15,33 @@ def test():
         [ 31, 126],
         [ 95,  71],
     ])
-    video.set_points(points)
-    video.method.configure(show_pbar=False)
-    res_1 = video.get_displacements(resume_analysis=False, autosave=False)
+    lk.set_points(points)
+    lk.configure(int_order=1, verbose=0, show_pbar=False)
+    dsp = lk.get_displacements(autosave=False)
+
+    np.testing.assert_array_equal(dsp.shape, (len(points), video.N, 2))
+    # print('Displacements shape:', dsp.shape)
+
+    return None
+
+def test_png_sof():
+    video = pyidi.VideoReader(input_file='./data/data_synthetic_img_0.png')
+    sof = pyidi.SimplifiedOpticalFlow(video)
+    
+    points = np.array([
+        [ 31,  35],
+        [ 31, 215],
+        [ 31, 126],
+        [ 95,  71],
+    ])
+    sof.set_points(points)
+    dsp = sof.get_displacements(autosave=False, progress_bar=False)
+
+    np.testing.assert_array_equal(dsp.shape, (len(points), video.N, 2))
+    # print('Displacements shape:', dsp.shape)
+
+    return None
 
 if __name__ == '__main__':
-    test()
+    test_cih_lk()
+    test_png_sof()
