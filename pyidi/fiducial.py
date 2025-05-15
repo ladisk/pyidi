@@ -176,7 +176,7 @@ class Fiducial:
             dictionary = cv2.aruco.getPredefinedDictionary(getattr(cv2.aruco, fiducial_dictionary))
             parameters = cv2.aruco.DetectorParameters()
 
-            for i, frame in tqdm(enumerate(video), total=len(video), dynamic_ncols=True, desc="Detection Progress of Fiducial Markers"):
+            for i, frame in tqdm(enumerate(video), total=len(video), dynamic_ncols=True, desc="Fiducial Markers Detection"):
                 corners, ids, _ = cv2.aruco.detectMarkers(frame, dictionary, parameters=parameters)
 
                 if ids is not None:
@@ -215,13 +215,16 @@ class Fiducial:
 
         
         success_rate = (frame_success / max(1, len(video))) * 100
-        print(f"Detection Success Rate: {round(success_rate, 2)}%")
+        failed_frames = len(video) - frame_success
 
-        if success_rate < 100:
+        if success_rate == 100:
+            print(f"All {len(video)} frames contain at least one detected marker. Tracking is expected to be reliable.")
+        else:
+            print(f"{frame_success} out of {len(video)} frames had at least one marker detected "
+                f"({round(success_rate, 2)}% success rate).")
             warnings.warn(
-                "Detection Success Rate is below 100%. "
-                "This means that some frames are missing markers, "
-                "which may result in unreliable tracking. "
+                f"{failed_frames} frame(s) are missing detectable markers. "
+                "This may lead to unreliable tracking or alignment. "
                 "Consider re-running preprocessing or improving image quality.",
                 category=UserWarning
             )
