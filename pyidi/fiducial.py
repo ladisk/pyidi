@@ -58,7 +58,7 @@ class Fiducial:
             numpy.ndarray: Preprocessed grayscale images.
         """
         processed_video = []
-        
+
         if clip_range is not None:
             if not (isinstance(clip_range, (list, tuple)) and len(clip_range) == 2):
                 raise ValueError("clip_range must be a tuple/list of (min, max)")
@@ -312,8 +312,7 @@ class Fiducial:
 
         return M
 
-    @staticmethod
-    def compute_transformations(id_coords, reference_index=0, transform_type="euclidean"):
+    def compute_transformations(self, id_coords, reference_index=0, transform_type="euclidean"):
         """
         Computes transformation matrices from each frame to the reference frame based on common fiducial markers.
 
@@ -325,21 +324,23 @@ class Fiducial:
         Returns:
             list: List of 3x3 transformation matrices. If transformation fails for a frame, its entry will be None.
         """
+        self.reference_index = reference_index
+
         if not isinstance(id_coords, list) or len(id_coords) == 0:
             raise ValueError("Input 'id_coords' must be a non-empty list of marker detections.")
 
-        if not (0 <= reference_index < len(id_coords)):
+        if not (0 <= self.reference_index < len(id_coords)):
             raise ValueError("Invalid reference_index. It must be within the range of id_coords.")
 
-        if id_coords[reference_index] == "none":
-            raise ValueError(f"The reference frame at index {reference_index} has no marker data.")
+        if id_coords[self.reference_index] == "none":
+            raise ValueError(f"The reference frame at index {self.reference_index} has no marker data.")
 
         n = len(id_coords)
         transformations = [None] * n
-        transformations[reference_index] = np.eye(3)  # Identity matrix for reference
+        transformations[self.reference_index ] = np.eye(3)  # Identity matrix for reference
 
         for i in range(n):
-            if i == reference_index:
+            if i == self.reference_index :
                 continue
 
             if id_coords[i] == "none":
@@ -347,14 +348,14 @@ class Fiducial:
                 continue
 
             source_points, destination_points = Fiducial.get_common_markers(
-                id_coords[reference_index], id_coords[i]
+                id_coords[self.reference_index ], id_coords[i]
             )
 
             if (
                 source_points is None or destination_points is None or
                 len(source_points) < 1 or len(destination_points) < 1
             ):
-                warnings.warn(f"[Frame {i}] No common markers with reference frame {reference_index}. Transformation will be set to None.")
+                warnings.warn(f"[Frame {i}] No common markers with reference frame {self.reference_index}. Transformation will be set to None.")
                 continue
 
             source_points = np.array(source_points)
@@ -494,93 +495,102 @@ class Fiducial:
 
     def uncertainty_analysis(self, id_coords, transformed_fiducial, plot=False, time_axis=None, save_path=None):
         """
-        Evaluates the per-frame mean and std of Euclidean errors, plus the overall stats.
-        Optionally plots results over time or frame index.
+        Computes per-frame and overall Euclidean error statistics between transformed and reference fiducial markers.
 
         Args:
-            id_coords (list): List of tuples [(id, corners)] or 'none'.
-            transformed_fiducial (list): Transformed frames [(id, corners)] or 'none'.
-            plot (bool): Whether to plot the results.
-            time_axis (list or None): X-axis values (e.g. time in seconds).
-            save_path (str or None): Optional path to save plot.
+            id_coords (list): List of tuples [(id, corners)] for each frame, representing original marker positions.
+            transformed_fiducial (list): List of tuples [(id, corners)] for each frame, representing transformed marker positions.
+            plot (bool): Whether to plot the results over time/frame index.
+            time_axis (list or None): Optional x-axis values (e.g. time in seconds) for plotting.
+            save_path (str or None): Optional path to save the plot.
 
         Returns:
-            tuple: (frame_means, frame_stds, overall_mean, overall_std)
+            dict: A dictionary with:
+                - "Mean Error": Mean Euclidean distance error across all frames (excluding NaNs).
+                - "Standard Deviation": Standard deviation of per-frame mean errors (excluding NaNs).
+
+        Raises:
+            ValueError: If input lists are mismatched in length or the reference frame is invalid.
+            AttributeError: If `reference_index` is not defined in the class.
         """
-        if not id_coords or not transformed_fiducial or len(id_coords) != len(transformed_fiducial):
-            raise ValueError("Input lists must be non-empty and of equal length.")
+        
+        def parse_frame_data(frame_data, frame_idx):
+            """Convert list of (id, corners) to {id: np.array(corners)}."""
+            if frame_data == "none" or not frame_data:
+                return None
+            try:
+                return {mid: np.array(corners, dtype=np.float32) for mid, corners in frame_data}
+            except Exception as e:
+                warnings.warn(f"[Frame {frame_idx}] Failed to parse frame data: {e}")
+                return None
 
-        if id_coords[0] == "none" or not id_coords[0]:
-            raise ValueError("Reference frame (frames[0]) is missing or invalid.")
+        n_frames = len(id_coords)
+        if n_frames != len(transformed_fiducial):
+            raise ValueError("Length mismatch between original and transformed fiducial lists.")
 
-        try:
-            reference_frame = {id_: np.array(corners, dtype=np.float32) for id_, corners in id_coords[0]}
-        except Exception as e:
-            raise ValueError(f"Failed to process reference frame: {e}")
+        if not hasattr(self, "reference_index"):
+            raise AttributeError("reference_index not set. Run compute_transformations() first.")
+
+        ref_idx = self.reference_index
+        reference_data = parse_frame_data(id_coords[ref_idx], ref_idx)
+        if reference_data is None:
+            raise ValueError("Reference frame is invalid or contains no markers.")
 
         frame_means = []
         frame_stds = []
 
-        for idx in range(1, len(id_coords)):
-            orig_frame = id_coords[idx]
-            transformed_frame = transformed_fiducial[idx]
+        for i in range(n_frames):
+            if i == ref_idx:
+                frame_means.append(0.0)
+                frame_stds.append(0.0)
+                continue
 
-            if orig_frame == "none" or transformed_frame in ("none", None):
-                warnings.warn(f"[Frame {idx}] Missing original or transformed data. Skipping.")
+            orig = parse_frame_data(id_coords[i], i)
+            trans = parse_frame_data(transformed_fiducial[i], i)
+
+            if orig is None or trans is None:
                 frame_means.append(np.nan)
                 frame_stds.append(np.nan)
                 continue
 
-            try:
-                transformed_dict = {id_: np.array(corners, dtype=np.float32) for id_, corners in transformed_frame}
-            except Exception as e:
-                warnings.warn(f"[Frame {idx}] Error parsing transformed frame: {e}")
+            common_ids = set(reference_data.keys()) & set(trans.keys())
+            if not common_ids:
+                warnings.warn(f"[Frame {i}] No common markers with reference frame.")
                 frame_means.append(np.nan)
                 frame_stds.append(np.nan)
                 continue
 
-            try:
-                common_ids = set(reference_frame.keys()) & set(transformed_dict.keys())
-                if not common_ids:
-                    warnings.warn(f"[Frame {idx}] No common markers with reference frame.")
-                    frame_means.append(np.nan)
-                    frame_stds.append(np.nan)
+            errors = []
+            for mid in common_ids:
+                ref_corners = reference_data[mid]
+                trans_corners = trans[mid]
+
+                if ref_corners.shape != trans_corners.shape:
+                    warnings.warn(f"[Frame {i}] Shape mismatch for marker {mid}.")
                     continue
 
-                frame_error_list = []
-                for marker_id in common_ids:
-                    ref_corners = reference_frame[marker_id]
-                    trans_corners = transformed_dict[marker_id]
+                dists = np.linalg.norm(ref_corners - trans_corners, axis=1)  # per-corner error
+                errors.extend(dists)
 
-                    if ref_corners.shape != trans_corners.shape:
-                        warnings.warn(f"[Frame {idx}] Shape mismatch for marker {marker_id}.")
-                        continue
-
-                    distances = np.linalg.norm(ref_corners - trans_corners, axis=1)
-                    frame_error_list.extend(distances)
-
-                if frame_error_list:
-                    mu_k = np.mean(frame_error_list)
-                    sigma_k = np.std(frame_error_list)
-                else:
-                    mu_k, sigma_k = np.nan, np.nan
-
-                frame_means.append(mu_k)
-                frame_stds.append(sigma_k)
-
-            except Exception as e:
-                warnings.warn(f"[Frame {idx}] Unexpected error during computation: {e}")
+            if errors:
+                frame_means.append(np.mean(errors))
+                frame_stds.append(np.std(errors))
+            else:
                 frame_means.append(np.nan)
                 frame_stds.append(np.nan)
 
-        x_values = time_axis if time_axis is not None else list(range(1, len(frame_means) + 1))
+        # X-axis values for plot
+        x_vals = time_axis if time_axis is not None else list(range(n_frames))
+
+        # Global statistics
         overall_mean = np.nanmean(frame_means)
         overall_std = np.nanstd(frame_means)
 
+        # Optional plot
         if plot:
             try:
                 self.plot_uncertainty_results(
-                    x_values=x_values,
+                    x_values=x_vals,
                     frame_means=frame_means,
                     frame_stds=frame_stds,
                     overall_mean=overall_mean,
@@ -589,12 +599,13 @@ class Fiducial:
                     save_path=save_path
                 )
             except Exception as e:
-                print(f"[Plot Error] Could not generate uncertainty plot: {e}")
+                print(f"[Plot Error] Failed to generate plot: {e}")
 
         return {
-            "Mean Error": overall_mean,             # Overall mean error across all frames
-            "Standard Deviation": overall_std       # Overall std deviation across all frames
+            "Mean Error": overall_mean,
+            "Standard Deviation": overall_std
         }
+
 
     def plot_uncertainty_results(self, x_values, frame_means, frame_stds,
                                  overall_mean,overall_std, time_axis=None, save_path=None):
