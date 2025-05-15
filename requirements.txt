@@ -19,3 +19,5 @@ nbsphinx
 nbsphinx_link
 rich
 qtpy
+cv2
+warnings
