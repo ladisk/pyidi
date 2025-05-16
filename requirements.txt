@@ -8,7 +8,6 @@ numba
 napari[all]
 magicgui
 imageio[pyav]
-opencv-python
 sphinx
 twine
 build
@@ -19,5 +18,6 @@ nbsphinx
 nbsphinx_link
 rich
 qtpy
-cv2
+opencv-contrib-python
 warnings
+ 

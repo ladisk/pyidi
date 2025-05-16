@@ -17,7 +17,7 @@ Welcome to pyIDI's documentation!
    mode_shape_magnification
    code/modules
    contributing/documenting
-
+   fiducial_marker
 
 
 Indices and tables
