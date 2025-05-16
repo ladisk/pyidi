@@ -606,9 +606,10 @@ class Fiducial:
 
         return {
             "Mean Error": overall_mean,
-            "Standard Deviation": overall_std
+            "Standard Deviation": overall_std,
+            "Per-frame Mean Error": frame_means,
+            "Per-frame Std. Dev.": frame_stds
         }
-
 
     def plot_uncertainty_results(self, x_values, frame_means, frame_stds,
                                  overall_mean,overall_std, time_axis=None, save_path=None):
