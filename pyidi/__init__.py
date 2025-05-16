@@ -8,3 +8,4 @@ from .load_analysis import load_analysis
 from .video_reader import VideoReader
 from .methods import *
 from .gui import GUI
+from .fiducial import *
