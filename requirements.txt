@@ -19,5 +19,5 @@ nbsphinx
 nbsphinx_link
 rich
 qtpy
-cv2
+opencv-contrib-python
 warnings
