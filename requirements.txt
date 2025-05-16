@@ -20,3 +20,4 @@ rich
 qtpy
 opencv-contrib-python
 warnings
+ 
