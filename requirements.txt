@@ -19,5 +19,5 @@ nbsphinx_link
 rich
 qtpy
 opencv-contrib-python
-warnings
+pytest-warnings
  
