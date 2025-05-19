@@ -26,7 +26,7 @@ def test_cih_lk():
 
 def test_cih_lk1d():
     video = pyidi.VideoReader(input_file='./data/data_synthetic.cih')
-    lk = pyidi.DirectionalLucasKanade(video)
+    lk1d = pyidi.DirectionalLucasKanade(video)
 
     points = np.array([
         [ 31,  35],
@@ -34,9 +34,9 @@ def test_cih_lk1d():
         [ 31, 126],
         [ 95,  71],
     ])
-    lk.set_points(points)
-    lk.configure(dij = (0.5, 0.5), int_order=1, verbose=0, show_pbar=False)
-    dsp = lk.get_displacements(autosave=False)
+    lk1d.set_points(points)
+    lk1d.configure(dij = (0.5, 0.5), int_order=1, verbose=0, show_pbar=False)
+    dsp = lk1d.get_displacements(autosave=False)
 
     np.testing.assert_array_equal(dsp.shape, (len(points), video.N, 2))
     return None
