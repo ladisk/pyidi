@@ -24,6 +24,23 @@ def test_cih_lk():
 
     return None
 
+def test_cih_lk1d():
+    video = pyidi.VideoReader(input_file='./data/data_synthetic.cih')
+    lk = pyidi.DirectionalLucasKanade(video)
+
+    points = np.array([
+        [ 31,  35],
+        [ 31, 215],
+        [ 31, 126],
+        [ 95,  71],
+    ])
+    lk.set_points(points)
+    lk.configure(dij = (0.5, 0.5), int_order=1, verbose=0, show_pbar=False)
+    dsp = lk.get_displacements(autosave=False)
+
+    np.testing.assert_array_equal(dsp.shape, (len(points), video.N, 2))
+    return None
+
 def test_png_sof():
     video = pyidi.VideoReader(input_file='./data/data_synthetic_img_0.png')
     sof = pyidi.SimplifiedOpticalFlow(video)
@@ -44,4 +61,5 @@ def test_png_sof():
 
 if __name__ == '__main__':
     test_cih_lk()
+    test_cih_lk1d()
     test_png_sof()
