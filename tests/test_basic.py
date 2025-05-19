@@ -35,8 +35,8 @@ def test_points_lk():
 
 def test_points_lk1d():
     video = pyidi.VideoReader(input_file='./data/data_synthetic.cih')
-    lk = pyidi.DirectionalLucasKanade(video)
-    lk.set_points(points=[(0, 1), (1, 1)])
+    lk1d = pyidi.DirectionalLucasKanade(video)
+    lk1d.set_points(points=[(0, 1), (1, 1)])
 
     assert True
     # print('test_points_lk: passed')
