@@ -9,6 +9,7 @@ def test_instance():
     video = pyidi.VideoReader(input_file='./data/data_synthetic.cih')
     lk = pyidi.LucasKanade(video)
     sof = pyidi.SimplifiedOpticalFlow(video)
+    lk1d = pyidi.DirectionalLucasKanade(video)
 
     assert True
     # print('test_instance: passed')
@@ -32,6 +33,15 @@ def test_points_lk():
     # print('test_points_lk: passed')
     return None
 
+def test_points_lk1d():
+    video = pyidi.VideoReader(input_file='./data/data_synthetic.cih')
+    lk1d = pyidi.DirectionalLucasKanade(video)
+    lk1d.set_points(points=[(0, 1), (1, 1)])
+
+    assert True
+    # print('test_points_lk: passed')
+    return None
+
 # def test_info():
 #     video = pyidi.pyIDI(input_file='./data/data_synthetic.cih')
 #     assert 'Shutter Speed(s)' in video.reader.info.keys()
@@ -44,6 +54,7 @@ if __name__ == '__main__':
     test_instance()
     test_points_sof()
     test_points_lk()
+    test_points_lk1d()
 
 # if __name__ == '__mains__':
 #     np.testing.run_module_suite()
