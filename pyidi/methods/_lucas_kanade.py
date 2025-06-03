@@ -120,7 +120,7 @@ class LucasKanade(IDIMethod):
                     if self.frame_range[1] <= self.video.N:
                         self.stop_time = self.frame_range[1]
                     else:
-                        raise ValueError(f'frame_range can only go to end of video - index {self.video.N}')
+                        raise ValueError(f'frame_range can only go to end of video - up to index {self.video.N}. selected range was: {self.frame_range}')
                 else:
                     raise ValueError('Wrong frame_range definition.')
 
@@ -193,6 +193,11 @@ class LucasKanade(IDIMethod):
         # Time iteration.
         len_of_task = len(range(self.start_time, self.stop_time, self.step_time))
         for ii, i in enumerate(progress_bar(self.start_time, self.stop_time, self.step_time)):
+
+            # if resuming analysis and completed points are available, skip those points
+            if self.resume_analysis and hasattr(self, "completed_points") and self.completed_points > ii:
+                continue
+            
             ii = ii + 1
 
             # Iterate over points.
