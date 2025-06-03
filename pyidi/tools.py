@@ -10,6 +10,9 @@ from multiprocessing import Pool
 from tqdm import tqdm
 import numba as nb
 
+import logging
+import logging.handlers
+
 class ManualROI:
     """Manual ROI selection."""
 
@@ -335,7 +338,20 @@ def get_gradient(image):
     return Gx[1:-1], Gy[:, 1:-1]
 
 
+def setup_logger(logger_name, level="DEBUG", backup_count=1):
+    # Set up logging
+    logger = logging.getLogger(logger_name)
+    logger.setLevel(level)
+    # Set up a rotating file handler to manage log file size
+    file_handler = logging.handlers.RotatingFileHandler(
+        f'{logger_name}.log', maxBytes=1024 * 1024, backupCount=backup_count  # 1 MB per file, keep 5 backups
+    )
+    file_handler.setLevel(level)
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    file_handler.setFormatter(formatter)
+    logger.addHandler(file_handler)
 
+    return logger
     
                 
         

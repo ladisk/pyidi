@@ -35,7 +35,7 @@ class LucasKanade(IDIMethod):
     def configure(
         self, roi_size=(9, 9), pad=2, max_nfev=20, 
         tol=1e-8, int_order=3, verbose=1, show_pbar=True, 
-        processes=1, resume_analysis=True, reference_image=0, frame_range='full'
+        processes=1, resume_analysis=False, reference_image=0, frame_range='full'
     ):
         """
         Displacement identification based on Lucas-Kanade method,
@@ -120,7 +120,7 @@ class LucasKanade(IDIMethod):
                     if self.frame_range[1] <= self.video.N:
                         self.stop_time = self.frame_range[1]
                     else:
-                        raise ValueError(f'frame_range can only go to end of video - index {self.video.N}')
+                        raise ValueError(f'frame_range can only go to end of video - up to index {self.video.N}. selected range was: {self.frame_range}')
                 else:
                     raise ValueError('Wrong frame_range definition.')
 
@@ -193,6 +193,11 @@ class LucasKanade(IDIMethod):
         # Time iteration.
         len_of_task = len(range(self.start_time, self.stop_time, self.step_time))
         for ii, i in enumerate(progress_bar(self.start_time, self.stop_time, self.step_time)):
+
+            # if resuming analysis and completed points are available, skip those points
+            if self.resume_analysis and hasattr(self, "completed_points") and self.completed_points > ii:
+                continue
+            
             ii = ii + 1
 
             # Iterate over points.

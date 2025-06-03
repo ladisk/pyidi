@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 
 from ..selection import SubsetSelection
 from ..video_reader import VideoReader
+from ..tools import setup_logger
 
 class IDIMethod:
     """Common functions for all methods.
@@ -24,6 +25,8 @@ class IDIMethod:
         self.video = video
         self.process_number = 0
         self.configure(*args, **kwargs)
+
+        # self.logger = setup_logger("pyidi", 10)
 
         # Set the temporary directory
         self.temp_dir = os.path.join(self.video.root, 'temp_file')
@@ -101,19 +104,25 @@ class IDIMethod:
         if not init_multi:
             token = f'{self.process_number:0>3.0f}'
 
-            self.process_log = os.path.join(temp_dir, 'process_log_' + token + '.txt')
+            self.process_log = os.path.join(temp_dir, 'process_log_' + token + '.json')
             self.points_filename = os.path.join(temp_dir, 'points.pkl')
             self.disp_filename = os.path.join(temp_dir, 'disp_' + token + '.pkl')
 
+            log = {
+                "input_file": self.video.input_file,
+                "token": token,
+                "points_filename": self.points_filename,
+                "disp_filename": self.disp_filename,
+                "disp_shape": (self.points.shape[0], self.N_time_points, 2),
+                "start_frame": self.start_time,
+                "stop_frame": self.stop_time,
+                "step_frame": self.step_time,
+                "analysis_run": {
+                    f"run {self.analysis_run}": {}
+                },
+            }
             with open(self.process_log, 'w', encoding='utf-8') as f:
-                f.writelines([
-                    f'input_file: {self.video.input_file}\n',
-                    f'token: {token}\n',
-                    f'points_filename: {self.points_filename}\n',
-                    f'disp_filename: {self.disp_filename}\n',
-                    f'disp_shape: {(self.points.shape[0], self.N_time_points, 2)}\n',
-                    f'analysis_run <{self.analysis_run}>:'
-                ])
+                json.dump(log, f, indent=4)
             
             if not self.points.shape[0]:
                 raise Exception("Points not set. Please set the points before running the analysis.")
@@ -135,16 +144,15 @@ class IDIMethod:
         :type last_time: int
         """
         with open(self.process_log, 'r', encoding='utf-8') as f:
-            log = f.readlines()
+            log = json.load(f)
         
-        log_entry = f'analysis_run <{self.analysis_run}>: finished: {datetime.datetime.now()}\tlast time point: {last_time}'
-        if f'<{self.analysis_run}>' in log[-1]:
-            log[-1] = log_entry
-        else:
-            log.append('\n' + log_entry)
+        log['analysis_run'][f"run {self.analysis_run}"] = {
+            'finished': datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            'last_time_point': last_time
+        }
 
         with open(self.process_log, 'w', encoding='utf-8') as f:
-            f.writelines(log)
+            json.dump(log, f, indent=4)
 
     def resume_temp_files(self):
         """Reload the settings written in the temporary files.
@@ -155,19 +163,26 @@ class IDIMethod:
         temp_dir = self.temp_dir
         token = f'{self.process_number:0>3.0f}'
 
-        self.process_log = os.path.join(temp_dir, 'process_log_' + token + '.txt')
+        self.process_log = os.path.join(temp_dir, 'process_log_' + token + '.json')
         self.disp_filename = os.path.join(temp_dir, 'disp_' + token + '.pkl')
 
         with open(self.process_log, 'r', encoding='utf-8') as f:
-            log = f.readlines()
+            log = json.load(f)
 
-        shape = tuple([int(_) for _ in log[4].replace(' ', '').split(':')[1].replace('(', '').replace(')', '').split(',')])
- 
+        shape = tuple([int(_) for _ in log['disp_shape']])
+
         self.temp_disp = np.memmap(self.disp_filename, dtype=np.float64, mode='r+', shape=shape)
         self.displacements = np.array(self.temp_disp).copy()
 
-        self.start_time = int(log[-1].replace(' ', '').rstrip().split('\t')[1].split(':')[1]) + 1
-        self.analysis_run = int(log[-1].split('<')[1].split('>')[0]) + 1
+        self.start_time = log['start_frame']
+        self.stop_time = log['stop_frame']
+        self.step_time = log['step_frame']
+
+        last_analysis_run = int(list(log['analysis_run'].keys())[-1].split(' ')[-1])
+        self.completed_points = int(log['analysis_run'][f"run {last_analysis_run}"]['last_time_point'])
+        
+        self.analysis_run = last_analysis_run + 1
+        self.N_time_points = len(range(self.start_time, self.stop_time, self.step_time))
 
     def temp_files_check(self):
         """Checking the settings of computation.

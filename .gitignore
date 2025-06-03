@@ -127,3 +127,4 @@ server_user_id.txt
 
 data_synthetic_pyidi_analysis/
 temp_file/
+data/data_*_pyidi_analysis/analysis_*/
