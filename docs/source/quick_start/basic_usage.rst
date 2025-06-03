@@ -71,6 +71,14 @@ The method can be configured using:
     
     sof.configure(...)
 
+.. note::
+
+    Some of the methods enable the multiprocessing option. By setting the number of processes, the
+    points are divided into groups and each group is processed in a separate process.
+
+    A caveat is that when using the multiprocessing option in a shell (not jupyter notebook), the 
+    code must be run in a ``if __name__ == '__main__':`` block.
+
 
 Get displacement
 ----------------
