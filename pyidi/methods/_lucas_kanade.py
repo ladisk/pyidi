@@ -35,7 +35,7 @@ class LucasKanade(IDIMethod):
     def configure(
         self, roi_size=(9, 9), pad=2, max_nfev=20, 
         tol=1e-8, int_order=3, verbose=1, show_pbar=True, 
-        processes=1, resume_analysis=True, reference_image=0, frame_range='full'
+        processes=1, resume_analysis=False, reference_image=0, frame_range='full'
     ):
         """
         Displacement identification based on Lucas-Kanade method,

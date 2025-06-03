@@ -37,7 +37,7 @@ class DirectionalLucasKanade(IDIMethod):
     def configure(
         self, roi_size=(9, 9), dij = (1,0), pad=(2,2), max_nfev=20, 
         tol=1e-8, int_order=3, verbose=1, show_pbar=True, 
-        processes=1, resume_analysis=True, reference_image=0,
+        processes=1, resume_analysis=False, reference_image=0,
         frame_range='full', use_numba=False
     ):
         """
