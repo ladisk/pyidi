@@ -7,7 +7,7 @@ import warnings
 warnings.simplefilter("default")
 
 from . import tools
-from . import selection
+from .selection import selection
 from .methods import SimplifiedOpticalFlow
 from .methods import LucasKanade
 

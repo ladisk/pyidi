@@ -11,7 +11,7 @@ warnings.simplefilter("default")
 from .methods import IDIMethod, SimplifiedOpticalFlow, LucasKanade, DirectionalLucasKanade #, LucasKanadeSc, LucasKanadeSc2, GradientBasedOpticalFlow
 from .video_reader import VideoReader
 from . import tools
-from . import selection
+from .selection import selection
 
 available_method_shortcuts = [
     ('sof', SimplifiedOpticalFlow),
