@@ -91,6 +91,9 @@ class SelectionGUI(QtWidgets.QMainWindow):
         # Ensure method-specific widgets are visible on startup
         self.method_selected(self.button_group.checkedId())
 
+        # Set the initial mode
+        self.switch_mode("manual")  # Default to manual mode
+
         # Start the GUI
         self.show()
         if app is not None:
@@ -301,6 +304,7 @@ class SelectionGUI(QtWidgets.QMainWindow):
         self.distance_spinbox.setVisible(show_spacing)
 
     def switch_mode(self, mode: str):
+        self.mode = mode
         if mode == "manual":
             self.manual_mode_button.setChecked(True)
             self.automatic_mode_button.setChecked(False)
@@ -322,6 +326,9 @@ class SelectionGUI(QtWidgets.QMainWindow):
             self.candidate_scatter.setVisible(True)
 
     def on_mouse_click(self, event):
+        if self.mode == "automatic":
+            return
+        
         if self.method_buttons["Manual"].isChecked():
             self.handle_manual_selection(event)
         elif self.method_buttons["Along the line"].isChecked():
