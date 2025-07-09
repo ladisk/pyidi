@@ -148,6 +148,12 @@ class SelectionGUI(QtWidgets.QMainWindow):
         self.subset_size_spinbox.valueChanged.connect(self.update_selected_points)
         self.method_layout.addWidget(self.subset_size_spinbox)
 
+        # Show ROI rectangles
+        self.show_roi_checkbox = QtWidgets.QCheckBox("Show subsets")
+        self.show_roi_checkbox.setChecked(True)
+        self.show_roi_checkbox.stateChanged.connect(self.update_selected_points)
+        self.method_layout.addWidget(self.show_roi_checkbox)
+
         # Clear button
         self.method_layout.addSpacing(20)
         self.clear_button = QtWidgets.QPushButton("Clear selections")
@@ -387,39 +393,42 @@ class SelectionGUI(QtWidgets.QMainWindow):
         subset_size = self.subset_size_spinbox.value()
         half = subset_size // 2
 
-        # Prepare overlay
-        h, w = self.image_item.image.shape[:2]
-        overlay = np.zeros((h, w, 4), dtype=np.uint8)  # RGBA
+        # --- Rectangles ---
+        if self.show_roi_checkbox.isChecked():
+            h, w = self.image_item.image.shape[:2]
+            overlay = np.zeros((h, w, 4), dtype=np.uint8)  # RGBA
 
-        for y, x in self.selected_points:
-            x0 = int(round(x - half))
-            y0 = int(round(y - half))
-            x1 = int(round(x + half))
-            y1 = int(round(y + half))
+            for y, x in self.selected_points:
+                x0 = int(round(x - half))
+                y0 = int(round(y - half))
+                x1 = int(round(x + half))
+                y1 = int(round(y + half))
 
-            # Ensure bounds
-            if x0 < 0 or y0 < 0 or x1 >= w or y1 >= h:
-                continue
+                # Ensure bounds
+                if x0 < 0 or y0 < 0 or x1 >= w or y1 >= h:
+                    continue
 
-            # Fill interior (semi-transparent green)
-            overlay[y0:y1, x0:x1, 1] = 180  # green channel
-            overlay[y0:y1, x0:x1, 3] = 40   # alpha
+                # Fill interior (semi-transparent green)
+                overlay[y0:y1, x0:x1, 1] = 180  # green
+                overlay[y0:y1, x0:x1, 3] = 40   # alpha
 
-            # Outline (more opaque green)
-            overlay[y0, x0:x1, 1] = 255  # top
-            overlay[y1 - 1, x0:x1, 1] = 255  # bottom
-            overlay[y0:y1, x0, 1] = 255  # left
-            overlay[y0:y1, x1 - 1, 1] = 255  # right
+                # Outline (more opaque green)
+                overlay[y0, x0:x1, 1] = 255  # top
+                overlay[y1 - 1, x0:x1, 1] = 255  # bottom
+                overlay[y0:y1, x0, 1] = 255  # left
+                overlay[y0:y1, x1 - 1, 1] = 255  # right
 
-            overlay[y0, x0:x1, 3] = 150  # alpha
-            overlay[y1 - 1, x0:x1, 3] = 150
-            overlay[y0:y1, x0, 3] = 150
-            overlay[y0:y1, x1 - 1, 3] = 150
+                overlay[y0, x0:x1, 3] = 150
+                overlay[y1 - 1, x0:x1, 3] = 150
+                overlay[y0:y1, x0, 3] = 150
+                overlay[y0:y1, x1 - 1, 3] = 150
 
-        self.roi_overlay.setImage(overlay, autoLevels=False)
-        self.roi_overlay.setZValue(1)
+            self.roi_overlay.setImage(overlay, autoLevels=False)
+            self.roi_overlay.setZValue(1)
+        else:
+            self.roi_overlay.clear()
 
-        # Dots
+        # --- Center Dots ---
         self.scatter.setData(
             pos=self.selected_points,
             symbol='o',
@@ -427,6 +436,7 @@ class SelectionGUI(QtWidgets.QMainWindow):
             brush=pg.mkBrush(255, 100, 100, 200),
             pen=pg.mkPen(None)
         )
+
 
     def start_new_line(self):
         print("Starting a new line...")
