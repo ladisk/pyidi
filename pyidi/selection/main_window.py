@@ -27,12 +27,36 @@ class SelectionGUI(QtWidgets.QMainWindow):
         # Central widget
         self.central_widget = QtWidgets.QWidget()
         self.setCentralWidget(self.central_widget)
-        self.main_layout = QtWidgets.QHBoxLayout(self.central_widget)
+        # Top-level layout for the central widget
+        self.main_layout = QtWidgets.QVBoxLayout(self.central_widget)
+        self.main_layout.setContentsMargins(0, 0, 0, 0)
+        self.main_layout.setSpacing(0)
 
-        # Main layout and controls
+        # Toolbar (fixed height)
+        self.mode_toolbar = QtWidgets.QWidget()
+        self.mode_toolbar_layout = QtWidgets.QHBoxLayout(self.mode_toolbar)
+        self.mode_toolbar_layout.setContentsMargins(5, 4, 5, 4)
+        self.mode_toolbar_layout.setSpacing(6)
+
+        self.manual_mode_button = QtWidgets.QPushButton("Manual")
+        self.automatic_mode_button = QtWidgets.QPushButton("Automatic")
+        for btn in [self.manual_mode_button, self.automatic_mode_button]:
+            btn.setCheckable(True)
+            btn.setMinimumWidth(100)
+            self.mode_toolbar_layout.addWidget(btn)
+
+        self.manual_mode_button.setChecked(True)
+        self.manual_mode_button.clicked.connect(lambda: self.switch_mode("manual"))
+        self.automatic_mode_button.clicked.connect(lambda: self.switch_mode("automatic"))
+
+        self.mode_toolbar.setSizePolicy(QtWidgets.QSizePolicy.Policy.Expanding, QtWidgets.QSizePolicy.Policy.Fixed)
+        self.mode_toolbar.setMaximumHeight(self.manual_mode_button.sizeHint().height() + 12)
+
+        self.main_layout.addWidget(self.mode_toolbar)
+
+        # Add splitter directly and stretch it
         self.splitter = QtWidgets.QSplitter(QtCore.Qt.Orientation.Horizontal)
-        self.manual_layout = self.main_layout
-        self.manual_layout.addWidget(self.splitter)
+        self.main_layout.addWidget(self.splitter, stretch=1)
 
         # Graphics layout for image and points display
         self.ui_graphics()
@@ -101,7 +125,15 @@ class SelectionGUI(QtWidgets.QMainWindow):
     def ui_manual_right_menu(self):
         # The right-side menu
         self.method_widget = QtWidgets.QWidget()
-        self.method_layout = QtWidgets.QVBoxLayout(self.method_widget)
+        self.stack = QtWidgets.QStackedLayout(self.method_widget)
+
+        self.manual_widget = QtWidgets.QWidget()
+        self.manual_layout = QtWidgets.QVBoxLayout(self.manual_widget)
+        self.stack.addWidget(self.manual_widget)
+
+        self.automatic_widget = QtWidgets.QWidget()
+        self.automatic_layout = QtWidgets.QVBoxLayout(self.automatic_widget)
+        self.stack.addWidget(self.automatic_widget)
 
         # Number of selected subsets
         self.points_label = QtWidgets.QLabel("Selected subsets: 0")
@@ -109,7 +141,7 @@ class SelectionGUI(QtWidgets.QMainWindow):
         font.setPointSize(10)
         font.setBold(True)
         self.points_label.setFont(font)
-        self.method_layout.addWidget(self.points_label)
+        self.manual_layout.addWidget(self.points_label)
 
         # Method selection buttons
         self.button_group = QtWidgets.QButtonGroup(self.method_widget)
@@ -129,12 +161,12 @@ class SelectionGUI(QtWidgets.QMainWindow):
             if i == 0:
                 button.setChecked(True)  # Default selection
             self.button_group.addButton(button, i)
-            self.method_layout.addWidget(button)
+            self.manual_layout.addWidget(button)
             self.method_buttons[name] = button
 
         # Subset size input
-        self.method_layout.addSpacing(20)
-        self.method_layout.addWidget(QtWidgets.QLabel("Subset size:"))
+        self.manual_layout.addSpacing(20)
+        self.manual_layout.addWidget(QtWidgets.QLabel("Subset size:"))
 
         self.subset_size_spinbox = QtWidgets.QSpinBox()
         self.subset_size_spinbox.setRange(1, 1000)
@@ -145,26 +177,26 @@ class SelectionGUI(QtWidgets.QMainWindow):
         self.subset_size_spinbox.setMaximum(999)
         self.subset_size_spinbox.setWrapping(False)
         self.subset_size_spinbox.valueChanged.connect(self.update_selected_points)
-        self.method_layout.addWidget(self.subset_size_spinbox)
+        self.manual_layout.addWidget(self.subset_size_spinbox)
 
         # Show ROI rectangles
         self.show_roi_checkbox = QtWidgets.QCheckBox("Show subsets")
         self.show_roi_checkbox.setChecked(True)
         self.show_roi_checkbox.stateChanged.connect(self.update_selected_points)
-        self.method_layout.addWidget(self.show_roi_checkbox)
+        self.manual_layout.addWidget(self.show_roi_checkbox)
 
         # Clear button
-        self.method_layout.addSpacing(20)
+        self.manual_layout.addSpacing(20)
         self.clear_button = QtWidgets.QPushButton("Clear selections")
         self.clear_button.clicked.connect(self.clear_selection)
-        self.method_layout.addWidget(self.clear_button)
+        self.manual_layout.addWidget(self.clear_button)
 
         # Separator line
         separator = QtWidgets.QFrame()
         separator.setFrameShape(QtWidgets.QFrame.Shape.HLine)
         separator.setFrameShadow(QtWidgets.QFrame.Shadow.Sunken)
-        self.method_layout.addWidget(separator)
-        self.method_layout.addSpacing(20)
+        self.manual_layout.addWidget(separator)
+        self.manual_layout.addSpacing(20)
 
         # Distance between subsets (only visible for Grid and Along the line)
         self.distance_label = QtWidgets.QLabel("Distance between subsets:")
@@ -177,20 +209,20 @@ class SelectionGUI(QtWidgets.QMainWindow):
         self.distance_spinbox.setSingleStep(1)
         self.distance_spinbox.valueChanged.connect(self.recompute_roi_points)
 
-        self.method_layout.addWidget(self.distance_label)
-        self.method_layout.addWidget(self.distance_spinbox)
+        self.manual_layout.addWidget(self.distance_label)
+        self.manual_layout.addWidget(self.distance_spinbox)
 
         # --- Automatic Filtering UI ---
         self.threshold_label = QtWidgets.QLabel("Threshold:")
         self.threshold_label.setVisible(False)
-        self.method_layout.addWidget(self.threshold_label)
+        self.manual_layout.addWidget(self.threshold_label)
 
         self.threshold_slider = QtWidgets.QSlider(QtCore.Qt.Orientation.Horizontal)
         self.threshold_slider.setRange(1, 100)
         self.threshold_slider.setSingleStep(1)
         self.threshold_slider.setValue(10)
         self.threshold_slider.setVisible(False)
-        self.method_layout.addWidget(self.threshold_slider)
+        self.manual_layout.addWidget(self.threshold_slider)
 
         def update_label_and_recompute(val):
             self.threshold_label.setText(f"Threshold: {str(val)}")
@@ -199,7 +231,7 @@ class SelectionGUI(QtWidgets.QMainWindow):
 
         self.candidate_count_label = QtWidgets.QLabel("N candidate points: 0")
         self.candidate_count_label.setVisible(False)
-        self.method_layout.addWidget(self.candidate_count_label)
+        self.manual_layout.addWidget(self.candidate_count_label)
 
         # Checkbox to show/hide scatter and ROI overlay
         self.show_points_checkbox = QtWidgets.QCheckBox("Show points/ROIs")
@@ -208,42 +240,42 @@ class SelectionGUI(QtWidgets.QMainWindow):
             self.roi_overlay.setVisible(state)
             self.scatter.setVisible(state)
         self.show_points_checkbox.stateChanged.connect(toggle_points_and_roi)
-        self.method_layout.addWidget(self.show_points_checkbox)
+        self.manual_layout.addWidget(self.show_points_checkbox)
 
         self.clear_candidates_button = QtWidgets.QPushButton("Clear candidates")
         self.clear_candidates_button.setVisible(False)
         self.clear_candidates_button.clicked.connect(self.clear_candidates)
-        self.method_layout.addWidget(self.clear_candidates_button)
+        self.manual_layout.addWidget(self.clear_candidates_button)
 
         # Start new line (only visible in "Along the line" mode)
         self.start_new_line_button = QtWidgets.QPushButton("Start new line")
         self.start_new_line_button.clicked.connect(self.start_new_line)
         self.start_new_line_button.setVisible(False)  # Hidden by default
-        self.method_layout.addWidget(self.start_new_line_button)
+        self.manual_layout.addWidget(self.start_new_line_button)
 
-        self.method_layout.addStretch(1)
+        self.manual_layout.addStretch(1)
 
         # Polygon manager (visible only for "Along the line")
         self.polygon_list = QtWidgets.QListWidget()
         self.polygon_list.setVisible(False)
         self.polygon_list.currentRowChanged.connect(self.on_polygon_selected)
-        self.method_layout.addWidget(self.polygon_list)
+        self.manual_layout.addWidget(self.polygon_list)
 
         self.delete_polygon_button = QtWidgets.QPushButton("Delete selected polygon")
         self.delete_polygon_button.clicked.connect(self.delete_selected_polygon)
         self.delete_polygon_button.setVisible(False)
-        self.method_layout.addWidget(self.delete_polygon_button)
+        self.manual_layout.addWidget(self.delete_polygon_button)
 
         # Grid polygon manager
         self.grid_list = QtWidgets.QListWidget()
         self.grid_list.setVisible(False)
         self.grid_list.currentRowChanged.connect(self.on_grid_selected)
-        self.method_layout.addWidget(self.grid_list)
+        self.manual_layout.addWidget(self.grid_list)
 
         self.delete_grid_button = QtWidgets.QPushButton("Delete selected grid")
         self.delete_grid_button.clicked.connect(self.delete_selected_grid)
         self.delete_grid_button.setVisible(False)
-        self.method_layout.addWidget(self.delete_grid_button)
+        self.manual_layout.addWidget(self.delete_grid_button)
 
         # Set the layout and add to splitter
         self.splitter.addWidget(self.method_widget)
@@ -254,6 +286,8 @@ class SelectionGUI(QtWidgets.QMainWindow):
         self.method_widget.setMinimumWidth(150)
         self.method_widget.setMaximumWidth(600)
         self.splitter.setSizes([1000, 220])  # Initial left/right width
+
+        self.automatic_layout.addStretch(1)
 
     def method_selected(self, id: int):
         method_name = list(self.method_buttons.keys())[id]
@@ -282,6 +316,16 @@ class SelectionGUI(QtWidgets.QMainWindow):
 
         self.roi_overlay.setVisible(not is_auto)
         self.scatter.setVisible(not is_auto)
+
+    def switch_mode(self, mode: str):
+        if mode == "manual":
+            self.manual_mode_button.setChecked(True)
+            self.automatic_mode_button.setChecked(False)
+            self.stack.setCurrentWidget(self.manual_widget)
+        elif mode == "automatic":
+            self.manual_mode_button.setChecked(False)
+            self.automatic_mode_button.setChecked(True)
+            self.stack.setCurrentWidget(self.automatic_widget)
 
     def on_mouse_click(self, event):
         if self.method_buttons["Manual"].isChecked():
