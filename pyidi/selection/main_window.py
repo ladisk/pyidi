@@ -424,7 +424,7 @@ class SelectionGUI(QtWidgets.QMainWindow):
             pos=self.selected_points,
             symbol='o',
             size=6,
-            brush=pg.mkBrush(50, 50, 50, 200),
+            brush=pg.mkBrush(255, 100, 100, 200),
             pen=pg.mkPen(None)
         )
 
