@@ -15,6 +15,7 @@ class SelectionGUI(QtWidgets.QMainWindow):
 
         self.selected_points = []
         self.selection_rects = []
+        self.manual_points = []
         self.drawing_polygons = [{'points': [], 'roi_points': []}]
         self.active_polygon_index = 0
 
@@ -165,7 +166,7 @@ class SelectionGUI(QtWidgets.QMainWindow):
             mouse_point = self.view.mapSceneToView(pos)
             x, y = mouse_point.x(), mouse_point.y()
             x_int, y_int = round(x-0.5)+0.5, round(y-0.5)+0.5
-            self.selected_points.append((x_int, y_int))
+            self.manual_points.append((x_int, y_int))
             self.update_selected_points()
 
     def handle_polygon_drawing(self, event):
@@ -230,7 +231,8 @@ class SelectionGUI(QtWidgets.QMainWindow):
             self.active_polygon_index = index
 
     def update_selected_points(self):
-        self.selected_points = [pt for poly in self.drawing_polygons for pt in poly['roi_points']]
+        polygon_points = [pt for poly in self.drawing_polygons for pt in poly['roi_points']]
+        self.selected_points = self.manual_points + polygon_points
 
         for rect in self.selection_rects:
             self.view.removeItem(rect)
@@ -266,6 +268,7 @@ class SelectionGUI(QtWidgets.QMainWindow):
     def clear_selection(self):
         print("Clearing selections...")
         self.drawing_polygons = [{'points': [], 'roi_points': []}]
+        self.manual_points = []
         self.polygon_list.clear()
         self.polygon_list.addItem("Polygon 1")
         self.polygon_list.setCurrentRow(0)
@@ -277,6 +280,10 @@ class SelectionGUI(QtWidgets.QMainWindow):
     def set_image(self, img: np.ndarray):
         """Display image in the manual tab."""
         self.image_item.setImage(img)
+
+    def get_points(self):
+        """Get all selected points from manual and polygons."""
+        return self.selected_points
 
 def main():
     app = QtWidgets.QApplication(sys.argv)
