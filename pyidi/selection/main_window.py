@@ -695,7 +695,7 @@ class SelectionGUI(QtWidgets.QMainWindow):
         max_eig = np.max(eigvals)
         eig_threshold = max_eig * threshold_ratio
 
-        self.candidate_points = [(y, x) for (x, y, e) in candidates if e > eig_threshold]
+        self.candidate_points = [(round(y)+0.5, round(x)+0.5) for (x, y, e) in candidates if e > eig_threshold]
         self.update_candidate_display()
 
     def update_candidate_display(self):
