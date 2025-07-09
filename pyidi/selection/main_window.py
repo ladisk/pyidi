@@ -52,6 +52,7 @@ class SelectionGUI(QtWidgets.QMainWindow):
         self._paint_mask = None  # Same shape as the image
         self._paint_radius = 10  # pixels
         self.ctrl_held = False
+        self.brush_deselect_mode = False
         self.installEventFilter(self)
 
         self.selected_points = []
@@ -312,6 +313,13 @@ class SelectionGUI(QtWidgets.QMainWindow):
         self.start_new_line_button.setVisible(False)  # Hidden by default
         self.manual_layout.addWidget(self.start_new_line_button)
 
+        # Brush mode
+        self.brush_deselect_button = QtWidgets.QPushButton("Deselect painted area")
+        self.brush_deselect_button.setCheckable(True)
+        self.brush_deselect_button.setVisible(False)  # shown only for Brush mode
+        self.brush_deselect_button.clicked.connect(self.activate_brush_deselect)
+        self.manual_layout.addWidget(self.brush_deselect_button)
+
         self.manual_layout.addStretch(1)
 
         # Polygon manager (visible only for "Along the line")
@@ -439,6 +447,8 @@ class SelectionGUI(QtWidgets.QMainWindow):
 
         self.distance_label.setVisible(show_spacing)
         self.distance_slider.setVisible(show_spacing)
+
+        self.brush_deselect_button.setVisible(is_brush)
 
     def switch_mode(self, mode: str):
         self.mode = mode
@@ -885,7 +895,6 @@ class SelectionGUI(QtWidgets.QMainWindow):
     
     # Brush
     def handle_brush_start(self, ev):
-        QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.CursorShape.CrossCursor)
         if self.image_item.image is None:
             return
         h, w = self.image_item.image.shape[:2]
@@ -912,20 +921,48 @@ class SelectionGUI(QtWidgets.QMainWindow):
             self.update_brush_overlay()
 
     def handle_brush_end(self, ev):
-        QtWidgets.QApplication.restoreOverrideCursor()
-
         if self._paint_mask is None:
             return
 
         subset_size = self.subset_size_spinbox.value()
         spacing = self.distance_slider.value()
+
+        # Generate (row, col) points inside the painted mask
         brush_rois = rois_inside_mask(self._paint_mask, subset_size, spacing)
-        self.manual_points.extend(brush_rois)
+
+        # Convert to set of tuples for fast comparison
+        roi_set = set((int(round(y)), int(round(x))) for y, x in brush_rois)
+
+        if self.brush_deselect_mode:
+            # Remove from manual points
+            self.manual_points = [
+                pt for pt in self.manual_points
+                if (int(round(pt[0])), int(round(pt[1]))) not in roi_set
+            ]
+
+            # Remove from polygon ROI points
+            for poly in self.drawing_polygons:
+                poly['roi_points'] = [
+                    pt for pt in poly['roi_points']
+                    if (int(round(pt[0])), int(round(pt[1]))) not in roi_set
+                ]
+
+            # Remove from grid ROI points
+            for grid in self.grid_polygons:
+                grid['roi_points'] = [
+                    pt for pt in grid['roi_points']
+                    if (int(round(pt[0])), int(round(pt[1]))) not in roi_set
+                ]
+
+            self.brush_deselect_mode = False
+            self.brush_deselect_button.setChecked(False)
+
+        else:
+            self.manual_points.extend(brush_rois)
 
         self._paint_mask = None
         self.update_selected_points()
         self.update_brush_overlay()
-
 
     def update_brush_overlay(self):
         if not hasattr(self, 'brush_overlay'):
@@ -939,6 +976,11 @@ class SelectionGUI(QtWidgets.QMainWindow):
             self.brush_overlay.setZValue(2)
         else:
             self.brush_overlay.clear()
+
+    def activate_brush_deselect(self):
+        if self.brush_deselect_button.isChecked():
+            self.brush_deselect_mode = True
+
     ################################################################################################
     # Automatic subset detection
     ################################################################################################
