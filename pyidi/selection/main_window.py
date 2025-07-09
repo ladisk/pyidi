@@ -153,7 +153,6 @@ class SelectionGUI(QtWidgets.QMainWindow):
             "Manual",
             "Along the line",
             "Remove point",
-            "Automatic filtering",  # NEW
         ]
         for i, name in enumerate(method_names):
             button = QtWidgets.QPushButton(name)
@@ -214,15 +213,13 @@ class SelectionGUI(QtWidgets.QMainWindow):
 
         # --- Automatic Filtering UI ---
         self.threshold_label = QtWidgets.QLabel("Threshold:")
-        self.threshold_label.setVisible(False)
-        self.manual_layout.addWidget(self.threshold_label)
+        self.automatic_layout.addWidget(self.threshold_label)
 
         self.threshold_slider = QtWidgets.QSlider(QtCore.Qt.Orientation.Horizontal)
         self.threshold_slider.setRange(1, 100)
         self.threshold_slider.setSingleStep(1)
         self.threshold_slider.setValue(10)
-        self.threshold_slider.setVisible(False)
-        self.manual_layout.addWidget(self.threshold_slider)
+        self.automatic_layout.addWidget(self.threshold_slider)
 
         def update_label_and_recompute(val):
             self.threshold_label.setText(f"Threshold: {str(val)}")
@@ -230,8 +227,7 @@ class SelectionGUI(QtWidgets.QMainWindow):
         self.threshold_slider.valueChanged.connect(update_label_and_recompute)
 
         self.candidate_count_label = QtWidgets.QLabel("N candidate points: 0")
-        self.candidate_count_label.setVisible(False)
-        self.manual_layout.addWidget(self.candidate_count_label)
+        self.automatic_layout.addWidget(self.candidate_count_label)
 
         # Checkbox to show/hide scatter and ROI overlay
         self.show_points_checkbox = QtWidgets.QCheckBox("Show points/ROIs")
@@ -240,12 +236,11 @@ class SelectionGUI(QtWidgets.QMainWindow):
             self.roi_overlay.setVisible(state)
             self.scatter.setVisible(state)
         self.show_points_checkbox.stateChanged.connect(toggle_points_and_roi)
-        self.manual_layout.addWidget(self.show_points_checkbox)
+        self.automatic_layout.addWidget(self.show_points_checkbox)
 
         self.clear_candidates_button = QtWidgets.QPushButton("Clear candidates")
-        self.clear_candidates_button.setVisible(False)
         self.clear_candidates_button.clicked.connect(self.clear_candidates)
-        self.manual_layout.addWidget(self.clear_candidates_button)
+        self.automatic_layout.addWidget(self.clear_candidates_button)
 
         # Start new line (only visible in "Along the line" mode)
         self.start_new_line_button = QtWidgets.QPushButton("Start new line")
@@ -294,7 +289,6 @@ class SelectionGUI(QtWidgets.QMainWindow):
         print(f"Selected method: {method_name}")
         is_along = method_name == "Along the line"
         is_grid = method_name == "Grid"
-        is_auto = method_name == "Automatic filtering"
         show_spacing = is_along or is_grid
 
         self.start_new_line_button.setVisible(is_along or is_grid)
@@ -306,26 +300,26 @@ class SelectionGUI(QtWidgets.QMainWindow):
         self.distance_label.setVisible(show_spacing)
         self.distance_spinbox.setVisible(show_spacing)
 
-        # Show automatic filtering controls only in that mode
-        self.threshold_label.setVisible(is_auto)
-        self.threshold_slider.setVisible(is_auto)
-        self.clear_candidates_button.setVisible(is_auto)
-        self.candidate_count_label.setVisible(is_auto)
-        if is_auto:
-            self.compute_candidate_points()
-
-        self.roi_overlay.setVisible(not is_auto)
-        self.scatter.setVisible(not is_auto)
-
     def switch_mode(self, mode: str):
         if mode == "manual":
             self.manual_mode_button.setChecked(True)
             self.automatic_mode_button.setChecked(False)
             self.stack.setCurrentWidget(self.manual_widget)
+
+            self.roi_overlay.setVisible(True)
+            self.scatter.setVisible(True)
+            self.candidate_scatter.setVisible(False)
+
         elif mode == "automatic":
             self.manual_mode_button.setChecked(False)
             self.automatic_mode_button.setChecked(True)
             self.stack.setCurrentWidget(self.automatic_widget)
+
+            self.compute_candidate_points()
+            self.show_points_checkbox.setChecked(False)
+            self.roi_overlay.setVisible(False)
+            self.scatter.setVisible(False)
+            self.candidate_scatter.setVisible(True)
 
     def on_mouse_click(self, event):
         if self.method_buttons["Manual"].isChecked():
