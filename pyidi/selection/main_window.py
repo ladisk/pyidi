@@ -61,7 +61,7 @@ class SelectionGUI(QtWidgets.QMainWindow):
         # Graphics layout for image and points display
         self.ui_graphics()
         
-        self.ui_manual_right_menu()
+        self.ui_right_menu()
 
         # Style
         self.setStyleSheet("""
@@ -125,7 +125,7 @@ class SelectionGUI(QtWidgets.QMainWindow):
 
         self.splitter.addWidget(self.pg_widget)
 
-    def ui_manual_right_menu(self):
+    def ui_right_menu(self):
         # The right-side menu
         self.method_widget = QtWidgets.QWidget()
         self.stack = QtWidgets.QStackedLayout(self.method_widget)
@@ -138,6 +138,23 @@ class SelectionGUI(QtWidgets.QMainWindow):
         self.automatic_layout = QtWidgets.QVBoxLayout(self.automatic_widget)
         self.stack.addWidget(self.automatic_widget)
 
+        self.ui_manual_right_menu() # The manual right menu
+
+        self.ui_auto_right_menu() # The automatic right menu
+
+        # Set the layout and add to splitter
+        self.splitter.addWidget(self.method_widget)
+        self.splitter.setStretchFactor(0, 5)  # Image area grows more
+        self.splitter.setStretchFactor(1, 0)  # Menu fixed by content
+
+        # Set initial width for right panel
+        self.method_widget.setMinimumWidth(150)
+        self.method_widget.setMaximumWidth(600)
+        self.splitter.setSizes([1000, 220])  # Initial left/right width
+
+        self.automatic_layout.addStretch(1)
+
+    def ui_manual_right_menu(self):
         # Number of selected subsets
         self.points_label = QtWidgets.QLabel("Selected subsets: 0")
         font = self.points_label.font()
@@ -214,37 +231,6 @@ class SelectionGUI(QtWidgets.QMainWindow):
         self.manual_layout.addWidget(self.distance_label)
         self.manual_layout.addWidget(self.distance_spinbox)
 
-        # --- Automatic Filtering UI ---
-        self.threshold_label = QtWidgets.QLabel("Threshold:")
-        self.automatic_layout.addWidget(self.threshold_label)
-
-        self.threshold_slider = QtWidgets.QSlider(QtCore.Qt.Orientation.Horizontal)
-        self.threshold_slider.setRange(1, 100)
-        self.threshold_slider.setSingleStep(1)
-        self.threshold_slider.setValue(10)
-        self.automatic_layout.addWidget(self.threshold_slider)
-
-        def update_label_and_recompute(val):
-            self.threshold_label.setText(f"Threshold: {str(val)}")
-            self.compute_candidate_points()
-        self.threshold_slider.valueChanged.connect(update_label_and_recompute)
-
-        self.candidate_count_label = QtWidgets.QLabel("N candidate points: 0")
-        self.automatic_layout.addWidget(self.candidate_count_label)
-
-        # Checkbox to show/hide scatter and ROI overlay
-        self.show_points_checkbox = QtWidgets.QCheckBox("Show points/ROIs")
-        self.show_points_checkbox.setChecked(False)
-        def toggle_points_and_roi(state):
-            self.roi_overlay.setVisible(state)
-            self.scatter.setVisible(state)
-        self.show_points_checkbox.stateChanged.connect(toggle_points_and_roi)
-        self.automatic_layout.addWidget(self.show_points_checkbox)
-
-        self.clear_candidates_button = QtWidgets.QPushButton("Clear candidates")
-        self.clear_candidates_button.clicked.connect(self.clear_candidates)
-        self.automatic_layout.addWidget(self.clear_candidates_button)
-
         # Start new line (only visible in "Along the line" mode)
         self.start_new_line_button = QtWidgets.QPushButton("Start new line")
         self.start_new_line_button.clicked.connect(self.start_new_line)
@@ -275,17 +261,36 @@ class SelectionGUI(QtWidgets.QMainWindow):
         self.delete_grid_button.setVisible(False)
         self.manual_layout.addWidget(self.delete_grid_button)
 
-        # Set the layout and add to splitter
-        self.splitter.addWidget(self.method_widget)
-        self.splitter.setStretchFactor(0, 5)  # Image area grows more
-        self.splitter.setStretchFactor(1, 0)  # Menu fixed by content
+    def ui_auto_right_menu(self):
+        self.threshold_label = QtWidgets.QLabel("Threshold:")
+        self.automatic_layout.addWidget(self.threshold_label)
 
-        # Set initial width for right panel
-        self.method_widget.setMinimumWidth(150)
-        self.method_widget.setMaximumWidth(600)
-        self.splitter.setSizes([1000, 220])  # Initial left/right width
+        self.threshold_slider = QtWidgets.QSlider(QtCore.Qt.Orientation.Horizontal)
+        self.threshold_slider.setRange(1, 100)
+        self.threshold_slider.setSingleStep(1)
+        self.threshold_slider.setValue(10)
+        self.automatic_layout.addWidget(self.threshold_slider)
 
-        self.automatic_layout.addStretch(1)
+        def update_label_and_recompute(val):
+            self.threshold_label.setText(f"Threshold: {str(val)}")
+            self.compute_candidate_points()
+        self.threshold_slider.valueChanged.connect(update_label_and_recompute)
+
+        self.candidate_count_label = QtWidgets.QLabel("N candidate points: 0")
+        self.automatic_layout.addWidget(self.candidate_count_label)
+
+        # Checkbox to show/hide scatter and ROI overlay
+        self.show_points_checkbox = QtWidgets.QCheckBox("Show points/ROIs")
+        self.show_points_checkbox.setChecked(False)
+        def toggle_points_and_roi(state):
+            self.roi_overlay.setVisible(state)
+            self.scatter.setVisible(state)
+        self.show_points_checkbox.stateChanged.connect(toggle_points_and_roi)
+        self.automatic_layout.addWidget(self.show_points_checkbox)
+
+        self.clear_candidates_button = QtWidgets.QPushButton("Clear candidates")
+        self.clear_candidates_button.clicked.connect(self.clear_candidates)
+        self.automatic_layout.addWidget(self.clear_candidates_button)
 
     def method_selected(self, id: int):
         method_name = list(self.method_buttons.keys())[id]
