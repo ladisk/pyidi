@@ -13,20 +13,30 @@ class BrushViewBox(pg.ViewBox):
 
     def mouseClickEvent(self, ev):
         if self.parent_gui.mode == "manual" and self.parent_gui.method_buttons["Brush"].isChecked():
-            ev.accept()  # Prevent normal event
-            self.parent_gui.handle_brush_start(ev)
+            if self.parent_gui.ctrl_held:
+                ev.accept()
+                self.parent_gui.handle_brush_start(ev)
+            else:
+                ev.ignore()
+        else:
+            super().mouseClickEvent(ev)
 
     def mouseDragEvent(self, ev, axis=None):
         if self.parent_gui.mode == "manual" and self.parent_gui.method_buttons["Brush"].isChecked():
-            ev.accept()
-            if ev.isStart():
-                self.parent_gui._painting = True
-                self.parent_gui._brush_path = []
-            elif ev.isFinish():
-                self.parent_gui._painting = False
-                self.parent_gui.handle_brush_end(ev)
-            else:
-                self.parent_gui.handle_brush_move(ev)
+            if self.parent_gui.ctrl_held:
+                ev.accept()
+                if ev.isStart():
+                    self.parent_gui._painting = True
+                    self.parent_gui._brush_path = []
+                    self.parent_gui.handle_brush_start(ev)
+                elif ev.isFinish():
+                    self.parent_gui._painting = False
+                    self.parent_gui.handle_brush_end(ev)
+                else:
+                    self.parent_gui.handle_brush_move(ev)
+                return
+        # fallback: pan
+        super().mouseDragEvent(ev, axis)
 
 class SelectionGUI(QtWidgets.QMainWindow):
     def __init__(self, video):
@@ -41,6 +51,8 @@ class SelectionGUI(QtWidgets.QMainWindow):
 
         self._paint_mask = None  # Same shape as the image
         self._paint_radius = 10  # pixels
+        self.ctrl_held = False
+        self.installEventFilter(self)
 
         self.selected_points = []
         self.manual_points = []
@@ -125,6 +137,15 @@ class SelectionGUI(QtWidgets.QMainWindow):
         self.show()
         if app is not None:
             app.exec()
+
+    def eventFilter(self, source, event):
+        if event.type() == QtCore.QEvent.Type.KeyPress:
+            if event.key() == QtCore.Qt.Key.Key_Control:
+                self.ctrl_held = True
+        elif event.type() == QtCore.QEvent.Type.KeyRelease:
+            if event.key() == QtCore.Qt.Key.Key_Control:
+                self.ctrl_held = False
+        return super().eventFilter(source, event)
 
     def create_help_button(self, tooltip_text: str) -> QtWidgets.QToolButton:
         """Create a small '?' help button with a tooltip."""
@@ -405,8 +426,8 @@ class SelectionGUI(QtWidgets.QMainWindow):
         is_grid = method_name == "Grid"
         is_brush = method_name == "Brush"
 
-        # Disable panning
-        self.view.setMouseEnabled(not is_brush, not is_brush)
+        # Always enable mouse; painting is now conditional on Ctrl
+        self.view.setMouseEnabled(True, True)
 
         show_spacing = is_along or is_grid
 
