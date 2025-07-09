@@ -99,6 +99,25 @@ class SelectionGUI(QtWidgets.QMainWindow):
         if app is not None:
             app.exec()
 
+    def create_help_button(self, tooltip_text: str) -> QtWidgets.QToolButton:
+        """Create a small '?' help button with a tooltip."""
+        button = QtWidgets.QToolButton()
+        button.setIcon(self.style().standardIcon(QtWidgets.QStyle.StandardPixmap.SP_MessageBoxQuestion))
+        button.setToolTip(tooltip_text)
+        button.setCursor(QtCore.Qt.CursorShape.WhatsThisCursor)
+        button.setStyleSheet("""
+            QToolButton {
+                border: none;
+                background: transparent;
+                padding: 0px;
+            }
+            QToolButton:hover {
+                color: #0078d7;
+            }
+        """)
+        button.setFixedSize(20, 20)
+        return button
+
     def ui_graphics(self):
         # Image viewer
         self.pg_widget = GraphicsLayoutWidget()
@@ -267,9 +286,16 @@ class SelectionGUI(QtWidgets.QMainWindow):
         self.manual_layout.addWidget(self.delete_grid_button)
 
     def ui_auto_right_menu(self):
+        self.candidate_count_label = QtWidgets.QLabel("N candidate points: 0")
+        font = self.candidate_count_label.font()
+        font.setPointSize(10)
+        font.setBold(True)
+        self.candidate_count_label.setFont(font)
+        self.automatic_layout.addWidget(self.candidate_count_label)
+
         self.threshold_label = QtWidgets.QLabel("Threshold:")
         self.automatic_layout.addWidget(self.threshold_label)
-
+        
         self.threshold_slider = QtWidgets.QSlider(QtCore.Qt.Orientation.Horizontal)
         self.threshold_slider.setRange(1, 100)
         self.threshold_slider.setSingleStep(1)
@@ -281,8 +307,6 @@ class SelectionGUI(QtWidgets.QMainWindow):
             self.compute_candidate_points()
         self.threshold_slider.valueChanged.connect(update_label_and_recompute)
 
-        self.candidate_count_label = QtWidgets.QLabel("N candidate points: 0")
-        self.automatic_layout.addWidget(self.candidate_count_label)
 
         # Checkbox to show/hide scatter and ROI overlay
         self.show_points_checkbox = QtWidgets.QCheckBox("Show points/ROIs")
@@ -322,7 +346,7 @@ class SelectionGUI(QtWidgets.QMainWindow):
 
             self.roi_overlay.setVisible(True)
             self.scatter.setVisible(True)
-            self.candidate_scatter.setVisible(False)
+            # self.candidate_scatter.setVisible(False)
 
         elif mode == "automatic":
             self.manual_mode_button.setChecked(False)
@@ -333,7 +357,7 @@ class SelectionGUI(QtWidgets.QMainWindow):
             self.show_points_checkbox.setChecked(False)
             self.roi_overlay.setVisible(False)
             self.scatter.setVisible(False)
-            self.candidate_scatter.setVisible(True)
+            # self.candidate_scatter.setVisible(True)
 
     def on_mouse_click(self, event):
         if self.mode == "automatic":
