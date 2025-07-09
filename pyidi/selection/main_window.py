@@ -90,6 +90,7 @@ class SelectionGUI(QtWidgets.QMainWindow):
 
         # Ensure method-specific widgets are visible on startup
         self.method_selected(self.button_group.checkedId())
+        self.auto_method_selected(0)
 
         # Set the initial mode
         self.switch_mode("manual")  # Default to manual mode
@@ -286,6 +287,30 @@ class SelectionGUI(QtWidgets.QMainWindow):
         self.manual_layout.addWidget(self.delete_grid_button)
 
     def ui_auto_right_menu(self):
+        # Title and method selector
+        self.automatic_layout.addWidget(QtWidgets.QLabel("Automatic method:"))
+
+        self.auto_method_group = QtWidgets.QButtonGroup(self.automatic_widget)
+        self.auto_method_group.setExclusive(True)
+
+        self.auto_method_buttons = {}
+        method_names = [
+            "Shi-Tomasi",
+        ]
+        for i, name in enumerate(method_names):
+            button = QtWidgets.QPushButton(name)
+            button.setCheckable(True)
+            if i == 0:
+                button.setChecked(True)
+            self.auto_method_group.addButton(button, i)
+            self.automatic_layout.addWidget(button)
+            self.auto_method_buttons[name] = button
+
+        self.auto_method_group.idClicked.connect(self.auto_method_selected)
+
+        self.automatic_layout.addSpacing(10)
+
+        # Dynamic method-specific widgets (for now shared)
         self.candidate_count_label = QtWidgets.QLabel("N candidate points: 0")
         font = self.candidate_count_label.font()
         font.setPointSize(10)
@@ -293,20 +318,9 @@ class SelectionGUI(QtWidgets.QMainWindow):
         self.candidate_count_label.setFont(font)
         self.automatic_layout.addWidget(self.candidate_count_label)
 
-        self.threshold_label = QtWidgets.QLabel("Threshold:")
-        self.automatic_layout.addWidget(self.threshold_label)
-        
-        self.threshold_slider = QtWidgets.QSlider(QtCore.Qt.Orientation.Horizontal)
-        self.threshold_slider.setRange(1, 100)
-        self.threshold_slider.setSingleStep(1)
-        self.threshold_slider.setValue(10)
-        self.automatic_layout.addWidget(self.threshold_slider)
-
-        def update_label_and_recompute(val):
-            self.threshold_label.setText(f"Threshold: {str(val)}")
-            self.compute_candidate_points()
-        self.threshold_slider.valueChanged.connect(update_label_and_recompute)
-
+        self.clear_candidates_button = QtWidgets.QPushButton("Clear candidates")
+        self.clear_candidates_button.clicked.connect(self.clear_candidates)
+        self.automatic_layout.addWidget(self.clear_candidates_button)
 
         # Checkbox to show/hide scatter and ROI overlay
         self.show_points_checkbox = QtWidgets.QCheckBox("Show points/ROIs")
@@ -317,9 +331,43 @@ class SelectionGUI(QtWidgets.QMainWindow):
         self.show_points_checkbox.stateChanged.connect(toggle_points_and_roi)
         self.automatic_layout.addWidget(self.show_points_checkbox)
 
-        self.clear_candidates_button = QtWidgets.QPushButton("Clear candidates")
-        self.clear_candidates_button.clicked.connect(self.clear_candidates)
-        self.automatic_layout.addWidget(self.clear_candidates_button)
+        # Horizontal line separator for visual clarity
+        hline = QtWidgets.QFrame()
+        hline.setFrameShape(QtWidgets.QFrame.Shape.HLine)
+        hline.setFrameShadow(QtWidgets.QFrame.Shadow.Sunken)
+        self.automatic_layout.addWidget(hline)
+
+        self.automatic_layout.addSpacing(10)
+
+        # Shi-Tomasi method settings
+        self.threshold_label = QtWidgets.QLabel("Threshold:")
+        self.threshold_label.setVisible(False)
+        self.automatic_layout.addWidget(self.threshold_label)
+        
+        self.threshold_slider = QtWidgets.QSlider(QtCore.Qt.Orientation.Horizontal)
+        self.threshold_slider.setRange(1, 100)
+        self.threshold_slider.setSingleStep(1)
+        self.threshold_slider.setValue(10)
+        self.threshold_slider.setVisible(False)
+        self.automatic_layout.addWidget(self.threshold_slider)
+
+        def update_label_and_recompute(val):
+            self.threshold_label.setText(f"Threshold: {str(val)}")
+            self.compute_candidate_points_shi_tomasi()  # Placeholder method
+        self.threshold_slider.valueChanged.connect(update_label_and_recompute)
+
+        self.automatic_layout.addStretch(1)
+
+    def auto_method_selected(self, id: int):
+        method_name = list(self.auto_method_buttons.keys())[id]
+        print(f"Selected automatic method: {method_name}")
+        # Here you can switch method behavior, show/hide widgets, etc.
+        is_shi_tomasi = method_name == "Shi-Tomasi"
+        self.threshold_label.setVisible(is_shi_tomasi)
+        self.threshold_slider.setVisible(is_shi_tomasi)
+
+        if is_shi_tomasi:
+            self.compute_candidate_points_shi_tomasi()
 
     def method_selected(self, id: int):
         method_name = list(self.method_buttons.keys())[id]
@@ -691,7 +739,7 @@ class SelectionGUI(QtWidgets.QMainWindow):
             self.update_selected_points()
     
     # Automatic filtering
-    def compute_candidate_points(self):
+    def compute_candidate_points_shi_tomasi(self):
         """Compute good feature points using structure tensor analysis (Shi–Tomasi style)."""
         from scipy.ndimage import sobel
 
