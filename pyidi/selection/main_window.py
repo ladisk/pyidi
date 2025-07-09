@@ -325,7 +325,6 @@ class SelectionGUI(QtWidgets.QMainWindow):
         self.compute_button.setVisible(is_auto)
         self.confirm_button.setVisible(False)
 
-
     def on_mouse_click(self, event):
         if self.method_buttons["Manual"].isChecked():
             self.handle_manual_selection(event)
@@ -750,7 +749,7 @@ def points_along_polygon(polygon, subset_size, spacing=0):
 
         for j in range(n_points + 1):
             pt = p1 + j * step * direction
-            result_points.append((round(pt[0] - 0.5) + 0.5, round(pt[1] - 0.5) + 0.5))
+            result_points.append((round(pt[0] - 0.5), round(pt[1] - 0.5)))
 
     return result_points
 
