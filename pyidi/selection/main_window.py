@@ -32,8 +32,64 @@ class SelectionGUI(QtWidgets.QMainWindow):
 
         # --- Manual Tab ---
         self.manual_tab = QtWidgets.QWidget()
+        self.splitter = QtWidgets.QSplitter(QtCore.Qt.Orientation.Horizontal)
         self.manual_layout = QtWidgets.QHBoxLayout(self.manual_tab)
+        self.manual_layout.addWidget(self.splitter)
 
+        # Graphics layout for image and points display
+        self.ui_graphics()
+        
+        # Right-side menu for methods
+        self.ui_manual_right_menu()
+
+        self.tabs.addTab(self.manual_tab, "Manual")
+
+        # --- Automatic Tab ---
+        self.automatic_tab = QtWidgets.QWidget()
+        self.automatic_layout = QtWidgets.QVBoxLayout(self.automatic_tab)
+        self.tabs.addTab(self.automatic_tab, "Automatic")
+
+        # Style
+        self.setStyleSheet("""
+            QTabWidget::pane { border: 0; }
+            QTabBar::tab {
+                background: #333;
+                color: white;
+                padding: 10px;
+                border-radius: 4px;
+                margin: 2px;
+            }
+            QTabBar::tab:selected {
+                background: #0078d7;
+            }
+            QPushButton {
+                background-color: #444;
+                color: white;
+                padding: 6px 12px;
+                border: 1px solid #555;
+                border-radius: 4px;
+            }
+            QPushButton:checked {
+                background-color: #0078d7;
+                border: 1px solid #005bb5;
+            }
+        """)
+
+        # Connect selection change handler
+        self.button_group.idClicked.connect(self.method_selected)
+
+        # Connect mouse click
+        self.pg_widget.scene().sigMouseClicked.connect(self.on_mouse_click)
+
+        # Set the initial image
+        self.image_item.setImage(video)
+
+        # Start the GUI
+        self.show()
+        if app is not None:
+            app.exec()
+
+    def ui_graphics(self):
         # Image viewer
         self.pg_widget = GraphicsLayoutWidget()
         self.view = self.pg_widget.addViewBox(lockAspect=True)
@@ -44,8 +100,9 @@ class SelectionGUI(QtWidgets.QMainWindow):
         self.view.addItem(self.polygon_line)
         self.view.addItem(self.polygon_points_scatter)
         self.view.addItem(self.scatter)  # Add scatter for showing points
-        self.manual_layout.addWidget(self.pg_widget, stretch=1)
+        self.splitter.addWidget(self.pg_widget)
 
+    def ui_manual_right_menu(self):
         # Method buttons on the right
         self.method_widget = QtWidgets.QWidget()
         self.method_layout = QtWidgets.QVBoxLayout(self.method_widget)
@@ -98,7 +155,6 @@ class SelectionGUI(QtWidgets.QMainWindow):
         self.method_layout.addWidget(self.start_new_line_button)
 
         self.method_layout.addStretch(1)
-        self.manual_layout.addWidget(self.method_widget)
 
         # Polygon manager (visible only for "Along the line")
         self.polygon_list = QtWidgets.QListWidget()
@@ -111,52 +167,15 @@ class SelectionGUI(QtWidgets.QMainWindow):
         self.delete_polygon_button.setVisible(False)
         self.method_layout.addWidget(self.delete_polygon_button)
 
-        self.tabs.addTab(self.manual_tab, "Manual")
+        # Set the layout and add to splitter
+        self.splitter.addWidget(self.method_widget)
+        self.splitter.setStretchFactor(0, 5)  # Image area grows more
+        self.splitter.setStretchFactor(1, 0)  # Menu fixed by content
 
-        # --- Automatic Tab ---
-        self.automatic_tab = QtWidgets.QWidget()
-        self.automatic_layout = QtWidgets.QVBoxLayout(self.automatic_tab)
-        self.tabs.addTab(self.automatic_tab, "Automatic")
-
-        # Style
-        self.setStyleSheet("""
-            QTabWidget::pane { border: 0; }
-            QTabBar::tab {
-                background: #333;
-                color: white;
-                padding: 10px;
-                border-radius: 4px;
-                margin: 2px;
-            }
-            QTabBar::tab:selected {
-                background: #0078d7;
-            }
-            QPushButton {
-                background-color: #444;
-                color: white;
-                padding: 6px 12px;
-                border: 1px solid #555;
-                border-radius: 4px;
-            }
-            QPushButton:checked {
-                background-color: #0078d7;
-                border: 1px solid #005bb5;
-            }
-        """)
-
-        # Connect selection change handler
-        self.button_group.idClicked.connect(self.method_selected)
-
-        # Connect mouse click
-        self.pg_widget.scene().sigMouseClicked.connect(self.on_mouse_click)
-
-        # Set the initial image
-        self.image_item.setImage(video)
-
-        # Start the GUI
-        self.show()
-        if app is not None:
-            app.exec()
+        # Set initial width for right panel
+        self.method_widget.setMinimumWidth(150)
+        self.method_widget.setMaximumWidth(600)
+        self.splitter.setSizes([1000, 220])  # Initial left/right width
 
     def method_selected(self, id: int):
         method_name = list(self.method_buttons.keys())[id]
