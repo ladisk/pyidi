@@ -235,6 +235,15 @@ class SelectionGUI(QtWidgets.QMainWindow):
         self.candidate_count_label.setVisible(False)
         self.method_layout.addWidget(self.candidate_count_label)
 
+        # Checkbox to show/hide scatter and ROI overlay
+        self.show_points_checkbox = QtWidgets.QCheckBox("Show points/ROIs")
+        self.show_points_checkbox.setChecked(False)
+        def toggle_points_and_roi(state):
+            self.roi_overlay.setVisible(state)
+            self.scatter.setVisible(state)
+        self.show_points_checkbox.stateChanged.connect(toggle_points_and_roi)
+        self.method_layout.addWidget(self.show_points_checkbox)
+
         self.clear_candidates_button = QtWidgets.QPushButton("Clear candidates")
         self.clear_candidates_button.setVisible(False)
         self.clear_candidates_button.clicked.connect(self.clear_candidates)
@@ -329,6 +338,9 @@ class SelectionGUI(QtWidgets.QMainWindow):
         self.candidate_count_label.setVisible(is_auto)
         if is_auto:
             self.compute_candidate_points()
+
+        self.roi_overlay.setVisible(not is_auto)
+        self.scatter.setVisible(not is_auto)
 
     def on_mouse_click(self, event):
         if self.method_buttons["Manual"].isChecked():
