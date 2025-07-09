@@ -227,15 +227,14 @@ class SelectionGUI(QtWidgets.QMainWindow):
         self.threshold_spinbox.setVisible(False)
         self.method_layout.addWidget(self.threshold_spinbox)
 
+        self.candidate_count_label = QtWidgets.QLabel("N candidate points: 0")
+        self.candidate_count_label.setVisible(False)
+        self.method_layout.addWidget(self.candidate_count_label)
+
         self.compute_button = QtWidgets.QPushButton("Compute")
         self.compute_button.setVisible(False)
         self.compute_button.clicked.connect(self.compute_candidate_points)
         self.method_layout.addWidget(self.compute_button)
-
-        self.confirm_button = QtWidgets.QPushButton("Confirm")
-        self.confirm_button.setVisible(False)
-        self.confirm_button.clicked.connect(self.confirm_candidate_points)
-        self.method_layout.addWidget(self.confirm_button)
 
         # Start new line (only visible in "Along the line" mode)
         self.start_new_line_button = QtWidgets.QPushButton("Start new line")
@@ -323,7 +322,7 @@ class SelectionGUI(QtWidgets.QMainWindow):
         self.threshold_label.setVisible(is_auto)
         self.threshold_spinbox.setVisible(is_auto)
         self.compute_button.setVisible(is_auto)
-        self.confirm_button.setVisible(False)
+        self.candidate_count_label.setVisible(is_auto)
 
     def on_mouse_click(self, event):
         if self.method_buttons["Manual"].isChecked():
@@ -476,7 +475,11 @@ class SelectionGUI(QtWidgets.QMainWindow):
 
     def get_points(self):
         """Get all selected points from manual and polygons."""
-        return self.selected_points
+        return np.array(self.selected_points)
+    
+    def get_filtered_points(self):
+        """Get candidate points from automatic filtering."""
+        return self.candidate_points.copy() if hasattr(self, 'candidate_points') else []
 
     # Grid selection
     def handle_grid_drawing(self, event):
@@ -697,6 +700,16 @@ class SelectionGUI(QtWidgets.QMainWindow):
 
         self.candidate_points = [(round(y)+0.5, round(x)+0.5) for (x, y, e) in candidates if e > eig_threshold]
         self.update_candidate_display()
+        self.update_candidate_points_count()
+
+    def update_candidate_points_count(self):
+        """Update the displayed count of candidate points."""
+        if self.candidate_points:
+            count_text = f"N candidate points: {len(self.candidate_points)}"
+        else:
+            count_text = "N candidate points: 0"
+
+        self.candidate_count_label.setText(count_text)
 
     def update_candidate_display(self):
         """Show candidate points as scatter dots on the image."""
@@ -713,12 +726,6 @@ class SelectionGUI(QtWidgets.QMainWindow):
             self.candidate_scatter.setData(pos=self.candidate_points)
         else:
             self.candidate_scatter.clear()
-
-    def confirm_candidate_points(self):
-        self.manual_points = self.candidate_points.copy()
-        self.candidate_scatter.clear()
-        self.confirm_button.setVisible(False)
-        self.recompute_roi_points()
 
     ################################################################################################
     # Automatic subset detection
