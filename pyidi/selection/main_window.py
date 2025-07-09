@@ -83,6 +83,9 @@ class SelectionGUI(QtWidgets.QMainWindow):
         # Set the initial image
         self.image_item.setImage(video)
 
+        # Ensure method-specific widgets are visible on startup
+        self.method_selected(self.button_group.checkedId())
+
         # Start the GUI
         self.show()
         if app is not None:
@@ -425,14 +428,23 @@ class SelectionGUI(QtWidgets.QMainWindow):
             pen=pg.mkPen(None)
         )
 
-
     def start_new_line(self):
         print("Starting a new line...")
-        self.drawing_polygons.append({'points': [], 'roi_points': []})
-        self.active_polygon_index = len(self.drawing_polygons) - 1
-        self.polygon_list.addItem(f"Polygon {self.active_polygon_index + 1}")
-        self.polygon_list.setCurrentRow(self.active_polygon_index)
-        self.update_polygon_display()
+
+        if self.method_buttons["Along the line"].isChecked():
+            self.drawing_polygons.append({'points': [], 'roi_points': []})
+            self.active_polygon_index = len(self.drawing_polygons) - 1
+            self.polygon_list.addItem(f"Polygon {self.active_polygon_index + 1}")
+            self.polygon_list.setCurrentRow(self.active_polygon_index)
+            self.update_polygon_display()
+
+        elif self.method_buttons["Grid"].isChecked():
+            self.grid_polygons.append({'points': [], 'roi_points': []})
+            self.active_grid_index = len(self.grid_polygons) - 1
+            self.grid_list.addItem(f"Grid {self.active_grid_index + 1}")
+            self.grid_list.setCurrentRow(self.active_grid_index)    
+            self.update_grid_display()
+
         self.update_selected_points()
 
     def clear_selection(self):
