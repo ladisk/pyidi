@@ -5,6 +5,29 @@ import pyqtgraph as pg
 from matplotlib.path import Path
 # import pyidi  # Assuming pyidi is a custom module for video handling
 
+class BrushViewBox(pg.ViewBox):
+    def __init__(self, parent_gui, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.setMouseMode(self.PanMode)
+        self.parent_gui = parent_gui
+
+    def mouseClickEvent(self, ev):
+        if self.parent_gui.mode == "manual" and self.parent_gui.method_buttons["Brush"].isChecked():
+            ev.accept()  # Prevent normal event
+            self.parent_gui.handle_brush_start(ev)
+
+    def mouseDragEvent(self, ev, axis=None):
+        if self.parent_gui.mode == "manual" and self.parent_gui.method_buttons["Brush"].isChecked():
+            ev.accept()
+            if ev.isStart():
+                self.parent_gui._painting = True
+                self.parent_gui._brush_path = []
+            elif ev.isFinish():
+                self.parent_gui._painting = False
+                self.parent_gui.handle_brush_end(ev)
+            else:
+                self.parent_gui.handle_brush_move(ev)
+
 class SelectionGUI(QtWidgets.QMainWindow):
     def __init__(self, video):
         app = QtWidgets.QApplication.instance()
@@ -15,6 +38,9 @@ class SelectionGUI(QtWidgets.QMainWindow):
 
         self.setWindowTitle("ROI Selection Tool")
         self.resize(1200, 800)
+
+        self._paint_mask = None  # Same shape as the image
+        self._paint_radius = 10  # pixels
 
         self.selected_points = []
         self.manual_points = []
@@ -122,7 +148,9 @@ class SelectionGUI(QtWidgets.QMainWindow):
     def ui_graphics(self):
         # Image viewer
         self.pg_widget = GraphicsLayoutWidget()
-        self.view = self.pg_widget.addViewBox(lockAspect=True)
+        self.view = BrushViewBox(parent_gui=self, lockAspect=True)
+        self.pg_widget.addItem(self.view)
+
         
         self.image_item = ImageItem()
         self.polygon_line = pg.PlotDataItem(pen=pg.mkPen('y', width=2))
@@ -192,6 +220,7 @@ class SelectionGUI(QtWidgets.QMainWindow):
             "Grid",
             "Manual",
             "Along the line",
+            "Brush",
             "Remove point",
         ]
         for i, name in enumerate(method_names):
@@ -374,6 +403,11 @@ class SelectionGUI(QtWidgets.QMainWindow):
         print(f"Selected method: {method_name}")
         is_along = method_name == "Along the line"
         is_grid = method_name == "Grid"
+        is_brush = method_name == "Brush"
+
+        # Disable panning
+        self.view.setMouseEnabled(not is_brush, not is_brush)
+
         show_spacing = is_along or is_grid
 
         self.start_new_line_button.setVisible(is_along or is_grid)
@@ -401,7 +435,7 @@ class SelectionGUI(QtWidgets.QMainWindow):
             self.automatic_mode_button.setChecked(True)
             self.stack.setCurrentWidget(self.automatic_widget)
 
-            self.compute_candidate_points()
+            self.compute_candidate_points_shi_tomasi()
             self.show_points_checkbox.setChecked(False)
             self.roi_overlay.setVisible(False)
             self.scatter.setVisible(False)
@@ -419,6 +453,8 @@ class SelectionGUI(QtWidgets.QMainWindow):
             self.handle_grid_drawing(event)
         elif self.method_buttons["Remove point"].isChecked():
             self.handle_remove_point(event)
+        elif self.method_buttons["Brush"].isChecked():
+            self.handle_brush_start(event)
 
     def update_selected_points(self):
         polygon_points = [pt for poly in self.drawing_polygons for pt in poly['roi_points']]
@@ -825,6 +861,63 @@ class SelectionGUI(QtWidgets.QMainWindow):
             self.candidate_scatter.clear()
 
         self.update_selected_points()  # Update main display to remove candidates
+    
+    # Brush
+    def handle_brush_start(self, ev):
+        QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.CursorShape.CrossCursor)
+        if self.image_item.image is None:
+            return
+        h, w = self.image_item.image.shape[:2]
+        self._paint_mask = np.zeros((h, w), dtype=bool)
+        self.handle_brush_move(ev)
+
+    def handle_brush_move(self, ev):
+        if self._paint_mask is None:
+            return
+
+        pos = ev.pos()
+        if self.view.sceneBoundingRect().contains(pos):
+            mouse_point = self.view.mapSceneToView(pos)
+            y, x = int(round(mouse_point.x())), int(round(mouse_point.y()))
+            r = self._paint_radius
+
+            h, w = self._paint_mask.shape
+            yy, xx = np.ogrid[max(0, y - r):min(h, y + r + 1),
+                            max(0, x - r):min(w, x + r + 1)]
+            mask = (yy - y) ** 2 + (xx - x) ** 2 <= r ** 2
+            self._paint_mask[max(0, y - r):min(h, y + r + 1),
+                            max(0, x - r):min(w, x + r + 1)][mask] = True
+
+            self.update_brush_overlay()
+
+    def handle_brush_end(self, ev):
+        QtWidgets.QApplication.restoreOverrideCursor()
+
+        if self._paint_mask is None:
+            return
+
+        subset_size = self.subset_size_spinbox.value()
+        spacing = self.distance_slider.value()
+        brush_rois = rois_inside_mask(self._paint_mask, subset_size, spacing)
+        self.manual_points.extend(brush_rois)
+
+        self._paint_mask = None
+        self.update_selected_points()
+        self.update_brush_overlay()
+
+
+    def update_brush_overlay(self):
+        if not hasattr(self, 'brush_overlay'):
+            self.brush_overlay = ImageItem()
+            self.view.addItem(self.brush_overlay)
+
+        if self._paint_mask is not None:
+            rgba = np.zeros((*self._paint_mask.shape, 4), dtype=np.uint8)
+            rgba[self._paint_mask] = [0, 200, 255, 80]  # Cyan with transparency
+            self.brush_overlay.setImage(rgba, autoLevels=False)
+            self.brush_overlay.setZValue(2)
+        else:
+            self.brush_overlay.clear()
     ################################################################################################
     # Automatic subset detection
     ################################################################################################
@@ -877,6 +970,22 @@ def rois_inside_polygon(polygon, subset_size, spacing):
 
     mask = Path(polygon).contains_points(points)
     return [tuple(p) for p in points[mask]]
+
+def rois_inside_mask(mask, subset_size, spacing):
+    step = subset_size + spacing
+    if step <= 0:
+        step = 1
+
+    h, w = mask.shape
+    xs = np.arange(0, w, step)
+    ys = np.arange(0, h, step)
+    grid_x, grid_y = np.meshgrid(xs, ys)
+
+    candidate_points = np.vstack([grid_y.ravel(), grid_x.ravel()]).T  # (y, x)
+
+    # Only keep points where the mask is True
+    selected = [tuple(p) for p in candidate_points if mask[p[0], p[1]]]
+    return selected
 
 if __name__ == "__main__":
     # import pyidi
