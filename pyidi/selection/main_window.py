@@ -1,3 +1,4 @@
+from operator import index
 from PyQt6 import QtWidgets, QtCore
 from pyqtgraph import GraphicsLayoutWidget, ImageItem, ScatterPlotItem
 import pyqtgraph as pg
@@ -14,8 +15,8 @@ class SelectionGUI(QtWidgets.QMainWindow):
 
         self.selected_points = []
         self.selection_rects = []
-        self.drawing_polygons = [[]]  # list of paths, each path = list of (x, y)
-
+        self.drawing_polygons = [{'points': [], 'roi_points': []}]
+        self.active_polygon_index = 0
 
         self.scatter = ScatterPlotItem(pen=pg.mkPen(None), brush=pg.mkBrush(255, 100, 100, 200), size=8)
 
@@ -34,9 +35,9 @@ class SelectionGUI(QtWidgets.QMainWindow):
         self.polygon_line = pg.PlotDataItem(pen=pg.mkPen('y', width=2))
         self.polygon_points_scatter = ScatterPlotItem(pen=pg.mkPen(None), brush=pg.mkBrush(255, 255, 0, 200), size=6)
         self.view.addItem(self.image_item)
-        self.view.addItem(self.scatter)  # Add scatter for showing points
         self.view.addItem(self.polygon_line)
         self.view.addItem(self.polygon_points_scatter)
+        self.view.addItem(self.scatter)  # Add scatter for showing points
         self.manual_layout.addWidget(self.pg_widget, stretch=1)
 
         # Method buttons on the right
@@ -93,6 +94,17 @@ class SelectionGUI(QtWidgets.QMainWindow):
         self.method_layout.addStretch(1)
         self.manual_layout.addWidget(self.method_widget)
 
+        # Polygon manager (visible only for "Along the line")
+        self.polygon_list = QtWidgets.QListWidget()
+        self.polygon_list.setVisible(False)
+        self.polygon_list.currentRowChanged.connect(self.on_polygon_selected)
+        self.method_layout.addWidget(self.polygon_list)
+
+        self.delete_polygon_button = QtWidgets.QPushButton("Delete selected polygon")
+        self.delete_polygon_button.clicked.connect(self.delete_selected_polygon)
+        self.delete_polygon_button.setVisible(False)
+        self.method_layout.addWidget(self.delete_polygon_button)
+
         self.tabs.addTab(self.manual_tab, "Manual")
 
         # --- Automatic Tab ---
@@ -135,7 +147,10 @@ class SelectionGUI(QtWidgets.QMainWindow):
     def method_selected(self, id: int):
         method_name = list(self.method_buttons.keys())[id]
         print(f"Selected method: {method_name}")
-        self.start_new_line_button.setVisible(method_name == "Along the line")
+        is_along = method_name == "Along the line"
+        self.start_new_line_button.setVisible(is_along)
+        self.polygon_list.setVisible(is_along)
+        self.delete_polygon_button.setVisible(is_along)
 
     def on_mouse_click(self, event):
         if self.method_buttons["Manual"].isChecked():
@@ -160,22 +175,29 @@ class SelectionGUI(QtWidgets.QMainWindow):
             x, y = mouse_point.x(), mouse_point.y()
             x_int, y_int = round(x - 0.5) + 0.5, round(y - 0.5) + 0.5
 
-            self.drawing_polygons[-1].append((x_int, y_int))
+            # Add first polygon to the list if not yet shown
+            if self.polygon_list.count() == 0:
+                self.polygon_list.addItem("Polygon 1")
+                self.polygon_list.setCurrentRow(0)
+
+            poly = self.drawing_polygons[self.active_polygon_index]
+            poly['points'].append((x_int, y_int))
+
+            # Update ROI points only for this polygon
+            if len(poly['points']) >= 2:
+                subset_size = self.subset_size_spinbox.value()
+                poly['roi_points'] = points_along_polygon(poly['points'], subset_size)
 
             self.update_polygon_display()
-
-            self.selected_points = self.points_from_all_polygons()
             self.update_selected_points()
 
     def update_polygon_display(self):
-        # Flatten all points for scatter
-        all_pts = [pt for path in self.drawing_polygons for pt in path]
+        all_pts = [pt for poly in self.drawing_polygons for pt in poly['points']]
         self.polygon_points_scatter.setData(pos=all_pts)
 
-        # Combine segments into one continuous line for display
-        xs = []
-        ys = []
-        for path in self.drawing_polygons:
+        xs, ys = [], []
+        for poly in self.drawing_polygons:
+            path = poly['points']
             if len(path) >= 2:
                 xs.extend([p[0] for p in path] + [np.nan])
                 ys.extend([p[1] for p in path] + [np.nan])
@@ -192,14 +214,28 @@ class SelectionGUI(QtWidgets.QMainWindow):
             if len(path) >= 2:
                 all_points.extend(points_along_polygon(path, subset_size))
         return all_points
+    
+    def delete_selected_polygon(self):
+        row = self.polygon_list.currentRow()
+        if row >= 0 and len(self.drawing_polygons) > 1:
+            del self.drawing_polygons[row]
+            self.polygon_list.takeItem(row)
+            self.active_polygon_index = max(0, row - 1)
+            self.polygon_list.setCurrentRow(self.active_polygon_index)
+            self.update_polygon_display()
+            self.update_selected_points()
+    
+    def on_polygon_selected(self, index):
+        if 0 <= index < len(self.drawing_polygons):
+            self.active_polygon_index = index
 
     def update_selected_points(self):
-        # Clear previous rectangles
+        self.selected_points = [pt for poly in self.drawing_polygons for pt in poly['roi_points']]
+
         for rect in self.selection_rects:
             self.view.removeItem(rect)
         self.selection_rects.clear()
 
-        # Update scatter points
         if self.selected_points:
             spots = [{'pos': pt} for pt in self.selected_points]
             self.scatter.setData(spots)
@@ -219,16 +255,21 @@ class SelectionGUI(QtWidgets.QMainWindow):
 
     def start_new_line(self):
         print("Starting a new line...")
-        self.drawing_polygons.append([])
+        self.drawing_polygons.append({'points': [], 'roi_points': []})
+        self.active_polygon_index = len(self.drawing_polygons) - 1
+        self.polygon_list.addItem(f"Polygon {self.active_polygon_index + 1}")
+        self.polygon_list.setCurrentRow(self.active_polygon_index)
         self.update_polygon_display()
-        self.selected_points = self.points_from_all_polygons()
         self.update_selected_points()
 
 
     def clear_selection(self):
         print("Clearing selections...")
-        self.selected_points = []
-        self.drawing_polygons = [[]]
+        self.drawing_polygons = [{'points': [], 'roi_points': []}]
+        self.polygon_list.clear()
+        self.polygon_list.addItem("Polygon 1")
+        self.polygon_list.setCurrentRow(0)
+        self.active_polygon_index = 0
         self.polygon_line.clear()
         self.polygon_points_scatter.clear()
         self.update_selected_points()
