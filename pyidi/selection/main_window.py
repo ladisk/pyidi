@@ -2,6 +2,7 @@ import numpy as np
 from PyQt6 import QtWidgets, QtCore
 from pyqtgraph import GraphicsLayoutWidget, ImageItem, ScatterPlotItem
 import pyqtgraph as pg
+# import pyidi  # Assuming pyidi is a custom module for video handling
 
 class SelectionGUI(QtWidgets.QMainWindow):
     def __init__(self, video):
@@ -653,7 +654,26 @@ def rois_inside_polygon(polygon, subset_size, spacing):
     return [tuple(p) for p in points[mask]]
 
 if __name__ == "__main__":
-    example_image = np.random.rand(512, 512) * 255
+    # import pyidi
+    # filename = "data/data_showcase.cih"
+    # video = pyidi.VideoReader(filename)
+    # example_image = (video.get_frame(0).T)[:, ::-1]
+
+
+    import requests
+    from PIL import Image
+    import io
+    import numpy as np
+    import matplotlib.pyplot as plt
+    # Example black and white image (public domain)
+    url = "https://raw.githubusercontent.com/scikit-image/scikit-image/main/skimage/data/camera.png"
+    # Fetch the image
+    response = requests.get(url)
+    img = Image.open(io.BytesIO(response.content)).convert("L")  # Convert to grayscale
+    # Convert to numpy array
+    example_image = (np.array(img).T)[:, ::-1]
+
+
     Points = SelectionGUI(example_image.astype(np.uint8))
 
     print(Points.get_points())  # Print selected points for testing
