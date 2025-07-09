@@ -198,6 +198,7 @@ class SelectionGUI(QtWidgets.QMainWindow):
         separator.setFrameShape(QtWidgets.QFrame.Shape.HLine)
         separator.setFrameShadow(QtWidgets.QFrame.Shadow.Sunken)
         self.method_layout.addWidget(separator)
+        self.method_layout.addSpacing(20)
 
         # Distance between subsets (only visible for Grid and Along the line)
         self.distance_label = QtWidgets.QLabel("Distance between subsets:")
@@ -218,23 +219,26 @@ class SelectionGUI(QtWidgets.QMainWindow):
         self.threshold_label.setVisible(False)
         self.method_layout.addWidget(self.threshold_label)
 
-        self.threshold_spinbox = QtWidgets.QDoubleSpinBox()
-        self.threshold_spinbox.setRange(1, 100)
-        self.threshold_spinbox.setSingleStep(1)
-        self.threshold_spinbox.setValue(10)
-        self.threshold_spinbox.setDecimals(1)
-        self.threshold_spinbox.setAlignment(QtCore.Qt.AlignmentFlag.AlignRight)
-        self.threshold_spinbox.setVisible(False)
-        self.method_layout.addWidget(self.threshold_spinbox)
+        self.threshold_slider = QtWidgets.QSlider(QtCore.Qt.Orientation.Horizontal)
+        self.threshold_slider.setRange(1, 100)
+        self.threshold_slider.setSingleStep(1)
+        self.threshold_slider.setValue(10)
+        self.threshold_slider.setVisible(False)
+        self.method_layout.addWidget(self.threshold_slider)
+
+        def update_label_and_recompute(val):
+            self.threshold_label.setText(f"Threshold: {str(val)}")
+            self.compute_candidate_points()
+        self.threshold_slider.valueChanged.connect(update_label_and_recompute)
 
         self.candidate_count_label = QtWidgets.QLabel("N candidate points: 0")
         self.candidate_count_label.setVisible(False)
         self.method_layout.addWidget(self.candidate_count_label)
 
-        self.compute_button = QtWidgets.QPushButton("Compute")
-        self.compute_button.setVisible(False)
-        self.compute_button.clicked.connect(self.compute_candidate_points)
-        self.method_layout.addWidget(self.compute_button)
+        self.clear_candidates_button = QtWidgets.QPushButton("Clear candidates")
+        self.clear_candidates_button.setVisible(False)
+        self.clear_candidates_button.clicked.connect(self.clear_candidates)
+        self.method_layout.addWidget(self.clear_candidates_button)
 
         # Start new line (only visible in "Along the line" mode)
         self.start_new_line_button = QtWidgets.QPushButton("Start new line")
@@ -320,9 +324,11 @@ class SelectionGUI(QtWidgets.QMainWindow):
 
         # Show automatic filtering controls only in that mode
         self.threshold_label.setVisible(is_auto)
-        self.threshold_spinbox.setVisible(is_auto)
-        self.compute_button.setVisible(is_auto)
+        self.threshold_slider.setVisible(is_auto)
+        self.clear_candidates_button.setVisible(is_auto)
         self.candidate_count_label.setVisible(is_auto)
+        if is_auto:
+            self.compute_candidate_points()
 
     def on_mouse_click(self, event):
         if self.method_buttons["Manual"].isChecked():
@@ -464,8 +470,9 @@ class SelectionGUI(QtWidgets.QMainWindow):
             self.scatter.clear()
         if hasattr(self, 'roi_overlay'):
             self.roi_overlay.clear()
-
-        self.candidate_scatter.clear()
+        
+        # Clear candidate points from automatic filtering
+        self.clear_candidates()
 
         self.points_label.setText("Selected subsets: 0")
 
@@ -656,7 +663,7 @@ class SelectionGUI(QtWidgets.QMainWindow):
 
         subset_size = self.subset_size_spinbox.value()
         roi_size = subset_size // 2
-        threshold_ratio = self.threshold_spinbox.value() / 1000.0
+        threshold_ratio = self.threshold_slider.value() / 1000.0
 
         img = self.image_item.image.astype(np.float32)
         candidates = []
@@ -727,6 +734,15 @@ class SelectionGUI(QtWidgets.QMainWindow):
         else:
             self.candidate_scatter.clear()
 
+    def clear_candidates(self):
+        """Clear candidate points."""
+        print("Clearing candidate points...")
+        self.candidate_points = []
+        self.update_candidate_points_count()
+        if hasattr(self, 'candidate_scatter'):
+            self.candidate_scatter.clear()
+
+        self.update_selected_points()  # Update main display to remove candidates
     ################################################################################################
     # Automatic subset detection
     ################################################################################################
