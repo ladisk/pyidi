@@ -112,9 +112,7 @@ class SelectionGUI(QtWidgets.QMainWindow):
 
         self.method_buttons = {}
         method_names = [
-            "ROI grid",
-            "Deselect polygon",
-            "Only polygon",
+            "Grid",
             "Manual",
             "Along the line"
         ]
