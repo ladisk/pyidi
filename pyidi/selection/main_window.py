@@ -220,16 +220,21 @@ class SelectionGUI(QtWidgets.QMainWindow):
         # Distance between subsets (only visible for Grid and Along the line)
         self.distance_label = QtWidgets.QLabel("Distance between subsets:")
         self.distance_label.setVisible(False)  # Hidden by default
-        self.distance_spinbox = QtWidgets.QSpinBox()
-        self.distance_spinbox.setVisible(False)  # Hidden by default
-        self.distance_spinbox.setRange(-1000, 1000)
-        self.distance_spinbox.setValue(0)
-        self.distance_spinbox.setAlignment(QtCore.Qt.AlignmentFlag.AlignRight)
-        self.distance_spinbox.setSingleStep(1)
-        self.distance_spinbox.valueChanged.connect(self.recompute_roi_points)
-
+        self.distance_slider = QtWidgets.QSlider(QtCore.Qt.Orientation.Horizontal)
+        self.distance_slider.setRange(-50, 50)
+        self.distance_slider.setSingleStep(1)
+        self.distance_slider.setValue(0)
+        self.distance_slider.setVisible(False)
+        self.manual_layout.addWidget(self.distance_slider)
         self.manual_layout.addWidget(self.distance_label)
-        self.manual_layout.addWidget(self.distance_spinbox)
+
+        def update_label_and_recompute(val):
+            self.distance_label.setText(f"Distance between subsets: {str(val)}")
+            self.recompute_roi_points()
+        self.distance_slider.valueChanged.connect(update_label_and_recompute)
+
+        # self.manual_layout.addWidget(self.distance_label)
+        self.manual_layout.addWidget(self.distance_slider)
 
         # Start new line (only visible in "Along the line" mode)
         self.start_new_line_button = QtWidgets.QPushButton("Start new line")
@@ -306,7 +311,7 @@ class SelectionGUI(QtWidgets.QMainWindow):
         self.delete_grid_button.setVisible(is_grid)
 
         self.distance_label.setVisible(show_spacing)
-        self.distance_spinbox.setVisible(show_spacing)
+        self.distance_slider.setVisible(show_spacing)
 
     def switch_mode(self, mode: str):
         self.mode = mode
@@ -406,7 +411,7 @@ class SelectionGUI(QtWidgets.QMainWindow):
 
     def recompute_roi_points(self):
         subset_size = self.subset_size_spinbox.value()
-        spacing = self.distance_spinbox.value()
+        spacing = self.distance_slider.value()
 
         # Update all "along the line" polygons
         for poly in self.drawing_polygons:
@@ -511,7 +516,7 @@ class SelectionGUI(QtWidgets.QMainWindow):
             # Compute ROI points only if closed polygon
             if len(grid['points']) >= 3:
                 subset_size = self.subset_size_spinbox.value()
-                spacing = self.distance_spinbox.value()
+                spacing = self.distance_slider.value()
                 grid['roi_points'] = rois_inside_polygon(grid['points'], subset_size, spacing)
 
             self.update_grid_display()
@@ -593,7 +598,7 @@ class SelectionGUI(QtWidgets.QMainWindow):
             # Update ROI points only for this polygon
             if len(poly['points']) >= 2:
                 subset_size = self.subset_size_spinbox.value()
-                spacing = self.distance_spinbox.value()
+                spacing = self.distance_slider.value()
                 poly['roi_points'] = points_along_polygon(poly['points'], subset_size, spacing)
 
             self.update_polygon_display()
