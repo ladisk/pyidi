@@ -2,6 +2,7 @@ import numpy as np
 from PyQt6 import QtWidgets, QtCore
 from pyqtgraph import GraphicsLayoutWidget, ImageItem, ScatterPlotItem
 import pyqtgraph as pg
+from matplotlib.path import Path
 # import pyidi  # Assuming pyidi is a custom module for video handling
 
 class SelectionGUI(QtWidgets.QMainWindow):
@@ -348,7 +349,8 @@ class SelectionGUI(QtWidgets.QMainWindow):
         subset_size = self.subset_size_spinbox.value()
         half = subset_size // 2
 
-        selected_points = np.round(np.array(self.selected_points) - 0.5)
+        # selected_points = np.round(np.array(self.selected_points) - 0.5)
+        selected_points = np.array(self.selected_points)
 
         # --- Rectangles ---
         if self.show_roi_checkbox.isChecked():
@@ -555,7 +557,8 @@ class SelectionGUI(QtWidgets.QMainWindow):
         if self.view.sceneBoundingRect().contains(pos):
             mouse_point = self.view.mapSceneToView(pos)
             x, y = mouse_point.x(), mouse_point.y()
-            self.manual_points.append((x, y))
+            x_int, y_int = round(x-0.5), round(y-0.5)
+            self.manual_points.append((x_int, y_int))
             self.update_selected_points()
 
     # Along the line selection
@@ -752,20 +755,18 @@ def points_along_polygon(polygon, subset_size, spacing=0):
     return result_points
 
 def rois_inside_polygon(polygon, subset_size, spacing):
-    from matplotlib.path import Path
-
     if len(polygon) < 3:
         return []
 
     polygon = np.array(polygon)
-    min_x, max_x = int(np.min(polygon[:, 0])), int(np.max(polygon[:, 0]))
-    min_y, max_y = int(np.min(polygon[:, 1])), int(np.max(polygon[:, 1]))
+    min_x, max_x = int(np.floor(np.min(polygon[:, 0]))), int(np.ceil(np.max(polygon[:, 0])))
+    min_y, max_y = int(np.floor(np.min(polygon[:, 1]))), int(np.ceil(np.max(polygon[:, 1])))
 
     step = subset_size + spacing
     if step <= 0:
         step = 1  # minimum step to avoid infinite loop
-    xs = np.arange(min_x, max_x + 1, step)
-    ys = np.arange(min_y, max_y + 1, step)
+    xs = np.arange(min_x, max_x+1, step)
+    ys = np.arange(min_y, max_y+1, step)
 
     grid_x, grid_y = np.meshgrid(xs, ys)
     points = np.vstack([grid_x.ravel(), grid_y.ravel()]).T
