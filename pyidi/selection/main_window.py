@@ -1,8 +1,7 @@
+import numpy as np
 from PyQt6 import QtWidgets, QtCore
 from pyqtgraph import GraphicsLayoutWidget, ImageItem, ScatterPlotItem
 import pyqtgraph as pg
-import numpy as np
-import sys
 
 class SelectionGUI(QtWidgets.QMainWindow):
     def __init__(self, video):
