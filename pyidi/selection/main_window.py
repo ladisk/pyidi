@@ -32,7 +32,7 @@ class SelectionGUI(QtWidgets.QMainWindow):
         self.manual_layout.addWidget(self.splitter)
 
         # Graphics layout for image and points display
-        self.ui_graphics()
+        self.ui_manual_graphics()
         
         # Right-side menu for methods
         self.ui_manual_right_menu()
@@ -41,8 +41,16 @@ class SelectionGUI(QtWidgets.QMainWindow):
 
         # --- Automatic Tab ---
         self.automatic_tab = QtWidgets.QWidget()
-        self.automatic_layout = QtWidgets.QVBoxLayout(self.automatic_tab)
+        self.automatic_splitter = QtWidgets.QSplitter(QtCore.Qt.Orientation.Horizontal)
+        self.automatic_layout = QtWidgets.QHBoxLayout(self.automatic_tab)
+        self.automatic_layout.addWidget(self.automatic_splitter)
         self.tabs.addTab(self.automatic_tab, "Automatic")
+
+        # Graphics layout for automatic image display
+        self.ui_automatic_graphics()
+
+        # Right-side menu for automatic controls
+        self.ui_automatic_right_menu()
 
         # Style
         self.setStyleSheet("""
@@ -78,6 +86,7 @@ class SelectionGUI(QtWidgets.QMainWindow):
 
         # Set the initial image
         self.image_item.setImage(video)
+        self.automatic_image_item.setImage(video)
 
         # Ensure method-specific widgets are visible on startup
         self.method_selected(self.button_group.checkedId())
@@ -87,7 +96,7 @@ class SelectionGUI(QtWidgets.QMainWindow):
         if app is not None:
             app.exec()
 
-    def ui_graphics(self):
+    def ui_manual_graphics(self):
         # Image viewer
         self.pg_widget = GraphicsLayoutWidget()
         self.view = self.pg_widget.addViewBox(lockAspect=True)
@@ -105,6 +114,14 @@ class SelectionGUI(QtWidgets.QMainWindow):
         self.view.addItem(self.scatter)  # Add scatter for showing points
 
         self.splitter.addWidget(self.pg_widget)
+
+    def ui_automatic_graphics(self):
+        self.automatic_pg_widget = GraphicsLayoutWidget()
+        self.automatic_view = self.automatic_pg_widget.addViewBox(lockAspect=True)
+        self.automatic_image_item = ImageItem()
+        self.automatic_view.addItem(self.automatic_image_item)
+
+        self.automatic_splitter.addWidget(self.automatic_pg_widget)
 
     def ui_manual_right_menu(self):
         # The right-side menu
@@ -219,6 +236,31 @@ class SelectionGUI(QtWidgets.QMainWindow):
         self.method_widget.setMinimumWidth(150)
         self.method_widget.setMaximumWidth(600)
         self.splitter.setSizes([1000, 220])  # Initial left/right width
+
+    def ui_automatic_right_menu(self):
+        self.automatic_controls = QtWidgets.QWidget()
+        self.automatic_layout_right = QtWidgets.QVBoxLayout(self.automatic_controls)
+
+        # Title
+        label = QtWidgets.QLabel("Automatic Tools")
+        font = label.font()
+        font.setPointSize(10)
+        font.setBold(True)
+        label.setFont(font)
+        self.automatic_layout_right.addWidget(label)
+
+        # Spacer
+        self.automatic_layout_right.addStretch(1)
+
+        # Set the layout and add to splitter
+        self.automatic_splitter.addWidget(self.automatic_controls)
+        self.automatic_splitter.setStretchFactor(0, 5)  # Image area grows more
+        self.automatic_splitter.setStretchFactor(1, 0)  # Menu fixed by content
+
+        # Set initial width for right panel
+        self.automatic_controls.setMinimumWidth(150)
+        self.automatic_controls.setMaximumWidth(600)
+        self.automatic_splitter.setSizes([1000, 220])  # Initial left/right width
 
     def method_selected(self, id: int):
         method_name = list(self.method_buttons.keys())[id]
@@ -555,6 +597,10 @@ class SelectionGUI(QtWidgets.QMainWindow):
 
             self.update_selected_points()
     
+    ################################################################################################
+    # Automatic subset detection
+    ################################################################################################
+
 
 def points_along_polygon(polygon, subset_size, spacing=0):
     if len(polygon) < 2:
