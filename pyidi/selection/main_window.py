@@ -108,11 +108,18 @@ class SelectionGUI(QtWidgets.QMainWindow):
         self.scatter = ScatterPlotItem(pen=pg.mkPen(None), brush=pg.mkBrush(255, 100, 100, 200), size=8)
         self.roi_overlay = ImageItem()
 
+        self.candidate_scatter = ScatterPlotItem(
+            pen=pg.mkPen(None),
+            brush=pg.mkBrush(0, 255, 0, 200),
+            size=6
+        )
+
         self.view.addItem(self.image_item)
         self.view.addItem(self.polygon_line)
         self.view.addItem(self.polygon_points_scatter)
         self.view.addItem(self.roi_overlay)  # Add scatter for showing square points
         self.view.addItem(self.scatter)  # Add scatter for showing points
+        self.view.addItem(self.candidate_scatter)
 
         self.splitter.addWidget(self.pg_widget)
 
@@ -147,6 +154,7 @@ class SelectionGUI(QtWidgets.QMainWindow):
             "Manual",
             "Along the line",
             "Remove point",
+            "Automatic filtering",  # NEW
         ]
         for i, name in enumerate(method_names):
             button = QtWidgets.QPushButton(name)
@@ -178,6 +186,18 @@ class SelectionGUI(QtWidgets.QMainWindow):
         self.show_roi_checkbox.stateChanged.connect(self.update_selected_points)
         self.method_layout.addWidget(self.show_roi_checkbox)
 
+        # Clear button
+        self.method_layout.addSpacing(20)
+        self.clear_button = QtWidgets.QPushButton("Clear selections")
+        self.clear_button.clicked.connect(self.clear_selection)
+        self.method_layout.addWidget(self.clear_button)
+
+        # Separator line
+        separator = QtWidgets.QFrame()
+        separator.setFrameShape(QtWidgets.QFrame.Shape.HLine)
+        separator.setFrameShadow(QtWidgets.QFrame.Shadow.Sunken)
+        self.method_layout.addWidget(separator)
+
         # Distance between subsets (only visible for Grid and Along the line)
         self.distance_label = QtWidgets.QLabel("Distance between subsets:")
         self.distance_label.setVisible(False)  # Hidden by default
@@ -192,11 +212,29 @@ class SelectionGUI(QtWidgets.QMainWindow):
         self.method_layout.addWidget(self.distance_label)
         self.method_layout.addWidget(self.distance_spinbox)
 
-        # Clear button
-        self.method_layout.addSpacing(20)
-        self.clear_button = QtWidgets.QPushButton("Clear selections")
-        self.clear_button.clicked.connect(self.clear_selection)
-        self.method_layout.addWidget(self.clear_button)
+        # --- Automatic Filtering UI ---
+        self.threshold_label = QtWidgets.QLabel("Threshold:")
+        self.threshold_label.setVisible(False)
+        self.method_layout.addWidget(self.threshold_label)
+
+        self.threshold_spinbox = QtWidgets.QDoubleSpinBox()
+        self.threshold_spinbox.setRange(1, 100)
+        self.threshold_spinbox.setSingleStep(1)
+        self.threshold_spinbox.setValue(10)
+        self.threshold_spinbox.setDecimals(1)
+        self.threshold_spinbox.setAlignment(QtCore.Qt.AlignmentFlag.AlignRight)
+        self.threshold_spinbox.setVisible(False)
+        self.method_layout.addWidget(self.threshold_spinbox)
+
+        self.compute_button = QtWidgets.QPushButton("Compute")
+        self.compute_button.setVisible(False)
+        self.compute_button.clicked.connect(self.compute_candidate_points)
+        self.method_layout.addWidget(self.compute_button)
+
+        self.confirm_button = QtWidgets.QPushButton("Confirm")
+        self.confirm_button.setVisible(False)
+        self.confirm_button.clicked.connect(self.confirm_candidate_points)
+        self.method_layout.addWidget(self.confirm_button)
 
         # Start new line (only visible in "Along the line" mode)
         self.start_new_line_button = QtWidgets.QPushButton("Start new line")
@@ -268,17 +306,24 @@ class SelectionGUI(QtWidgets.QMainWindow):
         print(f"Selected method: {method_name}")
         is_along = method_name == "Along the line"
         is_grid = method_name == "Grid"
+        is_auto = method_name == "Automatic filtering"
         show_spacing = is_along or is_grid
 
         self.start_new_line_button.setVisible(is_along or is_grid)
         self.polygon_list.setVisible(is_along)
         self.delete_polygon_button.setVisible(is_along)
-
         self.grid_list.setVisible(is_grid)
         self.delete_grid_button.setVisible(is_grid)
 
         self.distance_label.setVisible(show_spacing)
         self.distance_spinbox.setVisible(show_spacing)
+
+        # Show automatic filtering controls only in that mode
+        self.threshold_label.setVisible(is_auto)
+        self.threshold_spinbox.setVisible(is_auto)
+        self.compute_button.setVisible(is_auto)
+        self.confirm_button.setVisible(False)
+
 
     def on_mouse_click(self, event):
         if self.method_buttons["Manual"].isChecked():
@@ -417,6 +462,8 @@ class SelectionGUI(QtWidgets.QMainWindow):
             self.scatter.clear()
         if hasattr(self, 'roi_overlay'):
             self.roi_overlay.clear()
+
+        self.candidate_scatter.clear()
 
         self.points_label.setText("Selected subsets: 0")
 
@@ -598,6 +645,83 @@ class SelectionGUI(QtWidgets.QMainWindow):
 
             self.update_selected_points()
     
+    # Automatic filtering
+    def compute_candidate_points(self):
+        """Compute good feature points using structure tensor analysis (Shi–Tomasi style)."""
+        from scipy.ndimage import sobel
+
+        subset_size = self.subset_size_spinbox.value()
+        roi_size = subset_size // 2
+        threshold_ratio = self.threshold_spinbox.value() / 1000.0
+
+        img = self.image_item.image.astype(np.float32)
+        candidates = []
+
+        # All selected points (not just manual)
+        for row, col in self.selected_points:
+            y, x = int(round(row)), int(round(col))
+
+            if (y - roi_size < 0 or y + roi_size + 1 > img.shape[0] or
+                x - roi_size < 0 or x + roi_size + 1 > img.shape[1]):
+                continue
+
+            roi = img[y - roi_size: y + roi_size + 1,
+                    x - roi_size: x + roi_size + 1]
+
+            # Compute gradients
+            gx = sobel(roi, axis=1)
+            gy = sobel(roi, axis=0)
+
+            Gx2 = np.sum(gx ** 2)
+            Gy2 = np.sum(gy ** 2)
+            GxGy = np.sum(gx * gy)
+
+            matrix = np.array([[Gx2, GxGy],
+                            [GxGy, Gy2]])
+
+            eigvals = np.linalg.eigvalsh(matrix)  # sorted ascending
+            min_eig = eigvals[0]
+
+            candidates.append((x + 0.0, y + 0.0, min_eig))
+
+        if not candidates:
+            self.candidate_points = []
+            self.update_candidate_display()
+            return
+
+        # Threshold by normalized eigenvalue
+        eigvals = np.array([v[2] for v in candidates])
+        max_eig = np.max(eigvals)
+        eig_threshold = max_eig * threshold_ratio
+
+        self.candidate_points = [(y, x) for (x, y, e) in candidates if e > eig_threshold]
+        self.update_candidate_display()
+
+
+    def update_candidate_display(self):
+        """Show candidate points as scatter dots on the image."""
+        if not hasattr(self, 'candidate_scatter'):
+            self.candidate_scatter = ScatterPlotItem(
+                pen=pg.mkPen(None),
+                brush=pg.mkBrush(0, 255, 0, 150),  # green with transparency
+                size=6,
+                symbol='o'
+            )
+            self.view.addItem(self.candidate_scatter)
+
+        if self.candidate_points:
+            self.candidate_scatter.setData(pos=self.candidate_points)
+        else:
+            self.candidate_scatter.clear()
+
+    
+
+    def confirm_candidate_points(self):
+        self.manual_points = self.candidate_points.copy()
+        self.candidate_scatter.clear()
+        self.confirm_button.setVisible(False)
+        self.recompute_roi_points()
+
     ################################################################################################
     # Automatic subset detection
     ################################################################################################
