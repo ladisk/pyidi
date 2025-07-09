@@ -1,10 +1,8 @@
-from operator import index
 from PyQt6 import QtWidgets, QtCore
 from pyqtgraph import GraphicsLayoutWidget, ImageItem, ScatterPlotItem
 import pyqtgraph as pg
 import numpy as np
 import sys
-
 
 class SelectionGUI(QtWidgets.QMainWindow):
     def __init__(self, video):
@@ -249,180 +247,6 @@ class SelectionGUI(QtWidgets.QMainWindow):
             self.handle_grid_drawing(event)
         elif self.method_buttons["Remove point"].isChecked():
             self.handle_remove_point(event)
-                
-    def handle_manual_selection(self, event):
-        """Handle manual selection of points."""
-        pos = event.scenePos()
-        if self.view.sceneBoundingRect().contains(pos):
-            mouse_point = self.view.mapSceneToView(pos)
-            x, y = mouse_point.x(), mouse_point.y()
-            x_int, y_int = round(x-0.5)+0.5, round(y-0.5)+0.5
-            self.manual_points.append((x_int, y_int))
-            self.update_selected_points()
-
-    def handle_polygon_drawing(self, event):
-        pos = event.scenePos()
-        if self.view.sceneBoundingRect().contains(pos):
-            mouse_point = self.view.mapSceneToView(pos)
-            x, y = mouse_point.x(), mouse_point.y()
-            x_int, y_int = round(x - 0.5) + 0.5, round(y - 0.5) + 0.5
-
-            # Add first polygon to the list if not yet shown
-            if self.polygon_list.count() == 0:
-                self.polygon_list.addItem("Polygon 1")
-                self.polygon_list.setCurrentRow(0)
-
-            poly = self.drawing_polygons[self.active_polygon_index]
-            poly['points'].append((x_int, y_int))
-
-            # Update ROI points only for this polygon
-            if len(poly['points']) >= 2:
-                subset_size = self.subset_size_spinbox.value()
-                spacing = self.distance_spinbox.value()
-                poly['roi_points'] = points_along_polygon(poly['points'], subset_size, spacing)
-
-            self.update_polygon_display()
-            self.update_selected_points()
-    
-    def handle_remove_point(self, event):
-        pos = event.scenePos()
-        if self.view.sceneBoundingRect().contains(pos):
-            mouse_point = self.view.mapSceneToView(pos)
-            x, y = mouse_point.x(), mouse_point.y()
-
-            # Find nearest point
-            if not self.selected_points:
-                return
-
-            pts = np.array(self.selected_points)
-            distances = np.linalg.norm(pts - np.array([x, y]), axis=1)
-            idx = np.argmin(distances)
-            closest = tuple(pts[idx])
-
-            # Remove from manual if present
-            if closest in self.manual_points:
-                self.manual_points.remove(closest)
-
-            # Remove from polygons
-            for poly in self.drawing_polygons:
-                if closest in poly['roi_points']:
-                    poly['roi_points'].remove(closest)
-
-            # Remove from grid
-            for grid in self.grid_polygons:
-                if closest in grid['roi_points']:
-                    grid['roi_points'].remove(closest)
-
-            self.update_selected_points()
-
-    def update_polygon_display(self):
-        all_pts = [pt for poly in self.drawing_polygons for pt in poly['points']]
-        self.polygon_points_scatter.setData(pos=all_pts)
-
-        xs, ys = [], []
-        for poly in self.drawing_polygons:
-            path = poly['points']
-            if len(path) >= 2:
-                xs.extend([p[0] for p in path] + [np.nan])
-                ys.extend([p[1] for p in path] + [np.nan])
-            elif len(path) == 1:
-                xs.extend([path[0][0], path[0][0], np.nan])
-                ys.extend([path[0][1], path[0][1], np.nan])
-
-        self.polygon_line.setData(xs, ys)
-
-    def points_from_all_polygons(self):
-        subset_size = self.subset_size_spinbox.value()
-        all_points = []
-        for path in self.drawing_polygons:
-            if len(path) >= 2:
-                all_points.extend(points_along_polygon(path, subset_size))
-        return all_points
-    
-    def delete_selected_polygon(self):
-        row = self.polygon_list.currentRow()
-        if row >= 0 and len(self.drawing_polygons) > 1:
-            del self.drawing_polygons[row]
-            self.polygon_list.takeItem(row)
-            self.active_polygon_index = max(0, row - 1)
-            self.polygon_list.setCurrentRow(self.active_polygon_index)
-            self.update_polygon_display()
-            self.update_selected_points()
-    
-    def on_polygon_selected(self, index):
-        if 0 <= index < len(self.drawing_polygons):
-            self.active_polygon_index = index
-
-    def handle_grid_drawing(self, event):
-        pos = event.scenePos()
-        if self.view.sceneBoundingRect().contains(pos):
-            mouse_point = self.view.mapSceneToView(pos)
-            x, y = mouse_point.x(), mouse_point.y()
-            x_int, y_int = round(x - 0.5) + 0.5, round(y - 0.5) + 0.5
-
-            # Add first grid polygon to the list if not yet shown
-            if self.grid_list.count() == 0:
-                self.grid_list.addItem("Grid 1")
-                self.grid_list.setCurrentRow(0)
-
-            grid = self.grid_polygons[self.active_grid_index]
-            grid['points'].append((x_int, y_int))
-
-            # Compute ROI points only if closed polygon
-            if len(grid['points']) >= 3:
-                subset_size = self.subset_size_spinbox.value()
-                spacing = self.distance_spinbox.value()
-                grid['roi_points'] = rois_inside_polygon(grid['points'], subset_size, spacing)
-
-            self.update_grid_display()
-            self.update_selected_points()
-    
-    def on_grid_selected(self, index):
-        if 0 <= index < len(self.grid_polygons):
-            self.active_grid_index = index
-
-    def delete_selected_grid(self):
-        row = self.grid_list.currentRow()
-        if row >= 0 and len(self.grid_polygons) > 1:
-            del self.grid_polygons[row]
-            self.grid_list.takeItem(row)
-            self.active_grid_index = max(0, row - 1)
-            self.grid_list.setCurrentRow(self.active_grid_index)
-            self.update_grid_display()
-            self.update_selected_points()
-
-    def update_grid_display(self):
-        # Combine all points from all grid polygons for scatter
-        all_pts = [pt for poly in self.grid_polygons for pt in poly['points']]
-        
-        # Create or update scatter plot for grid polygon vertices
-        if not hasattr(self, 'grid_points_scatter'):
-            self.grid_points_scatter = ScatterPlotItem(
-                pen=pg.mkPen(None),
-                brush=pg.mkBrush(255, 200, 0, 200),
-                size=6
-            )
-            self.view.addItem(self.grid_points_scatter)
-        self.grid_points_scatter.setData(pos=all_pts)
-
-        # Combine all polygon outlines with np.nan-separated segments
-        xs, ys = [], []
-        for poly in self.grid_polygons:
-            path = poly['points']
-            if len(path) >= 2:
-                xs.extend([p[0] for p in path] + [path[0][0], np.nan])  # Close polygon
-                ys.extend([p[1] for p in path] + [path[0][1], np.nan])
-            elif len(path) == 1:
-                xs.extend([path[0][0], path[0][0], np.nan])
-                ys.extend([path[0][1], path[0][1], np.nan])
-
-        # Create or update line plot for polygon outlines
-        if not hasattr(self, 'grid_line'):
-            self.grid_line = pg.PlotDataItem(
-                pen=pg.mkPen('c', width=2)  # Cyan line
-            )
-            self.view.addItem(self.grid_line)
-        self.grid_line.setData(xs, ys)
 
     def update_selected_points(self):
         polygon_points = [pt for poly in self.drawing_polygons for pt in poly['roi_points']]
@@ -554,7 +378,6 @@ class SelectionGUI(QtWidgets.QMainWindow):
 
         self.points_label.setText("Selected subsets: 0")
 
-
     def set_image(self, img: np.ndarray):
         """Display image in the manual tab."""
         self.image_item.setImage(img)
@@ -562,7 +385,178 @@ class SelectionGUI(QtWidgets.QMainWindow):
     def get_points(self):
         """Get all selected points from manual and polygons."""
         return self.selected_points
+
+    # Grid selection
+    def handle_grid_drawing(self, event):
+        pos = event.scenePos()
+        if self.view.sceneBoundingRect().contains(pos):
+            mouse_point = self.view.mapSceneToView(pos)
+            x, y = mouse_point.x(), mouse_point.y()
+            x_int, y_int = round(x - 0.5) + 0.5, round(y - 0.5) + 0.5
+
+            # Add first grid polygon to the list if not yet shown
+            if self.grid_list.count() == 0:
+                self.grid_list.addItem("Grid 1")
+                self.grid_list.setCurrentRow(0)
+
+            grid = self.grid_polygons[self.active_grid_index]
+            grid['points'].append((x_int, y_int))
+
+            # Compute ROI points only if closed polygon
+            if len(grid['points']) >= 3:
+                subset_size = self.subset_size_spinbox.value()
+                spacing = self.distance_spinbox.value()
+                grid['roi_points'] = rois_inside_polygon(grid['points'], subset_size, spacing)
+
+            self.update_grid_display()
+            self.update_selected_points()
+
+    def on_grid_selected(self, index):
+        if 0 <= index < len(self.grid_polygons):
+            self.active_grid_index = index
+
+    def delete_selected_grid(self):
+        row = self.grid_list.currentRow()
+        if row >= 0 and len(self.grid_polygons) > 1:
+            del self.grid_polygons[row]
+            self.grid_list.takeItem(row)
+            self.active_grid_index = max(0, row - 1)
+            self.grid_list.setCurrentRow(self.active_grid_index)
+            self.update_grid_display()
+            self.update_selected_points()
+
+    def update_grid_display(self):
+        # Combine all points from all grid polygons for scatter
+        all_pts = [pt for poly in self.grid_polygons for pt in poly['points']]
+        
+        # Create or update scatter plot for grid polygon vertices
+        if not hasattr(self, 'grid_points_scatter'):
+            self.grid_points_scatter = ScatterPlotItem(
+                pen=pg.mkPen(None),
+                brush=pg.mkBrush(255, 200, 0, 200),
+                size=6
+            )
+            self.view.addItem(self.grid_points_scatter)
+        self.grid_points_scatter.setData(pos=all_pts)
+
+        # Combine all polygon outlines with np.nan-separated segments
+        xs, ys = [], []
+        for poly in self.grid_polygons:
+            path = poly['points']
+            if len(path) >= 2:
+                xs.extend([p[0] for p in path] + [path[0][0], np.nan])  # Close polygon
+                ys.extend([p[1] for p in path] + [path[0][1], np.nan])
+            elif len(path) == 1:
+                xs.extend([path[0][0], path[0][0], np.nan])
+                ys.extend([path[0][1], path[0][1], np.nan])
+
+        # Create or update line plot for polygon outlines
+        if not hasattr(self, 'grid_line'):
+            self.grid_line = pg.PlotDataItem(
+                pen=pg.mkPen('c', width=2)  # Cyan line
+            )
+            self.view.addItem(self.grid_line)
+        self.grid_line.setData(xs, ys)
+
+    # Manual selection
+    def handle_manual_selection(self, event):
+        """Handle manual selection of points."""
+        pos = event.scenePos()
+        if self.view.sceneBoundingRect().contains(pos):
+            mouse_point = self.view.mapSceneToView(pos)
+            x, y = mouse_point.x(), mouse_point.y()
+            x_int, y_int = round(x-0.5)+0.5, round(y-0.5)+0.5
+            self.manual_points.append((x_int, y_int))
+            self.update_selected_points()
+
+    # Along the line selection
+    def handle_polygon_drawing(self, event):
+        pos = event.scenePos()
+        if self.view.sceneBoundingRect().contains(pos):
+            mouse_point = self.view.mapSceneToView(pos)
+            x, y = mouse_point.x(), mouse_point.y()
+            x_int, y_int = round(x - 0.5) + 0.5, round(y - 0.5) + 0.5
+
+            # Add first polygon to the list if not yet shown
+            if self.polygon_list.count() == 0:
+                self.polygon_list.addItem("Polygon 1")
+                self.polygon_list.setCurrentRow(0)
+
+            poly = self.drawing_polygons[self.active_polygon_index]
+            poly['points'].append((x_int, y_int))
+
+            # Update ROI points only for this polygon
+            if len(poly['points']) >= 2:
+                subset_size = self.subset_size_spinbox.value()
+                spacing = self.distance_spinbox.value()
+                poly['roi_points'] = points_along_polygon(poly['points'], subset_size, spacing)
+
+            self.update_polygon_display()
+            self.update_selected_points()
+
+    def delete_selected_polygon(self):
+        row = self.polygon_list.currentRow()
+        if row >= 0 and len(self.drawing_polygons) > 1:
+            del self.drawing_polygons[row]
+            self.polygon_list.takeItem(row)
+            self.active_polygon_index = max(0, row - 1)
+            self.polygon_list.setCurrentRow(self.active_polygon_index)
+            self.update_polygon_display()
+            self.update_selected_points()
+
+    def update_polygon_display(self):
+        all_pts = [pt for poly in self.drawing_polygons for pt in poly['points']]
+        self.polygon_points_scatter.setData(pos=all_pts)
+
+        xs, ys = [], []
+        for poly in self.drawing_polygons:
+            path = poly['points']
+            if len(path) >= 2:
+                xs.extend([p[0] for p in path] + [np.nan])
+                ys.extend([p[1] for p in path] + [np.nan])
+            elif len(path) == 1:
+                xs.extend([path[0][0], path[0][0], np.nan])
+                ys.extend([path[0][1], path[0][1], np.nan])
+
+        self.polygon_line.setData(xs, ys)
+
+    def on_polygon_selected(self, index):
+        if 0 <= index < len(self.drawing_polygons):
+            self.active_polygon_index = index
+
+    # Remove point selection
+    def handle_remove_point(self, event):
+        pos = event.scenePos()
+        if self.view.sceneBoundingRect().contains(pos):
+            mouse_point = self.view.mapSceneToView(pos)
+            x, y = mouse_point.x(), mouse_point.y()
+
+            # Find nearest point
+            if not self.selected_points:
+                return
+
+            pts = np.array(self.selected_points)
+            distances = np.linalg.norm(pts - np.array([x, y]), axis=1)
+            idx = np.argmin(distances)
+            closest = tuple(pts[idx])
+
+            # Remove from manual if present
+            if closest in self.manual_points:
+                self.manual_points.remove(closest)
+
+            # Remove from polygons
+            for poly in self.drawing_polygons:
+                if closest in poly['roi_points']:
+                    poly['roi_points'].remove(closest)
+
+            # Remove from grid
+            for grid in self.grid_polygons:
+                if closest in grid['roi_points']:
+                    grid['roi_points'].remove(closest)
+
+            self.update_selected_points()
     
+
 def points_along_polygon(polygon, subset_size, spacing=0):
     if len(polygon) < 2:
         return []
