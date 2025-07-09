@@ -122,7 +122,8 @@ class SelectionGUI(QtWidgets.QMainWindow):
         method_names = [
             "Grid",
             "Manual",
-            "Along the line"
+            "Along the line",
+            "Remove point",
         ]
         for i, name in enumerate(method_names):
             button = QtWidgets.QPushButton(name)
@@ -220,6 +221,8 @@ class SelectionGUI(QtWidgets.QMainWindow):
             self.handle_polygon_drawing(event)
         elif self.method_buttons["Grid"].isChecked():
             self.handle_grid_drawing(event)
+        elif self.method_buttons["Remove point"].isChecked():
+            self.handle_remove_point(event)
                 
     def handle_manual_selection(self, event):
         """Handle manual selection of points."""
@@ -252,6 +255,37 @@ class SelectionGUI(QtWidgets.QMainWindow):
                 poly['roi_points'] = points_along_polygon(poly['points'], subset_size)
 
             self.update_polygon_display()
+            self.update_selected_points()
+    
+    def handle_remove_point(self, event):
+        pos = event.scenePos()
+        if self.view.sceneBoundingRect().contains(pos):
+            mouse_point = self.view.mapSceneToView(pos)
+            x, y = mouse_point.x(), mouse_point.y()
+
+            # Find nearest point
+            if not self.selected_points:
+                return
+
+            pts = np.array(self.selected_points)
+            distances = np.linalg.norm(pts - np.array([x, y]), axis=1)
+            idx = np.argmin(distances)
+            closest = tuple(pts[idx])
+
+            # Remove from manual if present
+            if closest in self.manual_points:
+                self.manual_points.remove(closest)
+
+            # Remove from polygons
+            for poly in self.drawing_polygons:
+                if closest in poly['roi_points']:
+                    poly['roi_points'].remove(closest)
+
+            # Remove from grid
+            for grid in self.grid_polygons:
+                if closest in grid['roi_points']:
+                    grid['roi_points'].remove(closest)
+
             self.update_selected_points()
 
     def update_polygon_display(self):
