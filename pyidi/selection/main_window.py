@@ -348,16 +348,18 @@ class SelectionGUI(QtWidgets.QMainWindow):
         subset_size = self.subset_size_spinbox.value()
         half = subset_size // 2
 
+        selected_points = np.round(np.array(self.selected_points) - 0.5)
+
         # --- Rectangles ---
         if self.show_roi_checkbox.isChecked():
             h, w = self.image_item.image.shape[:2]
             overlay = np.zeros((h, w, 4), dtype=np.uint8)  # RGBA
 
-            for y, x in self.selected_points:
+            for y, x in selected_points:
                 x0 = int(round(x - half))
                 y0 = int(round(y - half))
-                x1 = int(round(x + half))
-                y1 = int(round(y + half))
+                x1 = int(round(x + half+1))
+                y1 = int(round(y + half+1))
 
                 # Ensure bounds
                 if x0 < 0 or y0 < 0 or x1 >= w or y1 >= h:
@@ -385,7 +387,7 @@ class SelectionGUI(QtWidgets.QMainWindow):
 
         # --- Center Dots ---
         self.scatter.setData(
-            pos=self.selected_points,
+            pos=selected_points + 0.5,
             symbol='o',
             size=6,
             brush=pg.mkBrush(255, 100, 100, 200),
@@ -481,7 +483,6 @@ class SelectionGUI(QtWidgets.QMainWindow):
         if self.view.sceneBoundingRect().contains(pos):
             mouse_point = self.view.mapSceneToView(pos)
             x, y = mouse_point.x(), mouse_point.y()
-            x_int, y_int = round(x - 0.5) + 0.5, round(y - 0.5) + 0.5
 
             # Add first grid polygon to the list if not yet shown
             if self.grid_list.count() == 0:
@@ -489,7 +490,7 @@ class SelectionGUI(QtWidgets.QMainWindow):
                 self.grid_list.setCurrentRow(0)
 
             grid = self.grid_polygons[self.active_grid_index]
-            grid['points'].append((x_int, y_int))
+            grid['points'].append((x, y))
 
             # Compute ROI points only if closed polygon
             if len(grid['points']) >= 3:
@@ -554,8 +555,7 @@ class SelectionGUI(QtWidgets.QMainWindow):
         if self.view.sceneBoundingRect().contains(pos):
             mouse_point = self.view.mapSceneToView(pos)
             x, y = mouse_point.x(), mouse_point.y()
-            x_int, y_int = round(x-0.5)+0.5, round(y-0.5)+0.5
-            self.manual_points.append((x_int, y_int))
+            self.manual_points.append((x, y))
             self.update_selected_points()
 
     # Along the line selection
@@ -564,7 +564,6 @@ class SelectionGUI(QtWidgets.QMainWindow):
         if self.view.sceneBoundingRect().contains(pos):
             mouse_point = self.view.mapSceneToView(pos)
             x, y = mouse_point.x(), mouse_point.y()
-            x_int, y_int = round(x - 0.5) + 0.5, round(y - 0.5) + 0.5
 
             # Add first polygon to the list if not yet shown
             if self.polygon_list.count() == 0:
@@ -572,7 +571,7 @@ class SelectionGUI(QtWidgets.QMainWindow):
                 self.polygon_list.setCurrentRow(0)
 
             poly = self.drawing_polygons[self.active_polygon_index]
-            poly['points'].append((x_int, y_int))
+            poly['points'].append((x, y))
 
             # Update ROI points only for this polygon
             if len(poly['points']) >= 2:
@@ -697,7 +696,6 @@ class SelectionGUI(QtWidgets.QMainWindow):
         self.candidate_points = [(y, x) for (x, y, e) in candidates if e > eig_threshold]
         self.update_candidate_display()
 
-
     def update_candidate_display(self):
         """Show candidate points as scatter dots on the image."""
         if not hasattr(self, 'candidate_scatter'):
@@ -713,8 +711,6 @@ class SelectionGUI(QtWidgets.QMainWindow):
             self.candidate_scatter.setData(pos=self.candidate_points)
         else:
             self.candidate_scatter.clear()
-
-    
 
     def confirm_candidate_points(self):
         self.manual_points = self.candidate_points.copy()
