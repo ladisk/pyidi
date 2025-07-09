@@ -8,8 +8,13 @@ import sys
 from along_line import points_along_polygon
 
 class SelectionGUI(QtWidgets.QMainWindow):
-    def __init__(self):
+    def __init__(self, video):
+        app = QtWidgets.QApplication.instance()
+        if app is None:
+            app = QtWidgets.QApplication([])
+
         super().__init__()
+
         self.setWindowTitle("ROI Selection Tool")
         self.resize(1200, 800)
 
@@ -144,6 +149,14 @@ class SelectionGUI(QtWidgets.QMainWindow):
 
         # Connect mouse click
         self.pg_widget.scene().sigMouseClicked.connect(self.on_mouse_click)
+
+        # Set the initial image
+        self.image_item.setImage(video)
+
+        # Start the GUI
+        self.show()
+        if app is not None:
+            app.exec()
 
     def method_selected(self, id: int):
         method_name = list(self.method_buttons.keys())[id]
@@ -285,17 +298,8 @@ class SelectionGUI(QtWidgets.QMainWindow):
         """Get all selected points from manual and polygons."""
         return self.selected_points
 
-def main():
-    app = QtWidgets.QApplication(sys.argv)
-    gui = SelectionGUI()
-
-    # Example grayscale image
-    example_image = np.random.rand(512, 512) * 255
-    gui.set_image(example_image.astype(np.uint8))
-
-    gui.show()
-    sys.exit(app.exec())
-
-
 if __name__ == "__main__":
-    main()
+    example_image = np.random.rand(512, 512) * 255
+    Points = SelectionGUI(example_image.astype(np.uint8))
+
+    print(Points.get_points())  # Print selected points for testing
