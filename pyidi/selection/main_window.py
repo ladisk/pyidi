@@ -111,10 +111,19 @@ class SelectionGUI(QtWidgets.QMainWindow):
         self.splitter.addWidget(self.pg_widget)
 
     def ui_manual_right_menu(self):
-        # Method buttons on the right
+        # The right-side menu
         self.method_widget = QtWidgets.QWidget()
         self.method_layout = QtWidgets.QVBoxLayout(self.method_widget)
 
+        # Number of selected subsets
+        self.points_label = QtWidgets.QLabel("Selected subsets: 0")
+        font = self.points_label.font()
+        font.setPointSize(10)
+        font.setBold(True)
+        self.points_label.setFont(font)
+        self.method_layout.addWidget(self.points_label)
+
+        # Method selection buttons
         self.button_group = QtWidgets.QButtonGroup(self.method_widget)
         self.button_group.setExclusive(True)
 
@@ -470,6 +479,7 @@ class SelectionGUI(QtWidgets.QMainWindow):
             brush=pg.mkBrush(255, 100, 100, 200),
             pen=pg.mkPen(None)
         )
+        self.points_label.setText(f"Selected subsets: {len(self.selected_points)}")
 
 
     def start_new_line(self):
@@ -525,6 +535,8 @@ class SelectionGUI(QtWidgets.QMainWindow):
             self.scatter.clear()
         if hasattr(self, 'roi_overlay'):
             self.roi_overlay.clear()
+
+        self.points_label.setText("Selected subsets: 0")
 
 
     def set_image(self, img: np.ndarray):
