@@ -5,7 +5,6 @@ import pyqtgraph as pg
 import numpy as np
 import sys
 
-from along_line import points_along_polygon
 
 class SelectionGUI(QtWidgets.QMainWindow):
     def __init__(self, video):
@@ -164,6 +163,20 @@ class SelectionGUI(QtWidgets.QMainWindow):
         self.show_roi_checkbox.stateChanged.connect(self.update_selected_points)
         self.method_layout.addWidget(self.show_roi_checkbox)
 
+        # Distance between subsets (only visible for Grid and Along the line)
+        self.distance_label = QtWidgets.QLabel("Distance between subsets:")
+        self.distance_label.setVisible(False)  # Hidden by default
+        self.distance_spinbox = QtWidgets.QSpinBox()
+        self.distance_spinbox.setVisible(False)  # Hidden by default
+        self.distance_spinbox.setRange(-1000, 1000)
+        self.distance_spinbox.setValue(0)
+        self.distance_spinbox.setAlignment(QtCore.Qt.AlignmentFlag.AlignRight)
+        self.distance_spinbox.setSingleStep(1)
+        self.distance_spinbox.valueChanged.connect(self.recompute_roi_points)
+
+        self.method_layout.addWidget(self.distance_label)
+        self.method_layout.addWidget(self.distance_spinbox)
+
         # Clear button
         self.method_layout.addSpacing(20)
         self.clear_button = QtWidgets.QPushButton("Clear selections")
@@ -215,6 +228,7 @@ class SelectionGUI(QtWidgets.QMainWindow):
         print(f"Selected method: {method_name}")
         is_along = method_name == "Along the line"
         is_grid = method_name == "Grid"
+        show_spacing = is_along or is_grid
 
         self.start_new_line_button.setVisible(is_along or is_grid)
         self.polygon_list.setVisible(is_along)
@@ -222,6 +236,9 @@ class SelectionGUI(QtWidgets.QMainWindow):
 
         self.grid_list.setVisible(is_grid)
         self.delete_grid_button.setVisible(is_grid)
+
+        self.distance_label.setVisible(show_spacing)
+        self.distance_spinbox.setVisible(show_spacing)
 
     def on_mouse_click(self, event):
         if self.method_buttons["Manual"].isChecked():
@@ -261,7 +278,8 @@ class SelectionGUI(QtWidgets.QMainWindow):
             # Update ROI points only for this polygon
             if len(poly['points']) >= 2:
                 subset_size = self.subset_size_spinbox.value()
-                poly['roi_points'] = points_along_polygon(poly['points'], subset_size)
+                spacing = self.distance_spinbox.value()
+                poly['roi_points'] = points_along_polygon(poly['points'], subset_size, spacing)
 
             self.update_polygon_display()
             self.update_selected_points()
@@ -353,28 +371,11 @@ class SelectionGUI(QtWidgets.QMainWindow):
             # Compute ROI points only if closed polygon
             if len(grid['points']) >= 3:
                 subset_size = self.subset_size_spinbox.value()
-                grid['roi_points'] = self.rois_inside_polygon(grid['points'], subset_size)
+                spacing = self.distance_spinbox.value()
+                grid['roi_points'] = rois_inside_polygon(grid['points'], subset_size, spacing)
 
             self.update_grid_display()
             self.update_selected_points()
-
-    def rois_inside_polygon(self, polygon, subset_size):
-        from matplotlib.path import Path
-
-        if len(polygon) < 3:
-            return []
-
-        polygon = np.array(polygon)
-        min_x, max_x = int(np.min(polygon[:, 0])), int(np.max(polygon[:, 0]))
-        min_y, max_y = int(np.min(polygon[:, 1])), int(np.max(polygon[:, 1]))
-
-        xs = np.arange(min_x, max_x + 1, subset_size)
-        ys = np.arange(min_y, max_y + 1, subset_size)
-        grid_x, grid_y = np.meshgrid(xs, ys)
-        points = np.vstack([grid_x.ravel(), grid_y.ravel()]).T
-
-        mask = Path(polygon).contains_points(points)
-        return [tuple(p) for p in points[mask]]
     
     def on_grid_selected(self, index):
         if 0 <= index < len(self.grid_polygons):
@@ -481,6 +482,21 @@ class SelectionGUI(QtWidgets.QMainWindow):
         )
         self.points_label.setText(f"Selected subsets: {len(self.selected_points)}")
 
+    def recompute_roi_points(self):
+        subset_size = self.subset_size_spinbox.value()
+        spacing = self.distance_spinbox.value()
+
+        # Update all "along the line" polygons
+        for poly in self.drawing_polygons:
+            if len(poly['points']) >= 2:
+                poly['roi_points'] = points_along_polygon(poly['points'], subset_size, spacing)
+
+        # Update all "grid" polygons
+        for grid in self.grid_polygons:
+            if len(grid['points']) >= 3:
+                grid['roi_points'] = rois_inside_polygon(grid['points'], subset_size, spacing)
+
+        self.update_selected_points()
 
     def start_new_line(self):
         print("Starting a new line...")
@@ -546,6 +562,56 @@ class SelectionGUI(QtWidgets.QMainWindow):
     def get_points(self):
         """Get all selected points from manual and polygons."""
         return self.selected_points
+    
+def points_along_polygon(polygon, subset_size, spacing=0):
+    if len(polygon) < 2:
+        return []
+
+    step = subset_size + spacing
+    if step <= 0:
+        step = 1
+
+    result_points = []
+
+    for i in range(len(polygon) - 1):
+        p1 = np.array(polygon[i])
+        p2 = np.array(polygon[i + 1])
+        segment = p2 - p1
+        length = np.linalg.norm(segment)
+
+        if length == 0:
+            continue
+
+        direction = segment / length
+        n_points = int(length // step)
+
+        for j in range(n_points + 1):
+            pt = p1 + j * step * direction
+            result_points.append((round(pt[0] - 0.5) + 0.5, round(pt[1] - 0.5) + 0.5))
+
+    return result_points
+
+def rois_inside_polygon(polygon, subset_size, spacing):
+    from matplotlib.path import Path
+
+    if len(polygon) < 3:
+        return []
+
+    polygon = np.array(polygon)
+    min_x, max_x = int(np.min(polygon[:, 0])), int(np.max(polygon[:, 0]))
+    min_y, max_y = int(np.min(polygon[:, 1])), int(np.max(polygon[:, 1]))
+
+    step = subset_size + spacing
+    if step <= 0:
+        step = 1  # minimum step to avoid infinite loop
+    xs = np.arange(min_x, max_x + 1, step)
+    ys = np.arange(min_y, max_y + 1, step)
+
+    grid_x, grid_y = np.meshgrid(xs, ys)
+    points = np.vstack([grid_x.ravel(), grid_y.ravel()]).T
+
+    mask = Path(polygon).contains_points(points)
+    return [tuple(p) for p in points[mask]]
 
 if __name__ == "__main__":
     example_image = np.random.rand(512, 512) * 255
