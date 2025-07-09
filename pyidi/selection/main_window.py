@@ -18,55 +18,30 @@ class SelectionGUI(QtWidgets.QMainWindow):
 
         self.selected_points = []
         self.manual_points = []
+        self.candidate_points = []
         self.drawing_polygons = [{'points': [], 'roi_points': []}]
         self.active_polygon_index = 0
         self.grid_polygons = [{'points': [], 'roi_points': []}]
         self.active_grid_index = 0
 
-        # Central widget with tab layout
-        self.tabs = QtWidgets.QTabWidget()
-        self.setCentralWidget(self.tabs)
+        # Central widget
+        self.central_widget = QtWidgets.QWidget()
+        self.setCentralWidget(self.central_widget)
+        self.main_layout = QtWidgets.QHBoxLayout(self.central_widget)
 
-        # --- Manual Tab ---
-        self.manual_tab = QtWidgets.QWidget()
+        # Main layout and controls
         self.splitter = QtWidgets.QSplitter(QtCore.Qt.Orientation.Horizontal)
-        self.manual_layout = QtWidgets.QHBoxLayout(self.manual_tab)
+        self.manual_layout = self.main_layout
         self.manual_layout.addWidget(self.splitter)
 
         # Graphics layout for image and points display
-        self.ui_manual_graphics()
+        self.ui_graphics()
         
-        # Right-side menu for methods
         self.ui_manual_right_menu()
-
-        self.tabs.addTab(self.manual_tab, "Manual")
-
-        # --- Automatic Tab ---
-        self.automatic_tab = QtWidgets.QWidget()
-        self.automatic_splitter = QtWidgets.QSplitter(QtCore.Qt.Orientation.Horizontal)
-        self.automatic_layout = QtWidgets.QHBoxLayout(self.automatic_tab)
-        self.automatic_layout.addWidget(self.automatic_splitter)
-        self.tabs.addTab(self.automatic_tab, "Automatic")
-
-        # Graphics layout for automatic image display
-        self.ui_automatic_graphics()
-
-        # Right-side menu for automatic controls
-        self.ui_automatic_right_menu()
 
         # Style
         self.setStyleSheet("""
             QTabWidget::pane { border: 0; }
-            QTabBar::tab {
-                background: #333;
-                color: white;
-                padding: 10px;
-                border-radius: 4px;
-                margin: 2px;
-            }
-            QTabBar::tab:selected {
-                background: #0078d7;
-            }
             QPushButton {
                 background-color: #444;
                 color: white;
@@ -88,7 +63,6 @@ class SelectionGUI(QtWidgets.QMainWindow):
 
         # Set the initial image
         self.image_item.setImage(video)
-        self.automatic_image_item.setImage(video)
 
         # Ensure method-specific widgets are visible on startup
         self.method_selected(self.button_group.checkedId())
@@ -98,7 +72,7 @@ class SelectionGUI(QtWidgets.QMainWindow):
         if app is not None:
             app.exec()
 
-    def ui_manual_graphics(self):
+    def ui_graphics(self):
         # Image viewer
         self.pg_widget = GraphicsLayoutWidget()
         self.view = self.pg_widget.addViewBox(lockAspect=True)
@@ -123,14 +97,6 @@ class SelectionGUI(QtWidgets.QMainWindow):
         self.view.addItem(self.candidate_scatter)
 
         self.splitter.addWidget(self.pg_widget)
-
-    def ui_automatic_graphics(self):
-        self.automatic_pg_widget = GraphicsLayoutWidget()
-        self.automatic_view = self.automatic_pg_widget.addViewBox(lockAspect=True)
-        self.automatic_image_item = ImageItem()
-        self.automatic_view.addItem(self.automatic_image_item)
-
-        self.automatic_splitter.addWidget(self.automatic_pg_widget)
 
     def ui_manual_right_menu(self):
         # The right-side menu
@@ -288,31 +254,6 @@ class SelectionGUI(QtWidgets.QMainWindow):
         self.method_widget.setMinimumWidth(150)
         self.method_widget.setMaximumWidth(600)
         self.splitter.setSizes([1000, 220])  # Initial left/right width
-
-    def ui_automatic_right_menu(self):
-        self.automatic_controls = QtWidgets.QWidget()
-        self.automatic_layout_right = QtWidgets.QVBoxLayout(self.automatic_controls)
-
-        # Title
-        label = QtWidgets.QLabel("Automatic Tools")
-        font = label.font()
-        font.setPointSize(10)
-        font.setBold(True)
-        label.setFont(font)
-        self.automatic_layout_right.addWidget(label)
-
-        # Spacer
-        self.automatic_layout_right.addStretch(1)
-
-        # Set the layout and add to splitter
-        self.automatic_splitter.addWidget(self.automatic_controls)
-        self.automatic_splitter.setStretchFactor(0, 5)  # Image area grows more
-        self.automatic_splitter.setStretchFactor(1, 0)  # Menu fixed by content
-
-        # Set initial width for right panel
-        self.automatic_controls.setMinimumWidth(150)
-        self.automatic_controls.setMaximumWidth(600)
-        self.automatic_splitter.setSizes([1000, 220])  # Initial left/right width
 
     def method_selected(self, id: int):
         method_name = list(self.method_buttons.keys())[id]
@@ -487,6 +428,8 @@ class SelectionGUI(QtWidgets.QMainWindow):
         self.clear_candidates()
 
         self.points_label.setText("Selected subsets: 0")
+
+        self.update_selected_points()  # Refresh display
 
     def set_image(self, img: np.ndarray):
         """Display image in the manual tab."""
