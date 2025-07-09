@@ -4,6 +4,7 @@ import pyqtgraph as pg
 import numpy as np
 import sys
 
+from along_line import points_along_polygon
 
 class SelectionGUI(QtWidgets.QMainWindow):
     def __init__(self):
@@ -189,7 +190,7 @@ class SelectionGUI(QtWidgets.QMainWindow):
         all_points = []
         for path in self.drawing_polygons:
             if len(path) >= 2:
-                all_points.extend(self.points_along_polygon(path, subset_size))
+                all_points.extend(points_along_polygon(path, subset_size))
         return all_points
 
     def update_selected_points(self):
@@ -235,33 +236,6 @@ class SelectionGUI(QtWidgets.QMainWindow):
     def set_image(self, img: np.ndarray):
         """Display image in the manual tab."""
         self.image_item.setImage(img)
-
-    def points_along_polygon(self, polygon, subset_size):
-        if len(polygon) < 2:
-            return []
-
-        # List of points along the path
-        result_points = []
-
-        for i in range(len(polygon) - 1):
-            p1 = np.array(polygon[i])
-            p2 = np.array(polygon[i + 1])
-            segment = p2 - p1
-            length = np.linalg.norm(segment)
-
-            if length == 0:
-                continue
-
-            direction = segment / length
-            n_points = int(length // subset_size)
-
-            for j in range(n_points + 1):
-                pt = p1 + j * subset_size * direction
-                result_points.append((round(pt[0] - 0.5) + 0.5, round(pt[1] - 0.5) + 0.5))
-
-        return result_points
-
-
 
 def main():
     app = QtWidgets.QApplication(sys.argv)
