@@ -55,6 +55,10 @@ class SelectionGUI(QtWidgets.QMainWindow):
         self.brush_deselect_mode = False
         self.installEventFilter(self)
 
+        self.gradient_direction_points = []
+        self.gradient_direction = None
+        self.setting_direction = False
+
         self.selected_points = []
         self.manual_points = []
         self.candidate_points = []
@@ -185,6 +189,7 @@ class SelectionGUI(QtWidgets.QMainWindow):
             brush=pg.mkBrush(0, 255, 0, 200),
             size=6
         )
+        self.direction_line = pg.PlotDataItem(pen=pg.mkPen('r', width=2))
 
         self.view.addItem(self.image_item)
         self.view.addItem(self.polygon_line)
@@ -192,6 +197,7 @@ class SelectionGUI(QtWidgets.QMainWindow):
         self.view.addItem(self.roi_overlay)  # Add scatter for showing square points
         self.view.addItem(self.scatter)  # Add scatter for showing points
         self.view.addItem(self.candidate_scatter)
+        self.view.addItem(self.direction_line)
 
         self.splitter.addWidget(self.pg_widget)
 
@@ -372,6 +378,7 @@ class SelectionGUI(QtWidgets.QMainWindow):
         self.auto_method_buttons = {}
         method_names = [
             "Shi-Tomasi",
+            "Gradient in direction",
         ]
         for i, name in enumerate(method_names):
             button = QtWidgets.QPushButton(name)
@@ -426,6 +433,30 @@ class SelectionGUI(QtWidgets.QMainWindow):
             self.update_threshold_and_show_shi_tomsi()  # Placeholder method
         self.threshold_slider.valueChanged.connect(update_label_and_recompute)
 
+        # Gradient in a specified direction settings
+        self.direction_button = QtWidgets.QPushButton("Set direction on image")
+        self.direction_button.setVisible(False)
+        self.direction_button.setCheckable(True)
+        self.direction_button.clicked.connect(self.set_gradient_direction_mode)
+        self.automatic_layout.addWidget(self.direction_button)
+
+        self.direction_threshold = 10
+        self.gradient_thresh_label = QtWidgets.QLabel(f"Threshold (grad): {self.direction_threshold}")
+        self.gradient_thresh_label.setVisible(False)
+        self.automatic_layout.addWidget(self.gradient_thresh_label)
+
+        self.gradient_thresh_slider = QtWidgets.QSlider(QtCore.Qt.Orientation.Horizontal)
+        self.gradient_thresh_slider.setRange(1, 100)
+        self.gradient_thresh_slider.setSingleStep(1)
+        self.gradient_thresh_slider.setValue(self.direction_threshold)
+        self.gradient_thresh_slider.setVisible(False)
+        self.automatic_layout.addWidget(self.gradient_thresh_slider)
+
+        def update_direction_thresh(val):
+            self.gradient_thresh_label.setText(f"Threshold (grad): {val}")
+            self.update_threshold_and_show_gradient_direction()
+        self.gradient_thresh_slider.valueChanged.connect(update_direction_thresh)
+
         self.automatic_layout.addStretch(1)
 
     def auto_method_selected(self, id: int):
@@ -433,11 +464,19 @@ class SelectionGUI(QtWidgets.QMainWindow):
         print(f"Selected automatic method: {method_name}")
         # Here you can switch method behavior, show/hide widgets, etc.
         is_shi_tomasi = method_name == "Shi-Tomasi"
+        is_gradient_dir = method_name == "Gradient in direction"
+
         self.threshold_label.setVisible(is_shi_tomasi)
         self.threshold_slider.setVisible(is_shi_tomasi)
 
         if is_shi_tomasi:
             self.compute_candidate_points_shi_tomasi()
+
+        self.direction_button.setVisible(is_gradient_dir)
+        self.gradient_thresh_label.setVisible(is_gradient_dir)
+        self.gradient_thresh_slider.setVisible(is_gradient_dir)
+        if is_gradient_dir and self.gradient_direction is not None:
+            self.compute_candidate_points_gradient_direction()
 
     def method_selected(self, id: int):
         method_name = list(self.method_buttons.keys())[id]
@@ -487,6 +526,20 @@ class SelectionGUI(QtWidgets.QMainWindow):
             # self.candidate_scatter.setVisible(True)
 
     def on_mouse_click(self, event):
+        if self.setting_direction:
+            pos = event.scenePos()
+            if self.view.sceneBoundingRect().contains(pos):
+                point = self.view.mapSceneToView(pos)
+                self.gradient_direction_points.append((point.x(), point.y()))
+                if len(self.gradient_direction_points) == 2:
+                    self.compute_direction_vector()
+                    self.update_direction_line()
+                    self.setting_direction = False
+                    self.direction_button.setChecked(False)
+                    print(f"Gradient direction set: {self.gradient_direction}")
+                    self.compute_candidate_points_gradient_direction()
+            return
+        
         if self.mode == "automatic":
             return
         
@@ -820,6 +873,7 @@ class SelectionGUI(QtWidgets.QMainWindow):
             self.update_selected_points()
     
     # Automatic filtering
+    # Shi-Tomasi method
     def compute_candidate_points_shi_tomasi(self):
         """Compute good feature points using structure tensor analysis (Shi–Tomasi style)."""
         from scipy.ndimage import sobel
@@ -914,6 +968,83 @@ class SelectionGUI(QtWidgets.QMainWindow):
 
         self.update_selected_points()  # Update main display to remove candidates
     
+    # Gradient in a specified direction
+    def set_gradient_direction_mode(self):
+        self.setting_direction = True
+        self.gradient_direction_points = []
+        self.direction_button.setChecked(True)  # Keep it visually pressed
+        print("Click two points to set the gradient direction.")
+
+    def compute_direction_vector(self):
+        p1, p2 = self.gradient_direction_points
+        dx, dy = p2[0] - p1[0], p2[1] - p1[1]
+        norm = np.sqrt(dx**2 + dy**2)
+        if norm == 0:
+            self.gradient_direction = None
+        else:
+            self.gradient_direction = (dx / norm, dy / norm)
+
+    def compute_candidate_points_gradient_direction(self):
+        from scipy.ndimage import sobel
+
+        if self.gradient_direction is None:
+            return
+
+        dy, dx = self.gradient_direction
+        subset_size = self.subset_size_spinbox.value()
+        roi_size = subset_size // 2
+
+        img = self.image_item.image.astype(np.float32)
+        candidates = []
+
+        for row, col in self.selected_points:
+            y, x = int(round(row)), int(round(col))
+
+            if (y - roi_size < 0 or y + roi_size + 1 > img.shape[0] or
+                x - roi_size < 0 or x + roi_size + 1 > img.shape[1]):
+                continue
+
+            roi = img[y - roi_size: y + roi_size + 1,
+                    x - roi_size: x + roi_size + 1]
+
+            gx = sobel(roi, axis=1)
+            gy = sobel(roi, axis=0)
+
+            gdir = np.abs(gx * dx) + np.abs(gy * dy)
+            strength = np.sum(np.abs(gdir))
+
+            candidates.append((x + 0.0, y + 0.0, strength))
+
+        if not candidates:
+            self.candidate_points = []
+            self.update_candidate_display()
+            return
+
+        values = np.array([v[2] for v in candidates])
+        self.max_grad_dir = np.max(values)
+        self.candidates_grad_dir = candidates
+        self.update_threshold_and_show_gradient_direction()
+
+    def update_threshold_and_show_gradient_direction(self):
+        threshold_ratio = self.gradient_thresh_slider.value() / 100.0
+        threshold = self.max_grad_dir * threshold_ratio
+
+        self.candidate_points = [
+            (round(y)+0.5, round(x)+0.5)
+            for (x, y, v) in self.candidates_grad_dir
+            if v > threshold
+        ]
+        self.update_candidate_display()
+        self.update_candidate_points_count()
+
+    def update_direction_line(self):
+        if len(self.gradient_direction_points) == 2:
+            xs = [p[0] for p in self.gradient_direction_points]
+            ys = [p[1] for p in self.gradient_direction_points]
+            self.direction_line.setData(xs, ys)
+        else:
+            self.direction_line.clear()
+
     # Brush
     def handle_brush_start(self, ev):
         if self.image_item.image is None:
