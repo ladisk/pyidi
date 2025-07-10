@@ -67,6 +67,10 @@ class SelectionGUI(QtWidgets.QMainWindow):
         self.grid_polygons = [{'points': [], 'roi_points': []}]
         self.active_grid_index = 0
 
+        # Add status bar for instructions
+        self.statusBar = self.statusBar()
+        self.statusBar.showMessage("Ready. Select a method to begin.")
+
         # Central widget
         self.central_widget = QtWidgets.QWidget()
         self.setCentralWidget(self.central_widget)
@@ -478,15 +482,20 @@ class SelectionGUI(QtWidgets.QMainWindow):
         if is_gradient_dir and self.gradient_direction is not None:
             self.compute_candidate_points_gradient_direction()
 
+        if is_shi_tomasi:
+            self.show_instruction("Use the threshold slider to filter points.")
+        elif is_gradient_dir:
+            self.show_instruction("Define the gradient direction by clicking 'Set direction on image' and defining two pointsy.")
+
+    def show_instruction(self, message: str):
+        self.statusBar.showMessage(message)
+
     def method_selected(self, id: int):
         method_name = list(self.method_buttons.keys())[id]
         print(f"Selected method: {method_name}")
         is_along = method_name == "Along the line"
         is_grid = method_name == "Grid"
         is_brush = method_name == "Brush"
-
-        # Always enable mouse; painting is now conditional on Ctrl
-        self.view.setMouseEnabled(True, True)
 
         show_spacing = is_along or is_grid
 
@@ -503,6 +512,20 @@ class SelectionGUI(QtWidgets.QMainWindow):
         self.brush_radius_label.setVisible(is_brush)
         self.brush_radius_slider.setVisible(is_brush)
 
+        # Show context-sensitive instructions
+        if is_brush:
+            self.show_instruction("Hold Ctrl and drag to paint selection area.")
+        elif is_along:
+            self.show_instruction("Click to add points along the line. Click 'Start new line' to begin a new one.")
+        elif is_grid:
+            self.show_instruction("Click to define grid corners. Click 'Start new line' to begin a new grid.")
+        elif method_name == "Manual":
+            self.show_instruction("Click to add points manually.")
+        elif method_name == "Remove point":
+            self.show_instruction("Click on a point to remove it.")
+        else:
+            self.show_instruction("Ready.")
+
     def switch_mode(self, mode: str):
         self.mode = mode
         if mode == "selection":
@@ -512,6 +535,7 @@ class SelectionGUI(QtWidgets.QMainWindow):
 
             self.roi_overlay.setVisible(True)
             self.scatter.setVisible(True)
+            self.show_instruction("Selection mode: choose a method on the left.")
 
         elif mode == "filter":
             self.selection_mode_button.setChecked(False)
@@ -522,7 +546,7 @@ class SelectionGUI(QtWidgets.QMainWindow):
             self.show_points_checkbox.setChecked(False)
             self.roi_overlay.setVisible(False)
             self.scatter.setVisible(False)
-            # self.candidate_scatter.setVisible(True)
+            self.show_instruction("Filter mode: choose a filter method and adjust settings.")
 
     def on_mouse_click(self, event):
         if self.setting_direction:
