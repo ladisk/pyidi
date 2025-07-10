@@ -713,6 +713,8 @@ class SelectionGUI(QtWidgets.QMainWindow):
 
         self.points_label.setText("Selected subsets: 0")
 
+        self.direction_line.clear()
+
         self.update_selected_points()  # Refresh display
 
     def set_image(self, img: np.ndarray):
