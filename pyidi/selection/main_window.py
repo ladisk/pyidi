@@ -77,8 +77,8 @@ class SelectionGUI(QtWidgets.QMainWindow):
         self.mode_toolbar_layout.setContentsMargins(5, 4, 5, 4)
         self.mode_toolbar_layout.setSpacing(6)
 
-        self.manual_mode_button = QtWidgets.QPushButton("Manual")
-        self.automatic_mode_button = QtWidgets.QPushButton("Automatic")
+        self.manual_mode_button = QtWidgets.QPushButton("Select") # Manual mode
+        self.automatic_mode_button = QtWidgets.QPushButton("Filter") # Automatic mode
         for btn in [self.manual_mode_button, self.automatic_mode_button]:
             btn.setCheckable(True)
             btn.setMinimumWidth(100)
@@ -345,8 +345,16 @@ class SelectionGUI(QtWidgets.QMainWindow):
         self.manual_layout.addWidget(self.delete_grid_button)
 
     def ui_auto_right_menu(self):
+        self.candidate_count_label = QtWidgets.QLabel("N candidate points: 0")
+        font = self.candidate_count_label.font()
+        font.setPointSize(10)
+        font.setBold(True)
+        self.candidate_count_label.setFont(font)
+        self.automatic_layout.addWidget(self.candidate_count_label)
+
+
         # Title and method selector
-        self.automatic_layout.addWidget(QtWidgets.QLabel("Automatic method:"))
+        self.automatic_layout.addWidget(QtWidgets.QLabel("Filter method:"))
 
         self.auto_method_group = QtWidgets.QButtonGroup(self.automatic_widget)
         self.auto_method_group.setExclusive(True)
@@ -365,20 +373,8 @@ class SelectionGUI(QtWidgets.QMainWindow):
             self.auto_method_buttons[name] = button
 
         self.auto_method_group.idClicked.connect(self.auto_method_selected)
-
+        
         self.automatic_layout.addSpacing(10)
-
-        # Dynamic method-specific widgets (for now shared)
-        self.candidate_count_label = QtWidgets.QLabel("N candidate points: 0")
-        font = self.candidate_count_label.font()
-        font.setPointSize(10)
-        font.setBold(True)
-        self.candidate_count_label.setFont(font)
-        self.automatic_layout.addWidget(self.candidate_count_label)
-
-        self.clear_candidates_button = QtWidgets.QPushButton("Clear candidates")
-        self.clear_candidates_button.clicked.connect(self.clear_candidates)
-        self.automatic_layout.addWidget(self.clear_candidates_button)
 
         # Checkbox to show/hide scatter and ROI overlay
         self.show_points_checkbox = QtWidgets.QCheckBox("Show points/ROIs")
@@ -388,6 +384,11 @@ class SelectionGUI(QtWidgets.QMainWindow):
             self.scatter.setVisible(state)
         self.show_points_checkbox.stateChanged.connect(toggle_points_and_roi)
         self.automatic_layout.addWidget(self.show_points_checkbox)
+        
+        # Clear the candidates button
+        self.clear_candidates_button = QtWidgets.QPushButton("Clear candidates")
+        self.clear_candidates_button.clicked.connect(self.clear_candidates)
+        self.automatic_layout.addWidget(self.clear_candidates_button)
 
         # Horizontal line separator for visual clarity
         hline = QtWidgets.QFrame()
@@ -971,7 +972,10 @@ class SelectionGUI(QtWidgets.QMainWindow):
 
         if self._paint_mask is not None:
             rgba = np.zeros((*self._paint_mask.shape, 4), dtype=np.uint8)
-            rgba[self._paint_mask] = [0, 200, 255, 80]  # Cyan with transparency
+            if self.brush_deselect_mode:
+                rgba[self._paint_mask] = [255, 0, 0, 80] # Red with transparency
+            else:
+                rgba[self._paint_mask] = [0, 200, 255, 80]  # Cyan with transparency
             self.brush_overlay.setImage(rgba, autoLevels=False)
             self.brush_overlay.setZValue(2)
         else:
