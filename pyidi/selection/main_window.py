@@ -312,6 +312,18 @@ class SelectionGUI(QtWidgets.QMainWindow):
         self.manual_layout.addWidget(self.start_new_line_button)
 
         # Brush mode
+        self.brush_radius_label = QtWidgets.QLabel(f"Brush radius (px): {self._paint_radius}")
+        self.brush_radius_label.setVisible(False)  # shown only for Brush mode
+        self.manual_layout.addWidget(self.brush_radius_label)
+        
+        self.brush_radius_slider = QtWidgets.QSlider(QtCore.Qt.Orientation.Horizontal)
+        self.brush_radius_slider.setRange(1, 50)
+        self.brush_radius_slider.setSingleStep(1)
+        self.brush_radius_slider.setValue(self._paint_radius)
+        self.brush_radius_slider.setVisible(False)  # shown only for Brush mode
+        self.brush_radius_slider.valueChanged.connect(lambda val: self.brush_radius_label.setText(f"Brush radius (px): {val}"))
+        self.manual_layout.addWidget(self.brush_radius_slider)
+
         self.brush_deselect_button = QtWidgets.QPushButton("Deselect painted area")
         self.brush_deselect_button.setCheckable(True)
         self.brush_deselect_button.setVisible(False)  # shown only for Brush mode
@@ -397,14 +409,15 @@ class SelectionGUI(QtWidgets.QMainWindow):
         self.automatic_layout.addSpacing(10)
 
         # Shi-Tomasi method settings
-        self.threshold_label = QtWidgets.QLabel("Threshold:")
+        self.shi_tomasi_threshold = 10  # Default threshold value
+        self.threshold_label = QtWidgets.QLabel(f"Threshold: {self.shi_tomasi_threshold}")
         self.threshold_label.setVisible(False)
         self.automatic_layout.addWidget(self.threshold_label)
         
         self.threshold_slider = QtWidgets.QSlider(QtCore.Qt.Orientation.Horizontal)
         self.threshold_slider.setRange(1, 100)
         self.threshold_slider.setSingleStep(1)
-        self.threshold_slider.setValue(10)
+        self.threshold_slider.setValue(self.shi_tomasi_threshold)
         self.threshold_slider.setVisible(False)
         self.automatic_layout.addWidget(self.threshold_slider)
 
@@ -448,6 +461,8 @@ class SelectionGUI(QtWidgets.QMainWindow):
         self.distance_slider.setVisible(show_spacing)
 
         self.brush_deselect_button.setVisible(is_brush)
+        self.brush_radius_label.setVisible(is_brush)
+        self.brush_radius_slider.setVisible(is_brush)
 
     def switch_mode(self, mode: str):
         self.mode = mode
@@ -908,7 +923,7 @@ class SelectionGUI(QtWidgets.QMainWindow):
         if self.view.sceneBoundingRect().contains(pos):
             mouse_point = self.view.mapSceneToView(pos)
             y, x = int(round(mouse_point.x())), int(round(mouse_point.y()))
-            r = self._paint_radius
+            r = self.brush_radius_slider.value()
 
             h, w = self._paint_mask.shape
             yy, xx = np.ogrid[max(0, y - r):min(h, y + r + 1),
