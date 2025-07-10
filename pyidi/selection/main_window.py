@@ -303,8 +303,6 @@ class SelectionGUI(QtWidgets.QMainWindow):
             self.distance_label.setText(f"Distance between subsets: {str(val)}")
             self.recompute_roi_points()
         self.distance_slider.valueChanged.connect(update_label_and_recompute)
-
-        # self.manual_layout.addWidget(self.distance_label)
         self.manual_layout.addWidget(self.distance_slider)
 
         # Start new line (only visible in "Along the line" mode)
@@ -319,8 +317,6 @@ class SelectionGUI(QtWidgets.QMainWindow):
         self.brush_deselect_button.setVisible(False)  # shown only for Brush mode
         self.brush_deselect_button.clicked.connect(self.activate_brush_deselect)
         self.manual_layout.addWidget(self.brush_deselect_button)
-
-        self.manual_layout.addStretch(1)
 
         # Polygon manager (visible only for "Along the line")
         self.polygon_list = QtWidgets.QListWidget()
@@ -343,6 +339,8 @@ class SelectionGUI(QtWidgets.QMainWindow):
         self.delete_grid_button.clicked.connect(self.delete_selected_grid)
         self.delete_grid_button.setVisible(False)
         self.manual_layout.addWidget(self.delete_grid_button)
+
+        self.manual_layout.addStretch(1)
 
     def ui_auto_right_menu(self):
         self.candidate_count_label = QtWidgets.QLabel("N candidate points: 0")
