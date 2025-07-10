@@ -423,7 +423,7 @@ class SelectionGUI(QtWidgets.QMainWindow):
 
         def update_label_and_recompute(val):
             self.threshold_label.setText(f"Threshold: {str(val)}")
-            self.compute_candidate_points_shi_tomasi()  # Placeholder method
+            self.update_threshold_and_show_shi_tomsi()  # Placeholder method
         self.threshold_slider.valueChanged.connect(update_label_and_recompute)
 
         self.automatic_layout.addStretch(1)
@@ -826,7 +826,6 @@ class SelectionGUI(QtWidgets.QMainWindow):
 
         subset_size = self.subset_size_spinbox.value()
         roi_size = subset_size // 2
-        threshold_ratio = self.threshold_slider.value() / 1000.0
 
         img = self.image_item.image.astype(np.float32)
         candidates = []
@@ -865,10 +864,18 @@ class SelectionGUI(QtWidgets.QMainWindow):
 
         # Threshold by normalized eigenvalue
         eigvals = np.array([v[2] for v in candidates])
-        max_eig = np.max(eigvals)
-        eig_threshold = max_eig * threshold_ratio
+        self.max_eig_shi_tomasi = np.max(eigvals)
 
-        self.candidate_points = [(round(y)+0.5, round(x)+0.5) for (x, y, e) in candidates if e > eig_threshold]
+        self.candidates_shi_tomasi = candidates
+
+        self.update_threshold_and_show_shi_tomsi()
+
+    def update_threshold_and_show_shi_tomsi(self):
+        threshold_ratio = self.threshold_slider.value() / 1000.0
+
+        eig_threshold = self.max_eig_shi_tomasi * threshold_ratio
+
+        self.candidate_points = [(round(y)+0.5, round(x)+0.5) for (x, y, e) in self.candidates_shi_tomasi if e > eig_threshold]
         self.update_candidate_display()
         self.update_candidate_points_count()
 
