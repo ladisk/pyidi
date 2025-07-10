@@ -948,25 +948,24 @@ class SelectionGUI(QtWidgets.QMainWindow):
         roi_set = set((int(round(y)), int(round(x))) for y, x in brush_rois)
 
         if self.brush_deselect_mode:
+            def point_inside_mask(pt, mask):
+                y, x = int(round(pt[0])), int(round(pt[1]))
+                h, w = mask.shape
+                return 0 <= y < h and 0 <= x < w and mask[y, x]
+
             # Remove from manual points
             self.manual_points = [
                 pt for pt in self.manual_points
-                if (int(round(pt[0])), int(round(pt[1]))) not in roi_set
+                if not point_inside_mask(pt, self._paint_mask)
             ]
 
-            # Remove from polygon ROI points
+            # Remove from polygons
             for poly in self.drawing_polygons:
-                poly['roi_points'] = [
-                    pt for pt in poly['roi_points']
-                    if (int(round(pt[0])), int(round(pt[1]))) not in roi_set
-                ]
-
-            # Remove from grid ROI points
+                poly['roi_points'] = [pt for pt in poly['roi_points'] if not point_inside_mask(pt, self._paint_mask)]
+            
+            # Remove from grid polygons
             for grid in self.grid_polygons:
-                grid['roi_points'] = [
-                    pt for pt in grid['roi_points']
-                    if (int(round(pt[0])), int(round(pt[1]))) not in roi_set
-                ]
+                grid['roi_points'] = [pt for pt in grid['roi_points'] if not point_inside_mask(pt, self._paint_mask)]
 
             self.brush_deselect_mode = False
             self.brush_deselect_button.setChecked(False)
@@ -997,11 +996,6 @@ class SelectionGUI(QtWidgets.QMainWindow):
     def activate_brush_deselect(self):
         if self.brush_deselect_button.isChecked():
             self.brush_deselect_mode = True
-
-    ################################################################################################
-    # Automatic subset detection
-    ################################################################################################
-
 
 def points_along_polygon(polygon, subset_size, spacing=0):
     if len(polygon) < 2:
