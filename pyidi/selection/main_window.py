@@ -12,7 +12,7 @@ class BrushViewBox(pg.ViewBox):
         self.parent_gui = parent_gui
 
     def mouseClickEvent(self, ev):
-        if self.parent_gui.mode == "manual" and self.parent_gui.method_buttons["Brush"].isChecked():
+        if self.parent_gui.mode == "selection" and self.parent_gui.method_buttons["Brush"].isChecked():
             if self.parent_gui.ctrl_held:
                 ev.accept()
                 self.parent_gui.handle_brush_start(ev)
@@ -22,7 +22,7 @@ class BrushViewBox(pg.ViewBox):
             super().mouseClickEvent(ev)
 
     def mouseDragEvent(self, ev, axis=None):
-        if self.parent_gui.mode == "manual" and self.parent_gui.method_buttons["Brush"].isChecked():
+        if self.parent_gui.mode == "selection" and self.parent_gui.method_buttons["Brush"].isChecked():
             if self.parent_gui.ctrl_held:
                 ev.accept()
                 if ev.isStart():
@@ -81,19 +81,19 @@ class SelectionGUI(QtWidgets.QMainWindow):
         self.mode_toolbar_layout.setContentsMargins(5, 4, 5, 4)
         self.mode_toolbar_layout.setSpacing(6)
 
-        self.manual_mode_button = QtWidgets.QPushButton("Select") # Manual mode
-        self.automatic_mode_button = QtWidgets.QPushButton("Filter") # Automatic mode
-        for btn in [self.manual_mode_button, self.automatic_mode_button]:
+        self.selection_mode_button = QtWidgets.QPushButton("Select") # Selection mode
+        self.filter_mode_button = QtWidgets.QPushButton("Filter") # Filter mode
+        for btn in [self.selection_mode_button, self.filter_mode_button]:
             btn.setCheckable(True)
             btn.setMinimumWidth(100)
             self.mode_toolbar_layout.addWidget(btn)
 
-        self.manual_mode_button.setChecked(True)
-        self.manual_mode_button.clicked.connect(lambda: self.switch_mode("manual"))
-        self.automatic_mode_button.clicked.connect(lambda: self.switch_mode("automatic"))
+        self.selection_mode_button.setChecked(True)
+        self.selection_mode_button.clicked.connect(lambda: self.switch_mode("selection"))
+        self.filter_mode_button.clicked.connect(lambda: self.switch_mode("filter"))
 
         self.mode_toolbar.setSizePolicy(QtWidgets.QSizePolicy.Policy.Expanding, QtWidgets.QSizePolicy.Policy.Fixed)
-        self.mode_toolbar.setMaximumHeight(self.manual_mode_button.sizeHint().height() + 12)
+        self.mode_toolbar.setMaximumHeight(self.selection_mode_button.sizeHint().height() + 12)
 
         self.main_layout.addWidget(self.mode_toolbar)
 
@@ -105,7 +105,7 @@ class SelectionGUI(QtWidgets.QMainWindow):
         self.ui_graphics()
         
         self.ui_right_menu()
-
+    
         # Style
         self.setStyleSheet("""
             QTabWidget::pane { border: 0; }
@@ -136,7 +136,7 @@ class SelectionGUI(QtWidgets.QMainWindow):
         self.auto_method_selected(0)
 
         # Set the initial mode
-        self.switch_mode("manual")  # Default to manual mode
+        self.switch_mode("selection")  # Default to selection mode
 
         # Start the GUI
         self.show()
@@ -505,18 +505,17 @@ class SelectionGUI(QtWidgets.QMainWindow):
 
     def switch_mode(self, mode: str):
         self.mode = mode
-        if mode == "manual":
-            self.manual_mode_button.setChecked(True)
-            self.automatic_mode_button.setChecked(False)
+        if mode == "selection":
+            self.selection_mode_button.setChecked(True)
+            self.filter_mode_button.setChecked(False)
             self.stack.setCurrentWidget(self.manual_widget)
 
             self.roi_overlay.setVisible(True)
             self.scatter.setVisible(True)
-            # self.candidate_scatter.setVisible(False)
 
-        elif mode == "automatic":
-            self.manual_mode_button.setChecked(False)
-            self.automatic_mode_button.setChecked(True)
+        elif mode == "filter":
+            self.selection_mode_button.setChecked(False)
+            self.filter_mode_button.setChecked(True)
             self.stack.setCurrentWidget(self.automatic_widget)
 
             self.compute_candidate_points_shi_tomasi()
@@ -540,7 +539,7 @@ class SelectionGUI(QtWidgets.QMainWindow):
                     self.compute_candidate_points_gradient_direction()
             return
         
-        if self.mode == "automatic":
+        if self.mode == "filter":
             return
         
         if self.method_buttons["Manual"].isChecked():
