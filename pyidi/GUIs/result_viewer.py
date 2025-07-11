@@ -27,51 +27,30 @@ class ResultViewer(QtWidgets.QMainWindow):
         self.update_frame()
 
     def init_ui(self):
-        # Set Fusion style (looks modern & compact)
-        QtWidgets.QApplication.setStyle(QtWidgets.QStyleFactory.create("Fusion"))
-
-        # Optional: make it a bit darker but safe
-        dark_palette = QtGui.QPalette()
-        dark_palette.setColor(QtGui.QPalette.ColorRole.Window, QtGui.QColor(53, 53, 53))
-        dark_palette.setColor(QtGui.QPalette.ColorRole.WindowText, QtCore.Qt.GlobalColor.white)
-        dark_palette.setColor(QtGui.QPalette.ColorRole.Base, QtGui.QColor(35, 35, 35))
-        dark_palette.setColor(QtGui.QPalette.ColorRole.AlternateBase, QtGui.QColor(53, 53, 53))
-        dark_palette.setColor(QtGui.QPalette.ColorRole.ToolTipBase, QtCore.Qt.GlobalColor.white)
-        dark_palette.setColor(QtGui.QPalette.ColorRole.ToolTipText, QtCore.Qt.GlobalColor.white)
-        dark_palette.setColor(QtGui.QPalette.ColorRole.Text, QtCore.Qt.GlobalColor.white)
-        dark_palette.setColor(QtGui.QPalette.ColorRole.Button, QtGui.QColor(53, 53, 53))
-        dark_palette.setColor(QtGui.QPalette.ColorRole.ButtonText, QtCore.Qt.GlobalColor.white)
-        dark_palette.setColor(QtGui.QPalette.ColorRole.BrightText, QtCore.Qt.GlobalColor.red)
-        dark_palette.setColor(QtGui.QPalette.ColorRole.Highlight, QtGui.QColor(42, 130, 218))
-        dark_palette.setColor(QtGui.QPalette.ColorRole.HighlightedText, QtCore.Qt.GlobalColor.black)
-        QtWidgets.QApplication.setPalette(dark_palette)
+        # Style
+        self.setStyleSheet("""
+            QTabWidget::pane { border: 0; }
+            QPushButton {
+                background-color: #444;
+                color: white;
+                padding: 6px 12px;
+                border: 1px solid #555;
+                border-radius: 4px;
+            }
+            QPushButton:checked {
+                background-color: #0078d7;
+                border: 1px solid #005bb5;
+            }
+        """)
 
         central_widget = QtWidgets.QWidget()
-        main_layout = QtWidgets.QVBoxLayout()
+        main_layout = QtWidgets.QVBoxLayout(central_widget)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.setSpacing(0)
 
-        # Top Controls: keep horizontal as requested
-        top_ctrl_layout = QtWidgets.QHBoxLayout()
-
-        self.point_size_spin = QtWidgets.QSpinBox()
-        self.point_size_spin.setRange(1, 100)
-        self.point_size_spin.setValue(self.points_size)
-        self.point_size_spin.valueChanged.connect(self.update_point_size)
-        top_ctrl_layout.addWidget(QtWidgets.QLabel("Point size (px):"))
-        top_ctrl_layout.addWidget(self.point_size_spin)
-
-        self.mag_spin = QtWidgets.QSpinBox()
-        self.mag_spin.setRange(1, 10000)
-        self.mag_spin.setValue(self.magnification)
-        self.mag_spin.valueChanged.connect(self.update_frame)
-        top_ctrl_layout.addWidget(QtWidgets.QLabel("Magnify:"))
-        top_ctrl_layout.addWidget(self.mag_spin)
-
-        self.arrows_checkbox = QtWidgets.QCheckBox("Show arrows")
-        self.arrows_checkbox.stateChanged.connect(self.update_frame)
-        top_ctrl_layout.addWidget(self.arrows_checkbox)
-
-        top_ctrl_layout.addStretch()
-        main_layout.addLayout(top_ctrl_layout)
+        # Add splitter
+        self.splitter = QtWidgets.QSplitter(QtCore.Qt.Orientation.Horizontal)
+        main_layout.addWidget(self.splitter, stretch=1)
 
         # === Video Display ===
         self.view = pg.GraphicsLayoutWidget()
@@ -83,34 +62,93 @@ class ResultViewer(QtWidgets.QMainWindow):
         self.viewbox.setAspectLocked(True)
         self.viewbox.invertY(True)
         self.arrow_shafts = []
-        main_layout.addWidget(self.view, stretch=1)
+        self.splitter.addWidget(self.view)
 
-        # === Playback Controls ===
+        # === Right Control Panel ===
+        self.control_widget = QtWidgets.QWidget()
+        self.control_layout = QtWidgets.QVBoxLayout(self.control_widget)
+        
+        # Display controls
+        self.control_layout.addWidget(QtWidgets.QLabel("Display Controls"))
+        
+        # Point size control
+        self.control_layout.addWidget(QtWidgets.QLabel("Point size (px):"))
+        self.point_size_spin = QtWidgets.QSpinBox()
+        self.point_size_spin.setRange(1, 100)
+        self.point_size_spin.setValue(self.points_size)
+        self.point_size_spin.valueChanged.connect(self.update_point_size)
+        self.control_layout.addWidget(self.point_size_spin)
+
+        # Magnification control
+        self.control_layout.addWidget(QtWidgets.QLabel("Magnify:"))
+        self.mag_spin = QtWidgets.QSpinBox()
+        self.mag_spin.setRange(1, 10000)
+        self.mag_spin.setValue(self.magnification)
+        self.mag_spin.valueChanged.connect(self.update_frame)
+        self.control_layout.addWidget(self.mag_spin)
+
+        # Show arrows checkbox
+        self.arrows_checkbox = QtWidgets.QCheckBox("Show arrows")
+        self.arrows_checkbox.stateChanged.connect(self.update_frame)
+        self.control_layout.addWidget(self.arrows_checkbox)
+
+        # Separator
+        separator = QtWidgets.QFrame()
+        separator.setFrameShape(QtWidgets.QFrame.Shape.HLine)
+        separator.setFrameShadow(QtWidgets.QFrame.Shadow.Sunken)
+        self.control_layout.addWidget(separator)
+        
+        # Playback controls
+        self.control_layout.addWidget(QtWidgets.QLabel("Playback Controls"))
+
+        # FPS control
+        self.fps_label = QtWidgets.QLabel(f"FPS: {self.fps}")
+        self.control_layout.addWidget(self.fps_label)
+        
+        self.fps_slider = QtWidgets.QSlider(QtCore.Qt.Orientation.Horizontal)
+        self.fps_slider.setRange(1, 240)
+        self.fps_slider.setValue(self.fps)
+        self.fps_slider.valueChanged.connect(self.update_fps_from_slider)
+        self.control_layout.addWidget(self.fps_slider)
+        
+        self.fps_spin = QtWidgets.QSpinBox()
+        self.fps_spin.setRange(1, 240)
+        self.fps_spin.setValue(self.fps)
+        self.fps_spin.valueChanged.connect(self.update_fps_from_spinbox)
+        self.control_layout.addWidget(self.fps_spin)
+
+        self.control_layout.addStretch(1)
+        
+        self.splitter.addWidget(self.control_widget)
+        
+        # Set splitter proportions
+        self.splitter.setStretchFactor(0, 5)  # Video area grows more
+        self.splitter.setStretchFactor(1, 0)  # Controls panel fixed by content
+        
+        # Set initial width for right panel
+        self.control_widget.setMinimumWidth(150)
+        self.control_widget.setMaximumWidth(300)
+        self.splitter.setSizes([800, 200])  # Initial left/right width
+
+        # === Bottom Playback Controls ===
         playback_layout = QtWidgets.QHBoxLayout()
-        playback_layout.setContentsMargins(0, 0, 0, 0)
+        playback_layout.setContentsMargins(5, 5, 5, 5)
 
-        self.play_button = QtWidgets.QPushButton("▶️ Play")
+        self.play_button = QtWidgets.QPushButton("▶️")
         self.play_button.clicked.connect(self.toggle_playback)
         playback_layout.addWidget(self.play_button)
+        
 
+        playback_layout.addWidget(QtWidgets.QLabel("  Frame: "))
         self.slider = QtWidgets.QSlider(QtCore.Qt.Orientation.Horizontal)
         self.slider.setMinimum(0)
         self.slider.setMaximum(self.video.shape[0] - 1)
         self.slider.valueChanged.connect(self.on_slider)
-        playback_layout.addWidget(QtWidgets.QLabel("Frame:"))
         playback_layout.addWidget(self.slider)
-
-        self.fps_spin = QtWidgets.QSpinBox()
-        self.fps_spin.setRange(1, 240)
-        self.fps_spin.setValue(self.fps)
-        self.fps_spin.valueChanged.connect(self.on_fps_change)
-        playback_layout.addWidget(QtWidgets.QLabel("FPS:"))
-        playback_layout.addWidget(self.fps_spin)
 
         main_layout.addLayout(playback_layout)
 
         # === Finalize ===
-        central_widget.setLayout(main_layout)
         self.setCentralWidget(central_widget)
         self.setWindowTitle("Displacement Viewer")
 
@@ -118,11 +156,11 @@ class ResultViewer(QtWidgets.QMainWindow):
     def toggle_playback(self):
         if self.timer.isActive():
             self.timer.stop()
-            self.play_button.setText("▶️ Play")
+            self.play_button.setText("▶️")
         else:
             self.set_timer_interval()
             self.timer.start()
-            self.play_button.setText("⏹️ Pause")
+            self.play_button.setText("⏹️")
 
     def set_timer_interval(self):
         self.fps = self.fps_spin.value()
@@ -132,6 +170,22 @@ class ResultViewer(QtWidgets.QMainWindow):
     def on_fps_change(self):
         if self.timer.isActive():
             self.set_timer_interval()
+
+    def update_fps_from_slider(self, value):
+        self.fps = value
+        self.fps_label.setText(f"FPS: {value}")
+        self.fps_spin.blockSignals(True)  # Prevent recursive updates
+        self.fps_spin.setValue(value)
+        self.fps_spin.blockSignals(False)
+        self.on_fps_change()
+
+    def update_fps_from_spinbox(self, value):
+        self.fps = value
+        self.fps_label.setText(f"FPS: {value}")
+        self.fps_slider.blockSignals(True)  # Prevent recursive updates
+        self.fps_slider.setValue(value)
+        self.fps_slider.blockSignals(False)
+        self.on_fps_change()
 
     def update_point_size(self):
         size = self.point_size_spin.value()
