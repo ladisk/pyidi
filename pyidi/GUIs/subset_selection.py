@@ -125,6 +125,28 @@ class SelectionGUI(QtWidgets.QMainWindow):
                 background-color: #0078d7;
                 border: 1px solid #005bb5;
             }
+            QGroupBox {
+                font-weight: bold;
+                border: 2px solid #555;
+                border-radius: 8px;
+                margin-top: 15px;
+                padding-top: 15px;
+                background-color: #3a3a3a;
+                color: white;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                subcontrol-position: top left;
+                left: 15px;
+                top: 4px;
+                padding: 2px 10px;
+                color: #e0e0e0;
+                background-color: #4a4a4a;
+                border: 1px solid #666;
+                border-radius: 4px;
+                font-size: 11px;
+                font-weight: bold;
+            }
         """)
 
         # Connect selection change handler
@@ -245,8 +267,13 @@ class SelectionGUI(QtWidgets.QMainWindow):
         font.setPointSize(10)
         font.setBold(True)
         self.points_label.setFont(font)
+        
         self.manual_layout.addWidget(self.points_label)
 
+        # Method selection group
+        method_group = QtWidgets.QGroupBox("Selection Methods")
+        method_layout = QtWidgets.QVBoxLayout(method_group)
+        
         # Method selection buttons
         self.button_group = QtWidgets.QButtonGroup(self.method_widget)
         self.button_group.setExclusive(True)
@@ -265,13 +292,17 @@ class SelectionGUI(QtWidgets.QMainWindow):
             if i == 0:
                 button.setChecked(True)  # Default selection
             self.button_group.addButton(button, i)
-            self.manual_layout.addWidget(button)
+            method_layout.addWidget(button)
             self.method_buttons[name] = button
+        
+        self.manual_layout.addWidget(method_group)
 
+        # Subset configuration group
+        config_group = QtWidgets.QGroupBox("Subset Configuration")
+        config_layout = QtWidgets.QVBoxLayout(config_group)
+        
         # Subset size input
-        self.manual_layout.addSpacing(20)
-        self.manual_layout.addWidget(QtWidgets.QLabel("Subset size:"))
-
+        config_layout.addWidget(QtWidgets.QLabel("Subset size:"))
         self.subset_size_spinbox = QtWidgets.QSpinBox()
         self.subset_size_spinbox.setRange(1, 1000)
         self.subset_size_spinbox.setValue(11)
@@ -281,54 +312,52 @@ class SelectionGUI(QtWidgets.QMainWindow):
         self.subset_size_spinbox.setMaximum(999)
         self.subset_size_spinbox.setWrapping(False)
         self.subset_size_spinbox.valueChanged.connect(self.update_selected_points)
-        self.manual_layout.addWidget(self.subset_size_spinbox)
+        config_layout.addWidget(self.subset_size_spinbox)
 
         # Show ROI rectangles
         self.show_roi_checkbox = QtWidgets.QCheckBox("Show subsets")
         self.show_roi_checkbox.setChecked(True)
         self.show_roi_checkbox.stateChanged.connect(self.update_selected_points)
-        self.manual_layout.addWidget(self.show_roi_checkbox)
+        config_layout.addWidget(self.show_roi_checkbox)
 
         # Clear button
-        self.manual_layout.addSpacing(20)
         self.clear_button = QtWidgets.QPushButton("Clear selections")
         self.clear_button.clicked.connect(self.clear_selection)
-        self.manual_layout.addWidget(self.clear_button)
+        config_layout.addWidget(self.clear_button)
+        
+        self.manual_layout.addWidget(config_group)
 
-        # Separator line
-        separator = QtWidgets.QFrame()
-        separator.setFrameShape(QtWidgets.QFrame.Shape.HLine)
-        separator.setFrameShadow(QtWidgets.QFrame.Shadow.Sunken)
-        self.manual_layout.addWidget(separator)
-        self.manual_layout.addSpacing(20)
+        # Method-specific controls group
+        method_controls_group = QtWidgets.QGroupBox("Method-Specific Controls")
+        method_controls_layout = QtWidgets.QVBoxLayout(method_controls_group)
 
         # Distance between subsets (only visible for Grid and Along the line)
         self.distance_label = QtWidgets.QLabel("Distance between subsets:")
         self.distance_label.setVisible(False)  # Hidden by default
+        method_controls_layout.addWidget(self.distance_label)
+        
         self.distance_slider = QtWidgets.QSlider(QtCore.Qt.Orientation.Horizontal)
         self.distance_slider.setRange(-50, 50)
         self.distance_slider.setSingleStep(1)
         self.distance_slider.setValue(0)
         self.distance_slider.setVisible(False)
-        self.manual_layout.addWidget(self.distance_slider)
-        self.manual_layout.addWidget(self.distance_label)
+        method_controls_layout.addWidget(self.distance_slider)
 
         def update_label_and_recompute(val):
             self.distance_label.setText(f"Distance between subsets: {str(val)}")
             self.recompute_roi_points()
         self.distance_slider.valueChanged.connect(update_label_and_recompute)
-        self.manual_layout.addWidget(self.distance_slider)
 
         # Start new line (only visible in "Along the line" mode)
         self.start_new_line_button = QtWidgets.QPushButton("Start new line")
         self.start_new_line_button.clicked.connect(self.start_new_line)
         self.start_new_line_button.setVisible(False)  # Hidden by default
-        self.manual_layout.addWidget(self.start_new_line_button)
+        method_controls_layout.addWidget(self.start_new_line_button)
 
         # Brush mode
         self.brush_radius_label = QtWidgets.QLabel(f"Brush radius (px): {self._paint_radius}")
         self.brush_radius_label.setVisible(False)  # shown only for Brush mode
-        self.manual_layout.addWidget(self.brush_radius_label)
+        method_controls_layout.addWidget(self.brush_radius_label)
         
         self.brush_radius_slider = QtWidgets.QSlider(QtCore.Qt.Orientation.Horizontal)
         self.brush_radius_slider.setRange(1, 50)
@@ -336,35 +365,37 @@ class SelectionGUI(QtWidgets.QMainWindow):
         self.brush_radius_slider.setValue(self._paint_radius)
         self.brush_radius_slider.setVisible(False)  # shown only for Brush mode
         self.brush_radius_slider.valueChanged.connect(lambda val: self.brush_radius_label.setText(f"Brush radius (px): {val}"))
-        self.manual_layout.addWidget(self.brush_radius_slider)
+        method_controls_layout.addWidget(self.brush_radius_slider)
 
         self.brush_deselect_button = QtWidgets.QPushButton("Deselect painted area")
         self.brush_deselect_button.setCheckable(True)
         self.brush_deselect_button.setVisible(False)  # shown only for Brush mode
         self.brush_deselect_button.clicked.connect(self.activate_brush_deselect)
-        self.manual_layout.addWidget(self.brush_deselect_button)
+        method_controls_layout.addWidget(self.brush_deselect_button)
 
         # Polygon manager (visible only for "Along the line")
         self.polygon_list = QtWidgets.QListWidget()
         self.polygon_list.setVisible(False)
         self.polygon_list.currentRowChanged.connect(self.on_polygon_selected)
-        self.manual_layout.addWidget(self.polygon_list)
+        method_controls_layout.addWidget(self.polygon_list)
 
         self.delete_polygon_button = QtWidgets.QPushButton("Delete selected polygon")
         self.delete_polygon_button.clicked.connect(self.delete_selected_polygon)
         self.delete_polygon_button.setVisible(False)
-        self.manual_layout.addWidget(self.delete_polygon_button)
+        method_controls_layout.addWidget(self.delete_polygon_button)
 
         # Grid polygon manager
         self.grid_list = QtWidgets.QListWidget()
         self.grid_list.setVisible(False)
         self.grid_list.currentRowChanged.connect(self.on_grid_selected)
-        self.manual_layout.addWidget(self.grid_list)
+        method_controls_layout.addWidget(self.grid_list)
 
         self.delete_grid_button = QtWidgets.QPushButton("Delete selected grid")
         self.delete_grid_button.clicked.connect(self.delete_selected_grid)
         self.delete_grid_button.setVisible(False)
-        self.manual_layout.addWidget(self.delete_grid_button)
+        method_controls_layout.addWidget(self.delete_grid_button)
+        
+        self.manual_layout.addWidget(method_controls_group)
 
         self.manual_layout.addStretch(1)
 
@@ -374,11 +405,12 @@ class SelectionGUI(QtWidgets.QMainWindow):
         font.setPointSize(10)
         font.setBold(True)
         self.candidate_count_label.setFont(font)
+        
         self.automatic_layout.addWidget(self.candidate_count_label)
 
-
-        # Title and method selector
-        self.automatic_layout.addWidget(QtWidgets.QLabel("Filter method:"))
+        # Filter method selection group
+        filter_method_group = QtWidgets.QGroupBox("Filter Methods")
+        filter_method_layout = QtWidgets.QVBoxLayout(filter_method_group)
 
         self.auto_method_group = QtWidgets.QButtonGroup(self.automatic_widget)
         self.auto_method_group.setExclusive(True)
@@ -394,12 +426,16 @@ class SelectionGUI(QtWidgets.QMainWindow):
             if i == 0:
                 button.setChecked(True)
             self.auto_method_group.addButton(button, i)
-            self.automatic_layout.addWidget(button)
+            filter_method_layout.addWidget(button)
             self.auto_method_buttons[name] = button
 
         self.auto_method_group.idClicked.connect(self.auto_method_selected)
         
-        self.automatic_layout.addSpacing(10)
+        self.automatic_layout.addWidget(filter_method_group)
+
+        # Display options group
+        display_options_group = QtWidgets.QGroupBox("Display Options")
+        display_options_layout = QtWidgets.QVBoxLayout(display_options_group)
 
         # Checkbox to show/hide scatter and ROI overlay
         self.show_points_checkbox = QtWidgets.QCheckBox("Show points/ROIs")
@@ -408,33 +444,31 @@ class SelectionGUI(QtWidgets.QMainWindow):
             self.roi_overlay.setVisible(state)
             self.scatter.setVisible(state)
         self.show_points_checkbox.stateChanged.connect(toggle_points_and_roi)
-        self.automatic_layout.addWidget(self.show_points_checkbox)
+        display_options_layout.addWidget(self.show_points_checkbox)
         
         # Clear the candidates button
         self.clear_candidates_button = QtWidgets.QPushButton("Clear candidates")
         self.clear_candidates_button.clicked.connect(self.clear_candidates)
-        self.automatic_layout.addWidget(self.clear_candidates_button)
+        display_options_layout.addWidget(self.clear_candidates_button)
+        
+        self.automatic_layout.addWidget(display_options_group)
 
-        # Horizontal line separator for visual clarity
-        hline = QtWidgets.QFrame()
-        hline.setFrameShape(QtWidgets.QFrame.Shape.HLine)
-        hline.setFrameShadow(QtWidgets.QFrame.Shadow.Sunken)
-        self.automatic_layout.addWidget(hline)
-
-        self.automatic_layout.addSpacing(10)
+        # Method settings group
+        method_settings_group = QtWidgets.QGroupBox("Method Settings")
+        method_settings_layout = QtWidgets.QVBoxLayout(method_settings_group)
 
         # Shi-Tomasi method settings
         self.shi_tomasi_threshold = 10  # Default threshold value
         self.threshold_label = QtWidgets.QLabel(f"Threshold: {self.shi_tomasi_threshold}")
         self.threshold_label.setVisible(False)
-        self.automatic_layout.addWidget(self.threshold_label)
+        method_settings_layout.addWidget(self.threshold_label)
         
         self.threshold_slider = QtWidgets.QSlider(QtCore.Qt.Orientation.Horizontal)
         self.threshold_slider.setRange(1, 100)
         self.threshold_slider.setSingleStep(1)
         self.threshold_slider.setValue(self.shi_tomasi_threshold)
         self.threshold_slider.setVisible(False)
-        self.automatic_layout.addWidget(self.threshold_slider)
+        method_settings_layout.addWidget(self.threshold_slider)
 
         def update_label_and_recompute(val):
             self.threshold_label.setText(f"Threshold: {str(val)}")
@@ -446,24 +480,26 @@ class SelectionGUI(QtWidgets.QMainWindow):
         self.direction_button.setVisible(False)
         self.direction_button.setCheckable(True)
         self.direction_button.clicked.connect(self.set_gradient_direction_mode)
-        self.automatic_layout.addWidget(self.direction_button)
+        method_settings_layout.addWidget(self.direction_button)
 
         self.direction_threshold = 10
         self.gradient_thresh_label = QtWidgets.QLabel(f"Threshold (grad): {self.direction_threshold}")
         self.gradient_thresh_label.setVisible(False)
-        self.automatic_layout.addWidget(self.gradient_thresh_label)
+        method_settings_layout.addWidget(self.gradient_thresh_label)
 
         self.gradient_thresh_slider = QtWidgets.QSlider(QtCore.Qt.Orientation.Horizontal)
         self.gradient_thresh_slider.setRange(1, 100)
         self.gradient_thresh_slider.setSingleStep(1)
         self.gradient_thresh_slider.setValue(self.direction_threshold)
         self.gradient_thresh_slider.setVisible(False)
-        self.automatic_layout.addWidget(self.gradient_thresh_slider)
+        method_settings_layout.addWidget(self.gradient_thresh_slider)
 
         def update_direction_thresh(val):
             self.gradient_thresh_label.setText(f"Threshold (grad): {val}")
             self.update_threshold_and_show_gradient_direction()
         self.gradient_thresh_slider.valueChanged.connect(update_direction_thresh)
+        
+        self.automatic_layout.addWidget(method_settings_group)
 
         self.automatic_layout.addStretch(1)
 
