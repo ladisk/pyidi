@@ -11,7 +11,7 @@ warnings.simplefilter("default")
 from .methods import IDIMethod, SimplifiedOpticalFlow, LucasKanade, DirectionalLucasKanade #, LucasKanadeSc, LucasKanadeSc2, GradientBasedOpticalFlow
 from .video_reader import VideoReader
 from . import tools
-from .selection import selection
+from .GUIs import selection
 
 available_method_shortcuts = [
     ('sof', SimplifiedOpticalFlow),
@@ -266,7 +266,7 @@ class pyIDI():
         return rep
     
     def gui(self):
-        from . import gui
+        from .GUIs import gui
         self.gui_obj = gui.gui(self)
 
     @property

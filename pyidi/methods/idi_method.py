@@ -8,7 +8,7 @@ import shutil
 import inspect
 import matplotlib.pyplot as plt
 
-from ..selection.selection import SubsetSelection
+from ..GUIs.selection import SubsetSelection
 from ..video_reader import VideoReader
 from ..tools import setup_logger
 

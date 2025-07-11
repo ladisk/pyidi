@@ -1,3 +1,4 @@
+import sys
 import numpy as np
 from PyQt6 import QtWidgets, QtCore
 from pyqtgraph import GraphicsLayoutWidget, ImageItem, ScatterPlotItem
@@ -144,8 +145,11 @@ class SelectionGUI(QtWidgets.QMainWindow):
 
         # Start the GUI
         self.show()
-        if app is not None:
-            app.exec()
+        # Only call sys.exit if not in IPython
+        if not hasattr(sys, 'ps1'):  # Not interactive
+            sys.exit(app.exec())
+        else:
+            app.exec()  # Don't raise SystemExit in IPythonys
 
     def eventFilter(self, source, event):
         if event.type() == QtCore.QEvent.Type.KeyPress:
@@ -465,7 +469,7 @@ class SelectionGUI(QtWidgets.QMainWindow):
 
     def auto_method_selected(self, id: int):
         method_name = list(self.auto_method_buttons.keys())[id]
-        print(f"Selected automatic method: {method_name}")
+        # print(f"Selected automatic method: {method_name}")
         # Here you can switch method behavior, show/hide widgets, etc.
         is_shi_tomasi = method_name == "Shi-Tomasi"
         is_gradient_dir = method_name == "Gradient in direction"
@@ -492,7 +496,7 @@ class SelectionGUI(QtWidgets.QMainWindow):
 
     def method_selected(self, id: int):
         method_name = list(self.method_buttons.keys())[id]
-        print(f"Selected method: {method_name}")
+        # print(f"Selected method: {method_name}")
         is_along = method_name == "Along the line"
         is_grid = method_name == "Grid"
         is_brush = method_name == "Brush"
@@ -559,7 +563,7 @@ class SelectionGUI(QtWidgets.QMainWindow):
                     self.update_direction_line()
                     self.setting_direction = False
                     self.direction_button.setChecked(False)
-                    print(f"Gradient direction set: {self.gradient_direction}")
+                    # print(f"Gradient direction set: {self.gradient_direction}")
                     self.compute_candidate_points_gradient_direction()
             return
         
@@ -655,7 +659,7 @@ class SelectionGUI(QtWidgets.QMainWindow):
         self.update_selected_points()
 
     def start_new_line(self):
-        print("Starting a new line...")
+        # print("Starting a new line...")
 
         if self.method_buttons["Along the line"].isChecked():
             self.drawing_polygons.append({'points': [], 'roi_points': []})
@@ -674,7 +678,7 @@ class SelectionGUI(QtWidgets.QMainWindow):
         self.update_selected_points()
 
     def clear_selection(self):
-        print("Clearing selections...")
+        # print("Clearing selections...")
 
         # Clear manual points
         self.manual_points = []
@@ -985,7 +989,7 @@ class SelectionGUI(QtWidgets.QMainWindow):
 
     def clear_candidates(self):
         """Clear candidate points."""
-        print("Clearing candidate points...")
+        # print("Clearing candidate points...")
         self.candidate_points = []
         self.update_candidate_points_count()
         if hasattr(self, 'candidate_scatter'):
@@ -998,7 +1002,7 @@ class SelectionGUI(QtWidgets.QMainWindow):
         self.setting_direction = True
         self.gradient_direction_points = []
         self.direction_button.setChecked(True)  # Keep it visually pressed
-        print("Click two points to set the gradient direction.")
+        # print("Click two points to set the gradient direction.")
 
     def compute_direction_vector(self):
         p1, p2 = self.gradient_direction_points
@@ -1247,4 +1251,4 @@ if __name__ == "__main__":
 
     Points = SelectionGUI(example_image.astype(np.uint8))
 
-    print(Points.get_points())  # Print selected points for testing
+    print(Points.get_points())  # # print selected points for testing
