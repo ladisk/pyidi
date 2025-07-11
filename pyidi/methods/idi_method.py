@@ -8,7 +8,6 @@ import shutil
 import inspect
 import matplotlib.pyplot as plt
 
-from ..GUIs.selection import SubsetSelection
 from ..video_reader import VideoReader
 from ..tools import setup_logger
 
@@ -263,6 +262,8 @@ class IDIMethod:
         return settings
     
     def set_points(self, points):
+        from ..GUIs.selection import SubsetSelection
+        
         if isinstance(points, list):
             points = np.array(points)
         elif isinstance(points, SubsetSelection):

@@ -1,5 +1,5 @@
 try:
-    import pyqt6
+    import PyQt6
 
     HAS_PYQT6 = True
 except ImportError:
@@ -10,7 +10,7 @@ if HAS_PYQT6:
     from .result_viewer import ResultViewer
 else:
     class SelectionGUI:
-        def __init__(self):
+        def __init__(self, video):
             pass
             
         def show_displacement(self, data):
