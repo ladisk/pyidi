@@ -1,3 +1,5 @@
+import typing
+
 try:
     import PyQt6
 
@@ -5,7 +7,7 @@ try:
 except ImportError:
     HAS_PYQT6 = False
 
-if HAS_PYQT6:
+if HAS_PYQT6 or typing.TYPE_CHECKING:
     from .subset_selection import SelectionGUI
     from .result_viewer import ResultViewer
 else:

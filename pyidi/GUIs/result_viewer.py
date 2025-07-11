@@ -7,11 +7,47 @@ import matplotlib.colors as mcolors
 import sys
 
 class ResultViewer(QtWidgets.QMainWindow):
-    def __init__(self, video, displacements, grid, fps=30, magnification=1, point_size=10, colormap="cool"):
+    def __init__(self, video, displacements, points, fps=30, magnification=1, point_size=10, colormap="cool"):
+        """
+        The results from the pyidi analysis can directly be passed to this class:
+        
+        - ``video``: can be a ``VideoReader`` object (or numpy array of correct shape).
+        - ``displacements``: directly the return from the ``get_displacements`` method.
+        - ``points``: the points used for the analysis, which were passed to the ``set_points`` method.
+
+        Parameters
+        ----------
+        video : np.ndarray or VideoReader
+            Array of shape (n_frames, height, width) containing the video frames.
+        displacements : np.ndarray
+            Array of shape (n_frames, n_points, 2) containing the displacement vectors.
+        points : np.ndarray
+            Array of shape (n_points, 2) containing the grid points.
+        fps : int, optional
+            Frames per second for the video playback, by default 30.
+        magnification : int, optional
+            Magnification factor for the displacements, by default 1.
+        point_size : int, optional
+            Size of the points in pixels, by default 10.
+        colormap : str, optional
+            Name of the colormap to use for the arrows, by default "cool".
+        """
+        # Create QApplication if it doesn't exist
+        app = QtWidgets.QApplication.instance()
+        if app is None:
+            app = QtWidgets.QApplication([])
+        
         super().__init__()
-        self.video = video
-        self.displacements = displacements
-        self.grid = grid
+        
+        # Coordinate transformation to match viewer function behavior
+        from ..video_reader import VideoReader
+        if isinstance(video, VideoReader):
+            self.video = video.get_frames()
+        else:
+            self.video = video
+
+        self.displacements = displacements[:, :, ::-1]  # Flip x,y coordinates
+        self.grid = points[:, ::-1] + 0.5  # Flip x,y coordinates
         self.fps = fps
         self.magnification = magnification
         self.points_size = point_size
@@ -25,6 +61,14 @@ class ResultViewer(QtWidgets.QMainWindow):
 
         self.init_ui()
         self.update_frame()
+        
+        # Start the GUI
+        self.show()
+        # Only call sys.exit if not in IPython
+        if not hasattr(sys, 'ps1'):  # Not interactive
+            sys.exit(app.exec())
+        else:
+            app.exec()  # Don't raise SystemExit in IPython
 
     def init_ui(self):
         # Style
@@ -173,6 +217,7 @@ class ResultViewer(QtWidgets.QMainWindow):
         # === Finalize ===
         self.setCentralWidget(central_widget)
         self.setWindowTitle("Displacement Viewer")
+        self.resize(800, 600)
 
 
     def toggle_playback(self):
@@ -337,22 +382,10 @@ def viewer(frames, displacements, points, fps=30, magnification=1, point_size=10
     colormap : str, optional
         Name of the colormap to use for the arrows, by default "cool".
     """
-    points = points[:, ::-1]
-    displacements = displacements[:, :, ::-1]
-
-    app = QtWidgets.QApplication.instance()
-    if app is None:
-        app = QtWidgets.QApplication([])
-    
-    win = ResultViewer(frames, displacements, points, fps=fps, magnification=magnification, point_size=point_size, colormap=colormap)
-    win.resize(800, 600)
-    win.show()
-    
-    # Only call sys.exit if not in IPython
-    if not hasattr(sys, 'ps1'):  # Not interactive
-        sys.exit(app.exec())
-    else:
-        app.exec()  # Don't raise SystemExit in IPythonys
+    # This function is now just a wrapper for backward compatibility
+    # The ResultViewer class handles everything internally
+    ResultViewer(frames, displacements, points, fps=fps, magnification=magnification, 
+                point_size=point_size, colormap=colormap)
 
 
 if __name__ == "__main__":
@@ -362,5 +395,6 @@ if __name__ == "__main__":
     displacements = 2 * (np.random.rand(n_points, n_frames, 2) - 0.5)
     grid = np.stack(np.meshgrid(np.linspace(50, 350, int(np.sqrt(n_points))),
                                 np.linspace(50, 250, int(np.sqrt(n_points)))), axis=-1).reshape(-1, 2)[:n_points]
-    grid = grid[:, ::-1]
-    viewer(frames, displacements, grid)
+    
+    # Now you can directly call ResultViewer (no need to flip coordinates here since it's done internally)
+    ResultViewer(frames, displacements, grid)

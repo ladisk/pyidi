@@ -41,6 +41,15 @@ class BrushViewBox(pg.ViewBox):
 
 class SelectionGUI(QtWidgets.QMainWindow):
     def __init__(self, video):
+        """Initialize the selection GUI for manual subset selection.
+
+        To extract the points, use the ``get_points`` method or the ``points`` attribute.
+        
+        Parameters
+        ----------
+        video : VideoReader or np.ndarray
+            The video to be analyzed. If a VideoReader object, it should be initialized with the video file.
+        """
         app = QtWidgets.QApplication.instance()
         if app is None:
             app = QtWidgets.QApplication([])
@@ -156,7 +165,11 @@ class SelectionGUI(QtWidgets.QMainWindow):
         self.pg_widget.scene().sigMouseClicked.connect(self.on_mouse_click)
 
         # Set the initial image
-        self.image_item.setImage(video)
+        from ..video_reader import VideoReader
+        if isinstance(video, VideoReader):
+            self.frame = video.get_frame(0)
+            
+        self.image_item.setImage(self.frame.T) # axis 0 is x, while image axis 0 is y
 
         # Ensure method-specific widgets are visible on startup
         self.method_selected(self.button_group.checkedId())
@@ -204,7 +217,7 @@ class SelectionGUI(QtWidgets.QMainWindow):
     def ui_graphics(self):
         # Image viewer
         self.pg_widget = GraphicsLayoutWidget()
-        self.view = BrushViewBox(parent_gui=self, lockAspect=True)
+        self.view = BrushViewBox(parent_gui=self, lockAspect=True, invertY=True)
         self.pg_widget.addItem(self.view)
 
         
@@ -763,7 +776,12 @@ class SelectionGUI(QtWidgets.QMainWindow):
 
     def get_points(self):
         """Get all selected points from manual and polygons."""
-        return np.array(self.selected_points)
+        points = np.array(self.selected_points)[:, ::-1] # set axis 0 to y and axis 1 to x
+        return points
+    
+    @property
+    def points(self):
+        return self.get_points()
     
     def get_filtered_points(self):
         """Get candidate points from automatic filtering."""
