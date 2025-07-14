@@ -12,7 +12,7 @@ class ResultViewer(QtWidgets.QMainWindow):
         The results from the pyidi analysis can directly be passed to this class:
         
         - ``video``: can be a ``VideoReader`` object (or numpy array of correct shape).
-        - ``displacements``: directly the return from the ``get_displacements`` method.
+        - ``displacements``: directly the return from the ``get_displacements`` method or mode shapes.
         - ``points``: the points used for the analysis, which were passed to the ``set_points`` method.
 
         Parameters
@@ -20,7 +20,8 @@ class ResultViewer(QtWidgets.QMainWindow):
         video : np.ndarray or VideoReader
             Array of shape (n_frames, height, width) containing the video frames.
         displacements : np.ndarray
-            Array of shape (n_frames, n_points, 2) containing the displacement vectors.
+            Array of shape (n_frames, n_points, 2) for time-series displacements OR
+            Array of shape (n_points, 2) for mode shapes.
         points : np.ndarray
             Array of shape (n_points, 2) containing the grid points.
         fps : int, optional
@@ -46,14 +47,24 @@ class ResultViewer(QtWidgets.QMainWindow):
         else:
             self.video = video
 
-        self.displacements = displacements[:, :, ::-1]  # Flip x,y coordinates
+        # Check if displacements are 2D (mode shapes) or 3D (time-series)
+        if displacements.ndim == 2:
+            # Mode shapes: shape (n_points, 2)
+            self.is_mode_shape = True
+            self.displacements = displacements[:, ::-1]  # Flip x,y coordinates
+            self.time_per_period = 1.0 # Seconds
+        else:
+            # Time-series displacements: shape (n_frames, n_points, 2)
+            self.is_mode_shape = False
+            self.displacements = displacements[:, :, ::-1]  # Flip x,y coordinates
+
         self.grid = points[:, ::-1] + 0.5  # Flip x,y coordinates
         self.fps = fps
         self.magnification = magnification
         self.points_size = point_size
         self.current_frame = 0
 
-        self.disp_max = np.max(displacements)
+        self.disp_max = np.max(np.abs(displacements))
         self.colormap = colormap
 
         self.timer = QtCore.QTimer()
@@ -219,7 +230,6 @@ class ResultViewer(QtWidgets.QMainWindow):
         self.setWindowTitle("Displacement Viewer")
         self.resize(800, 600)
 
-
     def toggle_playback(self):
         if self.timer.isActive():
             self.timer.stop()
@@ -237,6 +247,9 @@ class ResultViewer(QtWidgets.QMainWindow):
     def on_fps_change(self):
         if self.timer.isActive():
             self.set_timer_interval()
+
+        if self.is_mode_shape:
+            self.slider.setMaximum(int(self.fps * self.time_per_period) - 1)
 
     def update_fps_from_slider(self, value):
         self.fps = value
@@ -259,7 +272,11 @@ class ResultViewer(QtWidgets.QMainWindow):
         self.scatter.setSize(size)
 
     def next_frame(self):
-        self.current_frame = (self.current_frame + 1) % self.video.shape[0]
+        if self.is_mode_shape:
+            self.current_frame = (self.current_frame + 1) % int(self.fps * self.time_per_period)
+        else:
+            self.current_frame = (self.current_frame + 1) % self.video.shape[0]
+        
         self.slider.setValue(self.current_frame)
 
     def on_slider(self, val):
@@ -267,11 +284,31 @@ class ResultViewer(QtWidgets.QMainWindow):
         self.update_frame()
 
     def update_frame(self):
-        frame = self.video[self.current_frame]
-        self.img_item.setImage(frame.T)
-
         scale = self.mag_spin.value()
-        displ = self.displacements[:, self.current_frame, :] * scale
+
+        if self.is_mode_shape:
+            frame = self.video[0]
+            self.img_item.setImage(frame.T)
+
+            # Calculate time for sinusoidal motion
+            t = self.current_frame / self.fps  # Convert frame to time in seconds
+            
+            # Calculate displacement amplitude using sinusoidal motion
+            displ_raw = self.displacements
+            amplitude = np.abs(displ_raw)
+            phase = np.angle(displ_raw)
+
+            # Calculate displacement using sinusoidal motion
+            displ = scale * amplitude * np.sin(2 * np.pi * t - phase)
+
+        else:
+            # Regular displacement animation
+            frame = self.video[self.current_frame]
+            self.img_item.setImage(frame.T)
+
+            displ = self.displacements[:, self.current_frame, :] * scale
+        
+        # Update scatter plot with displaced points
         displaced_pts = self.grid + displ
         self.scatter.setData(pos=displaced_pts[:, [0, 1]])
 
@@ -307,94 +344,25 @@ class ResultViewer(QtWidgets.QMainWindow):
             for shaft in self.arrow_shafts:
                 self.viewbox.removeItem(shaft)
             self.arrow_shafts.clear() 
-    
-    ########################################################################################~
-    # # Uncomment this method if you want to simulate sinusoidal motion (mode shape.)
-    ########################################################################################~
-    # def update_frame(self):
-    #     # Always show the first frame
-    #     frame = self.video[0]
-    #     self.img_item.setImage(frame.T)
-
-    #     # Get current time index
-    #     t = self.current_frame
-    #     scale = self.mag_spin.value() / 100
-
-    #     # Simulate sinusoidal motion (like a mode shape oscillating over time)
-    #     omega = 2 * np.pi / 100  # You can adjust this "period"
-    #     factor = np.sin(omega * t)
-
-    #     # Assume mode shape is stored in self.displacements[:, 0, :] (only the shape)
-    #     simulated_displ = self.displacements[:, 0, :] * scale * factor
-    #     displaced_pts = self.grid + simulated_displ
-    #     self.scatter.setData(pos=displaced_pts[:, [0, 1]])
-
-    #     if self.arrows_checkbox.isChecked():
-    #         self.scatter.setVisible(False)
-
-    #         # Arrow color represents displacement magnitude
-    #         magnitudes = np.linalg.norm(simulated_displ, axis=1)
-    #         norm = mcolors.Normalize(vmin=0, vmax=self.disp_max * scale)
-    #         cmap = plt.colormaps[self.colormap]
-
-    #         for shaft in self.arrow_shafts:
-    #             self.viewbox.removeItem(shaft)
-    #         self.arrow_shafts.clear()
-
-    #         for pt0, pt1, mag in zip(self.grid, displaced_pts, magnitudes):
-    #             color = cmap(norm(mag))
-    #             color_rgb = tuple(int(255 * c) for c in color[:3])
-
-    #             shaft = pg.PlotCurveItem(
-    #                 x=[pt0[0], pt1[0]],
-    #                 y=[pt0[1], pt1[1]],
-    #                 pen=pg.mkPen(color_rgb, width=self.point_size_spin.value())
-    #             )
-    #             self.arrow_shafts.append(shaft)
-    #             self.viewbox.addItem(shaft)
-    #     else:
-    #         self.scatter.setVisible(True)
-    #         for shaft in self.arrow_shafts:
-    #             self.viewbox.removeItem(shaft)
-    #         self.arrow_shafts.clear()
-
-
-def viewer(frames, displacements, points, fps=30, magnification=1, point_size=10, colormap="cool"):
-    """Viewer for the videos and displacements.
-
-    Parameters
-    ----------
-    frames : np.ndarray
-        Array of shape (n_frames, height, width) containing the video frames.
-    displacements : np.ndarray
-        Array of shape (n_points, n_frames, 2) containing the displacements for
-        each point in each frame. The directions of the last axis are the vertical and horizontal
-        displacements, respectively.
-    points : np.ndarray
-        Array of shape (n_points, 2) containing the initial positions of the points. The first
-        column is the vertical coordinate (y) and the second column is the horizontal coordinate (x).
-    fps : int, optional
-        Frames per second for the video playback, by default 30.
-    magnification : int, optional
-        Magnification factor for the displacements, by default 1.
-    point_size : int, optional
-        Size of the points in pixels, by default 10.
-    colormap : str, optional
-        Name of the colormap to use for the arrows, by default "cool".
-    """
-    # This function is now just a wrapper for backward compatibility
-    # The ResultViewer class handles everything internally
-    ResultViewer(frames, displacements, points, fps=fps, magnification=magnification, 
-                point_size=point_size, colormap=colormap)
-
 
 if __name__ == "__main__":
     n_frames, height, width = 200, 300, 400
     n_points = 100
     frames = np.random.randint(0, 255, size=(n_frames, height, width), dtype=np.uint8)
-    displacements = 2 * (np.random.rand(n_points, n_frames, 2) - 0.5)
-    grid = np.stack(np.meshgrid(np.linspace(50, 350, int(np.sqrt(n_points))),
-                                np.linspace(50, 250, int(np.sqrt(n_points)))), axis=-1).reshape(-1, 2)[:n_points]
     
-    # Now you can directly call ResultViewer (no need to flip coordinates here since it's done internally)
+    # Test with regular time-series displacements
+    displacements = 2 * (np.random.rand(n_points, n_frames, 2) - 0.5)
+    
+    # Test with mode shapes (2D array)
+    grid = np.stack(np.meshgrid(np.linspace(50, 250, int(np.sqrt(n_points))),
+                                np.linspace(50, 350, int(np.sqrt(n_points)))), axis=-1).reshape(-1, 2)[:n_points]
+        
+    # Create a simple mode shape (e.g., first bending mode)
+    # displacements = np.zeros((n_points, 2))
+    # for i, point in enumerate(grid):
+    #     # Simple sinusoidal mode shape in y-direction
+    #     displacements[i, 0] = 5 * np.sin(np.pi * point[0] / width)  # y displacement
+    #     displacements[i, 1] = 0  # no x displacement
+    
+    # Test mode shape viewer
     ResultViewer(frames, displacements, grid)
