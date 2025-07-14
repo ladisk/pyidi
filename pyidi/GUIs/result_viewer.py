@@ -218,10 +218,23 @@ class ResultViewer(QtWidgets.QMainWindow):
 
         playback_layout.addWidget(QtWidgets.QLabel("  Frame: "))
         self.slider = QtWidgets.QSlider(QtCore.Qt.Orientation.Horizontal)
-        self.slider.setMinimum(0)
-        self.slider.setMaximum(self.video.shape[0] - 1)
+        if self.is_mode_shape:
+            self.slider.setRange(0, int(self.fps * self.time_per_period) - 1)
+        else:
+            self.slider.setRange(0, self.video.shape[0] - 1)
+        self.slider.setValue(0)
         self.slider.valueChanged.connect(self.on_slider)
         playback_layout.addWidget(self.slider)
+
+        self.frame_spinbox = QtWidgets.QSpinBox()
+        if self.is_mode_shape:
+            self.frame_spinbox.setRange(0, int(self.fps * self.time_per_period) - 1)
+        else:
+            self.frame_spinbox.setRange(0, self.video.shape[0] - 1)
+
+        self.frame_spinbox.valueChanged.connect(self.on_slider)
+        self.frame_spinbox.setValue(0)
+        playback_layout.addWidget(self.frame_spinbox)
 
         main_layout.addLayout(playback_layout)
 
@@ -250,6 +263,7 @@ class ResultViewer(QtWidgets.QMainWindow):
 
         if self.is_mode_shape:
             self.slider.setMaximum(int(self.fps * self.time_per_period) - 1)
+            self.frame_spinbox.setMaximum(int(self.fps * self.time_per_period) - 1)
 
     def update_fps_from_slider(self, value):
         self.fps = value
@@ -281,6 +295,8 @@ class ResultViewer(QtWidgets.QMainWindow):
 
     def on_slider(self, val):
         self.current_frame = val
+        self.frame_spinbox.setValue(val)
+        self.slider.setValue(val)
         self.update_frame()
 
     def update_frame(self):
