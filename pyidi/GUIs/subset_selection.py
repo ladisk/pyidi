@@ -269,7 +269,7 @@ class SelectionGUI(QtWidgets.QMainWindow):
         # Set initial width for right panel
         self.method_widget.setMinimumWidth(150)
         self.method_widget.setMaximumWidth(600)
-        self.splitter.setSizes([1000, 220])  # Initial left/right width
+        self.splitter.setSizes([1000, 300])  # Initial left/right width
 
         self.automatic_layout.addStretch(1)
 
@@ -315,7 +315,9 @@ class SelectionGUI(QtWidgets.QMainWindow):
         config_layout = QtWidgets.QVBoxLayout(config_group)
         
         # Subset size input
-        config_layout.addWidget(QtWidgets.QLabel("Subset size:"))
+        self.subset_size_layout = QtWidgets.QHBoxLayout()
+        self.subset_size_layout.addWidget(QtWidgets.QLabel("Subset size:"))
+        
         self.subset_size_spinbox = QtWidgets.QSpinBox()
         self.subset_size_spinbox.setRange(1, 1000)
         self.subset_size_spinbox.setValue(11)
@@ -324,8 +326,20 @@ class SelectionGUI(QtWidgets.QMainWindow):
         self.subset_size_spinbox.setMinimum(1)
         self.subset_size_spinbox.setMaximum(999)
         self.subset_size_spinbox.setWrapping(False)
-        self.subset_size_spinbox.valueChanged.connect(self.update_selected_points)
-        config_layout.addWidget(self.subset_size_spinbox)
+        self.subset_size_spinbox.setSuffix("px")
+        self.subset_size_spinbox.setFixedWidth(80)
+        self.subset_size_spinbox.valueChanged.connect(self.update_subset_size_from_spinbox)
+        self.subset_size_layout.addWidget(self.subset_size_spinbox)
+        
+        self.subset_size_layout.addStretch()  # Push everything to the left
+        config_layout.addLayout(self.subset_size_layout)
+        
+        self.subset_size_slider = QtWidgets.QSlider(QtCore.Qt.Orientation.Horizontal)
+        self.subset_size_slider.setRange(1, 100)
+        self.subset_size_slider.setValue(11)
+        self.subset_size_slider.setSingleStep(1)
+        self.subset_size_slider.valueChanged.connect(self.update_subset_size_from_slider)
+        config_layout.addWidget(self.subset_size_slider)
 
         # Show ROI rectangles
         self.show_roi_checkbox = QtWidgets.QCheckBox("Show subsets")
@@ -345,21 +359,33 @@ class SelectionGUI(QtWidgets.QMainWindow):
         method_controls_layout = QtWidgets.QVBoxLayout(method_controls_group)
 
         # Distance between subsets (only visible for Grid and Along the line)
-        self.distance_label = QtWidgets.QLabel("Distance between subsets:")
-        self.distance_label.setVisible(False)  # Hidden by default
-        method_controls_layout.addWidget(self.distance_label)
+        self.distance_layout = QtWidgets.QHBoxLayout()
+        self.distance_layout.addWidget(QtWidgets.QLabel("Distance between subsets:"))
+        
+        self.distance_spinbox = QtWidgets.QSpinBox()
+        self.distance_spinbox.setRange(-50, 50)
+        self.distance_spinbox.setSingleStep(1)
+        self.distance_spinbox.setValue(0)
+        self.distance_spinbox.setSuffix("px")
+        self.distance_spinbox.setFixedWidth(80)
+        self.distance_spinbox.valueChanged.connect(self.update_distance_from_spinbox)
+        self.distance_layout.addWidget(self.distance_spinbox)
+        
+        self.distance_layout.addStretch()  # Push everything to the left
+        
+        # Create a widget to hold the distance controls
+        self.distance_widget = QtWidgets.QWidget()
+        self.distance_widget.setLayout(self.distance_layout)
+        self.distance_widget.setVisible(False)  # Hidden by default
+        method_controls_layout.addWidget(self.distance_widget)
         
         self.distance_slider = QtWidgets.QSlider(QtCore.Qt.Orientation.Horizontal)
         self.distance_slider.setRange(-50, 50)
         self.distance_slider.setSingleStep(1)
         self.distance_slider.setValue(0)
         self.distance_slider.setVisible(False)
+        self.distance_slider.valueChanged.connect(self.update_distance_from_slider)
         method_controls_layout.addWidget(self.distance_slider)
-
-        def update_label_and_recompute(val):
-            self.distance_label.setText(f"Distance between subsets: {str(val)}")
-            self.recompute_roi_points()
-        self.distance_slider.valueChanged.connect(update_label_and_recompute)
 
         # Start new line (only visible in "Along the line" mode)
         self.start_new_line_button = QtWidgets.QPushButton("Start new line")
@@ -558,7 +584,7 @@ class SelectionGUI(QtWidgets.QMainWindow):
         self.grid_list.setVisible(is_grid)
         self.delete_grid_button.setVisible(is_grid)
 
-        self.distance_label.setVisible(show_spacing)
+        self.distance_widget.setVisible(show_spacing)
         self.distance_slider.setVisible(show_spacing)
 
         self.brush_deselect_button.setVisible(is_brush)
@@ -691,9 +717,50 @@ class SelectionGUI(QtWidgets.QMainWindow):
         )
         self.points_label.setText(f"Selected subsets: {len(self.selected_points)}")
 
+    def update_distance_from_slider(self, value):
+        """Update distance spinbox from slider value and recompute ROI points."""
+        # Update spinbox without triggering its signal
+        self.distance_spinbox.blockSignals(True)
+        self.distance_spinbox.setValue(value)
+        self.distance_spinbox.blockSignals(False)
+        
+        # Recompute ROI points
+        self.recompute_roi_points()
+
+    def update_distance_from_spinbox(self, value):
+        """Update distance slider from spinbox value and recompute ROI points."""
+        # Update slider without triggering its signal
+        self.distance_slider.blockSignals(True)
+        self.distance_slider.setValue(value)
+        self.distance_slider.blockSignals(False)
+        
+        # Recompute ROI points
+        self.recompute_roi_points()
+
+    def update_subset_size_from_slider(self, value):
+        """Update subset size spinbox from slider value and recompute ROI points."""
+        # Update spinbox without triggering its signal
+        self.subset_size_spinbox.blockSignals(True)
+        self.subset_size_spinbox.setValue(value)
+        self.subset_size_spinbox.blockSignals(False)
+        
+        # Recompute ROI points and update display
+        self.recompute_roi_points()
+
+    def update_subset_size_from_spinbox(self, value):
+        """Update subset size slider from spinbox value and recompute ROI points."""
+        # Update slider, clamping to its range
+        slider_value = min(100, max(1, value))
+        self.subset_size_slider.blockSignals(True)
+        self.subset_size_slider.setValue(slider_value)
+        self.subset_size_slider.blockSignals(False)
+        
+        # Recompute ROI points and update display
+        self.recompute_roi_points()
+
     def recompute_roi_points(self):
         subset_size = self.subset_size_spinbox.value()
-        spacing = self.distance_slider.value()
+        spacing = self.distance_spinbox.value()
 
         # Update all "along the line" polygons
         for poly in self.drawing_polygons:
@@ -805,7 +872,7 @@ class SelectionGUI(QtWidgets.QMainWindow):
             # Compute ROI points only if closed polygon
             if len(grid['points']) >= 3:
                 subset_size = self.subset_size_spinbox.value()
-                spacing = self.distance_slider.value()
+                spacing = self.distance_spinbox.value()
                 grid['roi_points'] = rois_inside_polygon(grid['points'], subset_size, spacing)
 
             self.update_grid_display()
@@ -887,7 +954,7 @@ class SelectionGUI(QtWidgets.QMainWindow):
             # Update ROI points only for this polygon
             if len(poly['points']) >= 2:
                 subset_size = self.subset_size_spinbox.value()
-                spacing = self.distance_slider.value()
+                spacing = self.distance_spinbox.value()
                 poly['roi_points'] = points_along_polygon(poly['points'], subset_size, spacing)
 
             self.update_polygon_display()
@@ -1160,7 +1227,7 @@ class SelectionGUI(QtWidgets.QMainWindow):
             return
 
         subset_size = self.subset_size_spinbox.value()
-        spacing = self.distance_slider.value()
+        spacing = self.distance_spinbox.value()
 
         # Generate (row, col) points inside the painted mask
         brush_rois = rois_inside_mask(self._paint_mask, subset_size, spacing)
