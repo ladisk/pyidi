@@ -119,6 +119,8 @@ class SelectionGUI(QtWidgets.QMainWindow):
         self.active_polygon_index = 0
         self.grid_polygons = [{'points': [], 'roi_points': []}]
         self.active_grid_index = 0
+        self.brush_masks = []  # Store brush masks for recomputation
+        self.brush_points = []  # Store computed brush points separately
 
         # Add status bar for instructions
         self.statusBar = self.statusBar()
@@ -658,7 +660,7 @@ class SelectionGUI(QtWidgets.QMainWindow):
         is_grid = method_name == "Grid"
         is_brush = method_name == "Brush"
 
-        show_spacing = is_along or is_grid
+        show_spacing = is_along or is_grid or is_brush
 
         self.start_new_line_button.setVisible(is_along or is_grid)
         self.polygon_list.setVisible(is_along)
@@ -675,7 +677,7 @@ class SelectionGUI(QtWidgets.QMainWindow):
 
         # Show context-sensitive instructions
         if is_brush:
-            self.show_instruction("Hold Ctrl and drag to paint selection area.")
+            self.show_instruction("Hold Ctrl and drag to paint selection area. Use distance slider to control subset spacing.")
         elif is_along:
             self.show_instruction("Click to add points along the line. Click 'Start new line' to begin a new one.")
         elif is_grid:
@@ -736,7 +738,7 @@ class SelectionGUI(QtWidgets.QMainWindow):
     def update_selected_points(self):
         polygon_points = [pt for poly in self.drawing_polygons for pt in poly['roi_points']]
         grid_points = [pt for g in self.grid_polygons for pt in g['roi_points']]
-        self.selected_points = self.manual_points + polygon_points + grid_points
+        self.selected_points = self.manual_points + polygon_points + grid_points + self.brush_points
 
         if not self.selected_points:
             self.scatter.clear()
@@ -849,6 +851,11 @@ class SelectionGUI(QtWidgets.QMainWindow):
             if len(grid['points']) >= 3:
                 grid['roi_points'] = rois_inside_polygon(grid['points'], subset_size, spacing)
 
+        # Update all brush masks
+        self.brush_points = []
+        for mask in self.brush_masks:
+            self.brush_points.extend(rois_inside_mask(mask, subset_size, spacing))
+
         self.update_selected_points()
 
     def start_new_line(self):
@@ -875,6 +882,10 @@ class SelectionGUI(QtWidgets.QMainWindow):
 
         # Clear manual points
         self.manual_points = []
+
+        # Clear brush data
+        self.brush_masks = []
+        self.brush_points = []
 
         # Clear line-based polygons
         self.drawing_polygons = [{'points': [], 'roi_points': []}]
@@ -1108,6 +1119,10 @@ class SelectionGUI(QtWidgets.QMainWindow):
                 if closest in grid['roi_points']:
                     grid['roi_points'].remove(closest)
 
+            # Remove from brush points
+            if closest in self.brush_points:
+                self.brush_points.remove(closest)
+
             self.update_selected_points()
     
     # Automatic filtering
@@ -1336,9 +1351,6 @@ class SelectionGUI(QtWidgets.QMainWindow):
         # Generate (row, col) points inside the painted mask
         brush_rois = rois_inside_mask(self._paint_mask, subset_size, spacing)
 
-        # Convert to set of tuples for fast comparison
-        roi_set = set((int(round(y)), int(round(x))) for y, x in brush_rois)
-
         if self.brush_deselect_mode:
             def point_inside_mask(pt, mask):
                 y, x = int(round(pt[0])), int(round(pt[1]))
@@ -1359,11 +1371,24 @@ class SelectionGUI(QtWidgets.QMainWindow):
             for grid in self.grid_polygons:
                 grid['roi_points'] = [pt for pt in grid['roi_points'] if not point_inside_mask(pt, self._paint_mask)]
 
+            # Remove from brush points
+            self.brush_points = [
+                pt for pt in self.brush_points
+                if not point_inside_mask(pt, self._paint_mask)
+            ]
+
+            # Remove brush masks that are covered by the current mask
+            self.brush_masks = [mask for mask in self.brush_masks 
+                               if not np.any(mask & self._paint_mask)]
+
             self.brush_deselect_mode = False
             self.brush_deselect_button.setChecked(False)
 
         else:
-            self.manual_points.extend(brush_rois)
+            # Store the mask for future recomputation
+            self.brush_masks.append(self._paint_mask.copy())
+            # Add points to brush_points
+            self.brush_points.extend(brush_rois)
 
         self._paint_mask = None
         self.update_selected_points()
