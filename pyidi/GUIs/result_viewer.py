@@ -248,6 +248,40 @@ class ResultViewer(QtWidgets.QMainWindow):
         self.export_resolution_combo.setCurrentText("4x pixel scale")
         export_layout.addWidget(self.export_resolution_combo)
 
+        # Frame range controls (only for non-mode shape videos)
+        if not self.is_mode_shape:
+            self.frame_range_label = QtWidgets.QLabel("Frame Range:")
+            export_layout.addWidget(self.frame_range_label)
+            
+            frame_range_layout = QtWidgets.QHBoxLayout()
+            
+            # Start frame
+            self.start_frame_spin = QtWidgets.QSpinBox()
+            self.start_frame_spin.setRange(0, self.video.shape[0] - 1)
+            self.start_frame_spin.setValue(0)
+            self.start_frame_spin.setFixedWidth(80)
+            self.start_frame_spin.valueChanged.connect(self.on_start_frame_changed)
+            frame_range_layout.addWidget(self.start_frame_spin)
+            
+            # Stop frame
+            self.stop_frame_spin = QtWidgets.QSpinBox()
+            self.stop_frame_spin.setRange(0, self.video.shape[0] - 1)
+            self.stop_frame_spin.setValue(self.video.shape[0] - 1)
+            self.stop_frame_spin.setFixedWidth(80)
+            self.stop_frame_spin.valueChanged.connect(self.on_stop_frame_changed)
+            frame_range_layout.addWidget(self.stop_frame_spin)
+            
+            export_layout.addLayout(frame_range_layout)
+            
+            # Update the label with initial frame count
+            self.update_frame_range_label()
+            
+            # Full range checkbox
+            self.full_range_checkbox = QtWidgets.QCheckBox("Full Range")
+            self.full_range_checkbox.setChecked(True)  # Initially checked since defaults are full range
+            self.full_range_checkbox.stateChanged.connect(self.on_full_range_checkbox_changed)
+            export_layout.addWidget(self.full_range_checkbox)
+
         # Duration for mode shapes
         if self.is_mode_shape:
             export_layout.addWidget(QtWidgets.QLabel("Duration (seconds):"))
@@ -409,6 +443,68 @@ class ResultViewer(QtWidgets.QMainWindow):
         size = self.point_size_spin.value()
         self.scatter.setSize(size)
 
+    def on_start_frame_changed(self, value):
+        # Ensure start frame is not greater than stop frame
+        if hasattr(self, 'stop_frame_spin') and value > self.stop_frame_spin.value():
+            self.stop_frame_spin.setValue(value)
+        
+        # Update the frame range label
+        self.update_frame_range_label()
+        
+        # Update checkbox state based on whether we have full range
+        self.update_full_range_checkbox_state()
+
+    def on_stop_frame_changed(self, value):
+        # Ensure stop frame is not less than start frame
+        if hasattr(self, 'start_frame_spin') and value < self.start_frame_spin.value():
+            self.start_frame_spin.setValue(value)
+        
+        # Update the frame range label
+        self.update_frame_range_label()
+        
+        # Update checkbox state based on whether we have full range
+        self.update_full_range_checkbox_state()
+
+    def update_frame_range_label(self):
+        """Update the frame range label with current frame count."""
+        if not self.is_mode_shape and hasattr(self, 'frame_range_label'):
+            start_frame = self.start_frame_spin.value()
+            stop_frame = self.stop_frame_spin.value()
+            total_frames = stop_frame - start_frame + 1
+            self.frame_range_label.setText(f"Frame Range: ({total_frames} frames)")
+
+    def on_full_range_checkbox_changed(self, state):
+        """Handle full range checkbox state changes."""
+        if not self.is_mode_shape:
+            if state == QtCore.Qt.CheckState.Checked.value:
+                # Set to full range
+                self.start_frame_spin.blockSignals(True)
+                self.stop_frame_spin.blockSignals(True)
+                self.start_frame_spin.setValue(0)
+                self.stop_frame_spin.setValue(self.video.shape[0] - 1)
+                self.start_frame_spin.blockSignals(False)
+                self.stop_frame_spin.blockSignals(False)
+                
+                # Update the frame range label
+                self.update_frame_range_label()
+
+    def update_full_range_checkbox_state(self):
+        """Update the checkbox state based on current spinbox values."""
+        if not self.is_mode_shape and hasattr(self, 'full_range_checkbox'):
+            is_full_range = (self.start_frame_spin.value() == 0 and 
+                           self.stop_frame_spin.value() == self.video.shape[0] - 1)
+            
+            # Block signals to prevent recursive calls
+            self.full_range_checkbox.blockSignals(True)
+            self.full_range_checkbox.setChecked(is_full_range)
+            self.full_range_checkbox.blockSignals(False)
+
+    def set_full_range(self):
+        """Set the frame range to cover the full video."""
+        if not self.is_mode_shape:
+            self.start_frame_spin.setValue(0)
+            self.stop_frame_spin.setValue(self.video.shape[0] - 1)
+
     def next_frame(self):
         if self.is_mode_shape:
             self.current_frame = (self.current_frame + 1) % int(self.fps * self.time_per_period)
@@ -537,8 +633,12 @@ class ResultViewer(QtWidgets.QMainWindow):
         if self.is_mode_shape:
             duration = self.duration_spin.value()
             total_frames = int(export_fps * duration)
+            start_frame = 0
+            stop_frame = total_frames - 1
         else:
-            total_frames = self.video.shape[0]
+            start_frame = self.start_frame_spin.value()
+            stop_frame = self.stop_frame_spin.value()
+            total_frames = stop_frame - start_frame + 1
 
         # Initialize video writer
         writer = cv2.VideoWriter(file_path, fourcc, export_fps, (export_width, export_height))
@@ -578,9 +678,11 @@ class ResultViewer(QtWidgets.QMainWindow):
                     phase = np.angle(displ_raw)
                     displ = scale * amplitude * np.sin(2 * np.pi * t - phase)
                 else:
-                    self.current_frame = frame_idx
-                    base_frame = self.video[self.current_frame]
-                    displ = self.displacements[:, self.current_frame, :] * scale
+                    # For regular videos, use the actual frame index within the specified range
+                    actual_frame_idx = start_frame + frame_idx
+                    self.current_frame = actual_frame_idx
+                    base_frame = self.video[actual_frame_idx]
+                    displ = self.displacements[:, actual_frame_idx, :] * scale
 
                 # Create the export frame by scaling the video frame pixel-perfectly
                 # Convert to RGB for proper color handling
@@ -638,10 +740,17 @@ class ResultViewer(QtWidgets.QMainWindow):
 
             writer.release()
             
+            # Create success message with frame range info
+            if self.is_mode_shape:
+                frame_info = f"Duration: {self.duration_spin.value():.1f}s"
+            else:
+                frame_info = f"Frames: {start_frame} to {stop_frame} ({total_frames} total)"
+            
             QtWidgets.QMessageBox.information(self, "Export Complete", 
                                             f"Video exported successfully to:\n{file_path}\n"
                                             f"Resolution: {export_width}x{export_height} "
-                                            f"(pixel scale: {pixel_scale}x)")
+                                            f"(pixel scale: {pixel_scale}x)\n"
+                                            f"{frame_info}")
 
         except Exception as e:
             import traceback
