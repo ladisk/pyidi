@@ -150,20 +150,47 @@ class ResultViewer(QtWidgets.QMainWindow):
         display_layout = QtWidgets.QVBoxLayout(display_group)
         
         # Point size control
-        display_layout.addWidget(QtWidgets.QLabel("Point size (px):"))
+        point_size_layout = QtWidgets.QHBoxLayout()
+        point_size_layout.addWidget(QtWidgets.QLabel("Point size:"))
+        
         self.point_size_spin = QtWidgets.QSpinBox()
         self.point_size_spin.setRange(1, 100)
         self.point_size_spin.setValue(self.points_size)
-        self.point_size_spin.valueChanged.connect(self.update_point_size)
-        display_layout.addWidget(self.point_size_spin)
+        self.point_size_spin.setSuffix("px")
+        self.point_size_spin.setFixedWidth(80)
+        self.point_size_spin.valueChanged.connect(self.update_point_size_from_spinbox)
+        point_size_layout.addWidget(self.point_size_spin)
+        
+        point_size_layout.addStretch()  # Push everything to the left
+        display_layout.addLayout(point_size_layout)
+        
+        self.point_size_slider = QtWidgets.QSlider(QtCore.Qt.Orientation.Horizontal)
+        self.point_size_slider.setRange(1, 20)
+        self.point_size_slider.setValue(min(20, self.points_size))
+        self.point_size_slider.valueChanged.connect(self.update_point_size_from_slider)
+        display_layout.addWidget(self.point_size_slider)
 
         # Magnification control
-        display_layout.addWidget(QtWidgets.QLabel("Magnify:"))
-        self.mag_spin = QtWidgets.QSpinBox()
-        self.mag_spin.setRange(1, 10000)
+        mag_layout = QtWidgets.QHBoxLayout()
+        mag_layout.addWidget(QtWidgets.QLabel("Magnify:"))
+        
+        self.mag_spin = QtWidgets.QDoubleSpinBox()
+        self.mag_spin.setRange(0.01, 999999)  # No practical upper limit
+        self.mag_spin.setSingleStep(0.01)
         self.mag_spin.setValue(self.magnification)
-        self.mag_spin.valueChanged.connect(self.update_frame)
-        display_layout.addWidget(self.mag_spin)
+        self.mag_spin.setSuffix("x")
+        self.mag_spin.setFixedWidth(80)
+        self.mag_spin.valueChanged.connect(self.update_mag_from_spinbox)
+        mag_layout.addWidget(self.mag_spin)
+        
+        mag_layout.addStretch()  # Push everything to the left
+        display_layout.addLayout(mag_layout)
+        
+        self.mag_slider = QtWidgets.QSlider(QtCore.Qt.Orientation.Horizontal)
+        self.mag_slider.setRange(1, 1000)  # 0.1x to 10x (in percent: 10% to 1000%)
+        self.mag_slider.setValue(int(self.magnification * 100))
+        self.mag_slider.valueChanged.connect(self.update_mag_from_slider)
+        display_layout.addWidget(self.mag_slider)
 
         # Show arrows checkbox
         self.arrows_checkbox = QtWidgets.QCheckBox("Show arrows")
@@ -177,20 +204,24 @@ class ResultViewer(QtWidgets.QMainWindow):
         playback_layout = QtWidgets.QVBoxLayout(playback_group)
 
         # FPS control
-        self.fps_label = QtWidgets.QLabel(f"FPS: {self.fps}")
-        playback_layout.addWidget(self.fps_label)
+        fps_layout = QtWidgets.QHBoxLayout()
+        fps_layout.addWidget(QtWidgets.QLabel("FPS:"))
+        
+        self.fps_spin = QtWidgets.QSpinBox()
+        self.fps_spin.setRange(1, 240)
+        self.fps_spin.setValue(self.fps)
+        self.fps_spin.setFixedWidth(80)
+        self.fps_spin.valueChanged.connect(self.update_fps_from_spinbox)
+        fps_layout.addWidget(self.fps_spin)
+        
+        fps_layout.addStretch()  # Push everything to the left
+        playback_layout.addLayout(fps_layout)
         
         self.fps_slider = QtWidgets.QSlider(QtCore.Qt.Orientation.Horizontal)
         self.fps_slider.setRange(1, 240)
         self.fps_slider.setValue(self.fps)
         self.fps_slider.valueChanged.connect(self.update_fps_from_slider)
         playback_layout.addWidget(self.fps_slider)
-        
-        self.fps_spin = QtWidgets.QSpinBox()
-        self.fps_spin.setRange(1, 240)
-        self.fps_spin.setValue(self.fps)
-        self.fps_spin.valueChanged.connect(self.update_fps_from_spinbox)
-        playback_layout.addWidget(self.fps_spin)
         
         self.control_layout.addWidget(playback_group)
 
@@ -285,7 +316,7 @@ class ResultViewer(QtWidgets.QMainWindow):
         # === Finalize ===
         self.setCentralWidget(central_widget)
         self.setWindowTitle("Displacement Viewer")
-        self.resize(800, 600)
+        self.resize(1200, 600)
 
     def toggle_playback(self):
         if self.timer.isActive():
@@ -311,7 +342,6 @@ class ResultViewer(QtWidgets.QMainWindow):
 
     def update_fps_from_slider(self, value):
         self.fps = value
-        self.fps_label.setText(f"FPS: {value}")
         self.fps_spin.blockSignals(True)  # Prevent recursive updates
         self.fps_spin.setValue(value)
         self.fps_spin.blockSignals(False)
@@ -319,13 +349,63 @@ class ResultViewer(QtWidgets.QMainWindow):
 
     def update_fps_from_spinbox(self, value):
         self.fps = value
-        self.fps_label.setText(f"FPS: {value}")
         self.fps_slider.blockSignals(True)  # Prevent recursive updates
         self.fps_slider.setValue(value)
         self.fps_slider.blockSignals(False)
         self.on_fps_change()
 
+    def update_mag_from_slider(self, value):
+        # Convert slider value (1-1000) to magnification (0.01-10.0)
+        magnification = value / 100.0
+        self.magnification = magnification
+        
+        # Update spinbox without triggering its signal
+        self.mag_spin.blockSignals(True)
+        self.mag_spin.setValue(magnification)
+        self.mag_spin.blockSignals(False)
+        
+        self.update_frame()
+
+    def update_mag_from_spinbox(self, value):
+        # Convert spinbox value to magnification
+        magnification = value
+        self.magnification = magnification
+        
+        # Update slider, clamping to its range and converting to int
+        slider_value = int(max(1, min(1000, value * 100)))
+        self.mag_slider.blockSignals(True)
+        self.mag_slider.setValue(slider_value)
+        self.mag_slider.blockSignals(False)
+        
+        self.update_frame()
+
+    def update_point_size_from_slider(self, value):
+        # Update the internal point size
+        self.points_size = value
+        
+        # Update spinbox without triggering its signal
+        self.point_size_spin.blockSignals(True)
+        self.point_size_spin.setValue(value)
+        self.point_size_spin.blockSignals(False)
+        
+        # Update the actual display
+        self.scatter.setSize(value)
+
+    def update_point_size_from_spinbox(self, value):
+        # Update the internal point size
+        self.points_size = value
+        
+        # Update slider, clamping to its range
+        slider_value = min(20, max(1, value))
+        self.point_size_slider.blockSignals(True)
+        self.point_size_slider.setValue(slider_value)
+        self.point_size_slider.blockSignals(False)
+        
+        # Update the actual display
+        self.scatter.setSize(value)
+
     def update_point_size(self):
+        # Keep this method for backward compatibility if needed
         size = self.point_size_spin.value()
         self.scatter.setSize(size)
 
@@ -344,7 +424,7 @@ class ResultViewer(QtWidgets.QMainWindow):
         self.update_frame()
 
     def update_frame(self):
-        scale = self.mag_spin.value()
+        scale = self.magnification
 
         if self.is_mode_shape:
             frame = self.video[0]
