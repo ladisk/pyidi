@@ -194,6 +194,50 @@ class ResultViewer(QtWidgets.QMainWindow):
         
         self.control_layout.addWidget(playback_group)
 
+        # Export controls group
+        export_group = QtWidgets.QGroupBox("Export Video")
+        export_layout = QtWidgets.QVBoxLayout(export_group)
+
+        # Quality/FPS for export
+        export_layout.addWidget(QtWidgets.QLabel("Export FPS:"))
+        self.export_fps_spin = QtWidgets.QSpinBox()
+        self.export_fps_spin.setRange(1, 120)
+        self.export_fps_spin.setValue(30)
+        export_layout.addWidget(self.export_fps_spin)
+
+        # Export resolution
+        export_layout.addWidget(QtWidgets.QLabel("Export Resolution:"))
+        self.export_resolution_combo = QtWidgets.QComboBox()
+        self.export_resolution_combo.addItems([
+            "2x pixel scale",
+            "4x pixel scale", 
+            "6x pixel scale",
+            "8x pixel scale",
+        ])
+        self.export_resolution_combo.setCurrentText("4x pixel scale")
+        export_layout.addWidget(self.export_resolution_combo)
+
+        # Duration for mode shapes
+        if self.is_mode_shape:
+            export_layout.addWidget(QtWidgets.QLabel("Duration (seconds):"))
+            self.duration_spin = QtWidgets.QDoubleSpinBox()
+            self.duration_spin.setRange(0.5, 60.0)
+            self.duration_spin.setValue(2.0)
+            self.duration_spin.setSingleStep(0.5)
+            export_layout.addWidget(self.duration_spin)
+
+        # Export button
+        self.export_button = QtWidgets.QPushButton("Export Video")
+        self.export_button.clicked.connect(self.export_video)
+        export_layout.addWidget(self.export_button)
+
+        # Progress bar
+        self.export_progress = QtWidgets.QProgressBar() 
+        self.export_progress.setVisible(False)
+        export_layout.addWidget(self.export_progress)
+        
+        self.control_layout.addWidget(export_group)
+
         self.control_layout.addStretch(1)
         
         self.splitter.addWidget(self.control_widget)
@@ -360,6 +404,184 @@ class ResultViewer(QtWidgets.QMainWindow):
             for shaft in self.arrow_shafts:
                 self.viewbox.removeItem(shaft)
             self.arrow_shafts.clear() 
+
+    def export_video(self):
+        """Export the current visualization as a video file with pixel-perfect rendering."""
+        try:
+            import cv2
+        except ImportError:
+            QtWidgets.QMessageBox.warning(self, "Missing Dependency", 
+                                        "OpenCV (cv2) is required for video export.\n"
+                                        "Install it with: pip install opencv-python")
+            return
+
+        # Get export parameters
+        export_fps = self.export_fps_spin.value()
+        
+        # Get pixel scaling factor from resolution selection
+        resolution_text = self.export_resolution_combo.currentText()
+        if "4x pixel scale" in resolution_text:
+            pixel_scale = 4  # Each video pixel becomes 4x4 pixels in export
+        elif "2x pixel scale" in resolution_text:
+            pixel_scale = 2  # Each video pixel becomes 2x2 pixels in export
+        elif "6x pixel scale" in resolution_text:
+            pixel_scale = 6  # Each video pixel becomes 6x6 pixels in export
+        else:  # 4K
+            pixel_scale = 8  # Each video pixel becomes 8x8 pixels in export
+
+        # Calculate export dimensions based on video dimensions and pixel scaling
+        video_height, video_width = self.video[0].shape
+        export_width = video_width * pixel_scale
+        export_height = video_height * pixel_scale
+        
+        # Use MP4 with high quality settings
+        default_ext = "mp4"
+        fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+
+        # File dialog for save location
+        file_path, _ = QtWidgets.QFileDialog.getSaveFileName(
+            self, "Export Video", f"displacement_video.{default_ext}",
+            f"MP4 files (*.{default_ext});;All files (*.*)"
+        )
+        
+        if not file_path:
+            return
+
+        # Store current state to restore later
+        original_frame = self.current_frame
+        original_timer_active = self.timer.isActive()
+        if original_timer_active:
+            self.timer.stop()
+        
+        # Calculate total frames for export
+        if self.is_mode_shape:
+            duration = self.duration_spin.value()
+            total_frames = int(export_fps * duration)
+        else:
+            total_frames = self.video.shape[0]
+
+        # Initialize video writer
+        writer = cv2.VideoWriter(file_path, fourcc, export_fps, (export_width, export_height))
+        
+        if not writer.isOpened():
+            QtWidgets.QMessageBox.critical(self, "Export Error", 
+                                         "Failed to create video writer. Check file path and format.")
+            return
+
+        # Show progress bar
+        self.export_progress.setVisible(True)
+        self.export_progress.setRange(0, total_frames)
+        self.export_button.setText("Exporting...")
+        self.export_button.setEnabled(False)
+
+        try:
+            # Get current visualization parameters
+            scale = self.mag_spin.value()
+            show_arrows = self.arrows_checkbox.isChecked()
+            point_size = self.point_size_spin.value()
+            
+            for frame_idx in range(total_frames):
+                # Update progress
+                self.export_progress.setValue(frame_idx)
+                QtWidgets.QApplication.processEvents()  # Keep UI responsive
+
+                # Set the current frame
+                if self.is_mode_shape:
+                    self.current_frame = frame_idx % int(self.fps * self.time_per_period)
+                    # Get base frame for mode shapes
+                    base_frame = self.video[0]
+                    
+                    # Calculate time for sinusoidal motion
+                    t = self.current_frame / self.fps
+                    displ_raw = self.displacements
+                    amplitude = np.abs(displ_raw)
+                    phase = np.angle(displ_raw)
+                    displ = scale * amplitude * np.sin(2 * np.pi * t - phase)
+                else:
+                    self.current_frame = frame_idx
+                    base_frame = self.video[self.current_frame]
+                    displ = self.displacements[:, self.current_frame, :] * scale
+
+                # Create the export frame by scaling the video frame pixel-perfectly
+                # Convert to RGB for proper color handling
+                if len(base_frame.shape) == 2:  # Grayscale
+                    frame_rgb = np.stack([base_frame, base_frame, base_frame], axis=2)
+                else:
+                    frame_rgb = base_frame
+                
+                # Scale up the frame without interpolation (nearest neighbor)
+                export_frame = np.repeat(np.repeat(frame_rgb, pixel_scale, axis=0), pixel_scale, axis=1)
+                
+                # Calculate displaced points
+                displaced_pts = self.grid + displ
+                
+                # Draw displacement visualization on the scaled frame
+                if show_arrows:
+                    # Draw arrows showing displacement
+                    magnitudes = np.linalg.norm(displ, axis=1)
+                    norm = mcolors.Normalize(vmin=0, vmax=self.disp_max*scale)
+                    cmap = plt.colormaps[self.colormap]
+                    
+                    for i, (pt0, pt1, mag) in enumerate(zip(self.grid, displaced_pts, magnitudes)):
+                        # Scale coordinates to export resolution
+                        start_pt = (int(pt0[0] * pixel_scale), int(pt0[1] * pixel_scale))
+                        end_pt = (int(pt1[0] * pixel_scale), int(pt1[1] * pixel_scale))
+                        
+                        # Get color for this magnitude
+                        color = cmap(norm(mag))
+                        color_bgr = tuple(int(255 * c) for c in color[2::-1])  # Convert RGB to BGR
+                        
+                        # Draw arrow line
+                        cv2.line(export_frame, start_pt, end_pt, color_bgr, 
+                                max(1, point_size * pixel_scale // 10))
+                        
+                        # Draw arrow head
+                        cv2.circle(export_frame, end_pt, max(1, point_size * pixel_scale // 5), 
+                                  color_bgr, -1)
+                else:
+                    # Draw points at displaced positions
+                    for pt in displaced_pts:
+                        center = (int(pt[0] * pixel_scale), int(pt[1] * pixel_scale))
+                        cv2.circle(export_frame, center, max(1, point_size * pixel_scale // 5), 
+                                  (0, 0, 255), -1)  # Red circles
+                
+                # Ensure the frame is in the correct format and size
+                export_frame = np.clip(export_frame, 0, 255).astype(np.uint8)
+                
+                # Convert RGB to BGR for OpenCV
+                if len(export_frame.shape) == 3:
+                    export_frame_bgr = cv2.cvtColor(export_frame, cv2.COLOR_RGB2BGR)
+                else:
+                    export_frame_bgr = export_frame
+
+                writer.write(export_frame_bgr)
+
+            writer.release()
+            
+            QtWidgets.QMessageBox.information(self, "Export Complete", 
+                                            f"Video exported successfully to:\n{file_path}\n"
+                                            f"Resolution: {export_width}x{export_height} "
+                                            f"(pixel scale: {pixel_scale}x)")
+
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            QtWidgets.QMessageBox.critical(self, "Export Error", 
+                                         f"An error occurred during export:\n{str(e)}")
+        finally:
+            # Restore original state
+            self.current_frame = original_frame
+            self.update_frame()
+            if original_timer_active:
+                self.timer.start()
+            
+            # Reset UI
+            self.export_progress.setVisible(False)
+            self.export_button.setText("Export Video")
+            self.export_button.setEnabled(True)
+            writer.release()
+
+
 
 if __name__ == "__main__":
     n_frames, height, width = 200, 300, 400
