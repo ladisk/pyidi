@@ -48,6 +48,11 @@ dev = [
     "nbsphinx_link",
 ]
 
+qt = [
+    "pyqt6",
+    "pyqtgraph",
+]
+
 [project.urls]
 homepage = "https://github.com/ladisk/pyidi"
 documentation = "https://pyidi.readthedocs.io/en/latest/"
