@@ -6,6 +6,47 @@ import matplotlib.cm as cm
 import matplotlib.colors as mcolors
 import sys
 
+class RegionSelectViewBox(pg.ViewBox):
+    """Custom ViewBox that handles region selection with mouse events."""
+    
+    def __init__(self, parent_viewer):
+        super().__init__()
+        self.parent_viewer = parent_viewer
+        self.region_start = None
+        self.region_current = None
+        self.dragging = False
+        
+    def mousePressEvent(self, ev):
+        if (self.parent_viewer.region_selection_active and 
+            ev.button() == QtCore.Qt.MouseButton.LeftButton and
+            ev.modifiers() & QtCore.Qt.KeyboardModifier.ControlModifier):
+            # Start region selection
+            self.region_start = self.mapSceneToView(ev.scenePos())
+            self.dragging = True
+            ev.accept()
+        else:
+            super().mousePressEvent(ev)
+            
+    def mouseMoveEvent(self, ev):
+        if self.dragging and self.parent_viewer.region_selection_active:
+            # Update region selection
+            self.region_current = self.mapSceneToView(ev.scenePos())
+            self.parent_viewer.update_region_selection(self.region_start, self.region_current)
+            ev.accept()
+        else:
+            super().mouseMoveEvent(ev)
+            
+    def mouseReleaseEvent(self, ev):
+        if (self.dragging and self.parent_viewer.region_selection_active and
+            ev.button() == QtCore.Qt.MouseButton.LeftButton):
+            # Finish region selection
+            self.region_current = self.mapSceneToView(ev.scenePos())
+            self.parent_viewer.finish_region_selection(self.region_start, self.region_current)
+            self.dragging = False
+            ev.accept()
+        else:
+            super().mouseReleaseEvent(ev)
+
 class ResultViewer(QtWidgets.QMainWindow):
     def __init__(self, video, displacements, points, fps=30, magnification=1, point_size=10, colormap="cool"):
         """
@@ -66,6 +107,14 @@ class ResultViewer(QtWidgets.QMainWindow):
 
         self.disp_max = np.max(np.abs(displacements))
         self.colormap = colormap
+
+        # Region selection variables
+        self.region_selection_active = False
+        self.region_start_point = None
+        self.region_end_point = None
+        self.region_rect = None
+        self.region_overlay = None
+        self.selected_region = None  # (x, y, width, height) in image coordinates
 
         self.timer = QtCore.QTimer()
         self.timer.timeout.connect(self.next_frame)
@@ -133,7 +182,11 @@ class ResultViewer(QtWidgets.QMainWindow):
         self.view = pg.GraphicsLayoutWidget()
         self.img_item = pg.ImageItem()
         self.scatter = pg.ScatterPlotItem(size=self.points_size, brush='r', pxMode=True)
-        self.viewbox = self.view.addViewBox()
+        
+        # Create custom viewbox for region selection
+        self.viewbox = RegionSelectViewBox(self)
+        self.view.addItem(self.viewbox)
+        
         self.viewbox.addItem(self.img_item)
         self.viewbox.addItem(self.scatter)
         self.viewbox.setAspectLocked(True)
@@ -247,6 +300,30 @@ class ResultViewer(QtWidgets.QMainWindow):
         ])
         self.export_resolution_combo.setCurrentText("4x pixel scale")
         export_layout.addWidget(self.export_resolution_combo)
+
+        # Region selection controls
+        export_layout.addWidget(QtWidgets.QLabel("Region Selection:"))
+        
+        region_layout = QtWidgets.QHBoxLayout()
+        
+        # Region selection button
+        self.region_select_button = QtWidgets.QPushButton("Select Region")
+        self.region_select_button.setCheckable(True)
+        self.region_select_button.clicked.connect(self.toggle_region_selection)
+        region_layout.addWidget(self.region_select_button)
+        
+        # Clear region button
+        self.clear_region_button = QtWidgets.QPushButton("Clear")
+        self.clear_region_button.clicked.connect(self.clear_region_selection)
+        self.clear_region_button.setEnabled(False)
+        region_layout.addWidget(self.clear_region_button)
+        
+        export_layout.addLayout(region_layout)
+        
+        # Region info label
+        self.region_info_label = QtWidgets.QLabel("Full frame will be exported")
+        self.region_info_label.setStyleSheet("font-size: 10px; color: #aaa;")
+        export_layout.addWidget(self.region_info_label)
 
         # Frame range controls (only for non-mode shape videos)
         if not self.is_mode_shape:
@@ -505,6 +582,117 @@ class ResultViewer(QtWidgets.QMainWindow):
             self.start_frame_spin.setValue(0)
             self.stop_frame_spin.setValue(self.video.shape[0] - 1)
 
+    def toggle_region_selection(self):
+        """Toggle region selection mode."""
+        self.region_selection_active = self.region_select_button.isChecked()
+        
+        if self.region_selection_active:
+            self.region_select_button.setText("Cancel Selection")
+            self.region_select_button.setStyleSheet("background-color: #d73a00;")
+            # Clear any existing region
+            self.clear_region_graphics()
+        else:
+            self.region_select_button.setText("Select Region")
+            self.region_select_button.setStyleSheet("")
+            # Clear any temporary selection graphics
+            self.clear_region_graphics()
+
+    def clear_region_selection(self):
+        """Clear the current region selection."""
+        self.selected_region = None
+        self.clear_region_graphics()
+        self.clear_region_button.setEnabled(False)
+        self.region_info_label.setText("Full frame will be exported")
+        
+        # Reset the selection button if it was active
+        if self.region_selection_active:
+            self.region_select_button.setChecked(False)
+            self.toggle_region_selection()
+
+    def clear_region_graphics(self):
+        """Remove region selection graphics from the view."""
+        if self.region_rect is not None:
+            self.viewbox.removeItem(self.region_rect)
+            self.region_rect = None
+        if self.region_overlay is not None:
+            self.viewbox.removeItem(self.region_overlay)
+            self.region_overlay = None
+
+    def update_region_selection(self, start_point, current_point):
+        """Update the region selection rectangle during dragging."""
+        if start_point is None or current_point is None:
+            return
+            
+        # Clear previous rectangle
+        if self.region_rect is not None:
+            self.viewbox.removeItem(self.region_rect)
+            
+        # Create new rectangle
+        x1, y1 = start_point.x(), start_point.y()
+        x2, y2 = current_point.x(), current_point.y()
+        
+        # Ensure proper ordering
+        x_min, x_max = min(x1, x2), max(x1, x2)
+        y_min, y_max = min(y1, y2), max(y1, y2)
+        
+        # Create rectangle item
+        self.region_rect = pg.RectROI([x_min, y_min], [x_max - x_min, y_max - y_min], 
+                                      pen=pg.mkPen(color='red', width=2), 
+                                      movable=False, removable=False)
+        self.viewbox.addItem(self.region_rect)
+
+    def finish_region_selection(self, start_point, end_point):
+        """Finish region selection and apply overlay."""
+        if start_point is None or end_point is None:
+            return
+            
+        # Calculate region bounds
+        x1, y1 = start_point.x(), start_point.y()
+        x2, y2 = end_point.x(), end_point.y()
+        
+        # Ensure proper ordering and clip to image bounds
+        video_height, video_width = self.video[0].shape
+        x_min = max(0, min(x1, x2))
+        x_max = min(video_width, max(x1, x2))
+        y_min = max(0, min(y1, y2))
+        y_max = min(video_height, max(y1, y2))
+        
+        # Store the selected region
+        self.selected_region = (int(x_min), int(y_min), int(x_max - x_min), int(y_max - y_min))
+        
+        # Update UI
+        self.region_select_button.setChecked(False)
+        self.toggle_region_selection()
+        self.clear_region_button.setEnabled(True)
+        self.region_info_label.setText(f"Region: {self.selected_region[2]}x{self.selected_region[3]} pixels")
+        
+        # Create overlay effect
+        self.create_region_overlay()
+
+    def create_region_overlay(self):
+        """Create a semi-transparent overlay outside the selected region."""
+        if self.selected_region is None:
+            return
+            
+        # Clear existing overlay
+        if self.region_overlay is not None:
+            self.viewbox.removeItem(self.region_overlay)
+            
+        # Create overlay using ImageItem with alpha channel
+        video_height, video_width = self.video[0].shape
+        overlay = np.zeros((video_height, video_width, 4), dtype=np.uint8)
+        
+        # Set alpha to 128 (semi-transparent) for the entire overlay
+        overlay[:, :, 3] = 128
+        
+        # Make the selected region fully transparent
+        x, y, w, h = self.selected_region
+        overlay[y:y+h, x:x+w, 3] = 0
+        
+        # Create ImageItem for overlay
+        self.region_overlay = pg.ImageItem(overlay.transpose((1, 0, 2)))
+        self.viewbox.addItem(self.region_overlay)
+
     def next_frame(self):
         if self.is_mode_shape:
             self.current_frame = (self.current_frame + 1) % int(self.fps * self.time_per_period)
@@ -581,6 +769,11 @@ class ResultViewer(QtWidgets.QMainWindow):
                 self.viewbox.removeItem(shaft)
             self.arrow_shafts.clear() 
 
+        # Ensure region overlay is on top if it exists
+        if self.region_overlay is not None:
+            self.viewbox.removeItem(self.region_overlay)
+            self.viewbox.addItem(self.region_overlay)
+
     def export_video(self):
         """Export the current visualization as a video file with pixel-perfect rendering."""
         try:
@@ -607,8 +800,15 @@ class ResultViewer(QtWidgets.QMainWindow):
 
         # Calculate export dimensions based on video dimensions and pixel scaling
         video_height, video_width = self.video[0].shape
-        export_width = video_width * pixel_scale
-        export_height = video_height * pixel_scale
+        
+        # Handle region selection
+        if self.selected_region is not None:
+            region_x, region_y, region_width, region_height = self.selected_region
+            export_width = region_width * pixel_scale
+            export_height = region_height * pixel_scale
+        else:
+            export_width = video_width * pixel_scale
+            export_height = video_height * pixel_scale
         
         # Use MP4 with high quality settings
         default_ext = "mp4"
@@ -691,11 +891,22 @@ class ResultViewer(QtWidgets.QMainWindow):
                 else:
                     frame_rgb = base_frame
                 
+                # Apply region cropping if selected
+                if self.selected_region is not None:
+                    region_x, region_y, region_width, region_height = self.selected_region
+                    frame_rgb = frame_rgb[region_y:region_y+region_height, region_x:region_x+region_width]
+                
                 # Scale up the frame without interpolation (nearest neighbor)
                 export_frame = np.repeat(np.repeat(frame_rgb, pixel_scale, axis=0), pixel_scale, axis=1)
                 
                 # Calculate displaced points
                 displaced_pts = self.grid + displ
+                
+                # Calculate region offset for coordinate transformation
+                region_offset_x = 0
+                region_offset_y = 0
+                if self.selected_region is not None:
+                    region_offset_x, region_offset_y = self.selected_region[0], self.selected_region[1]
                 
                 # Draw displacement visualization on the scaled frame
                 if show_arrows:
@@ -705,27 +916,37 @@ class ResultViewer(QtWidgets.QMainWindow):
                     cmap = plt.colormaps[self.colormap]
                     
                     for i, (pt0, pt1, mag) in enumerate(zip(self.grid, displaced_pts, magnitudes)):
-                        # Scale coordinates to export resolution
-                        start_pt = (int(pt0[0] * pixel_scale), int(pt0[1] * pixel_scale))
-                        end_pt = (int(pt1[0] * pixel_scale), int(pt1[1] * pixel_scale))
+                        # Apply region offset and scale coordinates to export resolution
+                        start_pt = (int((pt0[0] - region_offset_x) * pixel_scale), 
+                                   int((pt0[1] - region_offset_y) * pixel_scale))
+                        end_pt = (int((pt1[0] - region_offset_x) * pixel_scale), 
+                                 int((pt1[1] - region_offset_y) * pixel_scale))
                         
-                        # Get color for this magnitude
-                        color = cmap(norm(mag))
-                        color_bgr = tuple(int(255 * c) for c in color[2::-1])  # Convert RGB to BGR
-                        
-                        # Draw arrow line
-                        cv2.line(export_frame, start_pt, end_pt, color_bgr, 
-                                max(1, point_size * pixel_scale // 10))
-                        
-                        # Draw arrow head
-                        cv2.circle(export_frame, end_pt, max(1, point_size * pixel_scale // 5), 
-                                  color_bgr, -1)
+                        # Check if points are within the export frame bounds
+                        if (0 <= start_pt[0] < export_width and 0 <= start_pt[1] < export_height and
+                            0 <= end_pt[0] < export_width and 0 <= end_pt[1] < export_height):
+                            
+                            # Get color for this magnitude
+                            color = cmap(norm(mag))
+                            color_bgr = tuple(int(255 * c) for c in color[2::-1])  # Convert RGB to BGR
+                            
+                            # Draw arrow line
+                            cv2.line(export_frame, start_pt, end_pt, color_bgr, 
+                                    max(1, point_size * pixel_scale // 10))
+                            
+                            # Draw arrow head
+                            cv2.circle(export_frame, end_pt, max(1, point_size * pixel_scale // 5), 
+                                      color_bgr, -1)
                 else:
                     # Draw points at displaced positions
                     for pt in displaced_pts:
-                        center = (int(pt[0] * pixel_scale), int(pt[1] * pixel_scale))
-                        cv2.circle(export_frame, center, max(1, point_size * pixel_scale // 5), 
-                                  (0, 0, 255), -1)  # Red circles
+                        center = (int((pt[0] - region_offset_x) * pixel_scale), 
+                                 int((pt[1] - region_offset_y) * pixel_scale))
+                        
+                        # Check if point is within the export frame bounds
+                        if (0 <= center[0] < export_width and 0 <= center[1] < export_height):
+                            cv2.circle(export_frame, center, max(1, point_size * pixel_scale // 5), 
+                                      (0, 0, 255), -1)  # Red circles
                 
                 # Ensure the frame is in the correct format and size
                 export_frame = np.clip(export_frame, 0, 255).astype(np.uint8)
@@ -746,11 +967,16 @@ class ResultViewer(QtWidgets.QMainWindow):
             else:
                 frame_info = f"Frames: {start_frame} to {stop_frame} ({total_frames} total)"
             
+            # Add region info if applicable
+            region_info = ""
+            if self.selected_region is not None:
+                region_info = f"Region: {self.selected_region[2]}x{self.selected_region[3]} pixels\n"
+            
             QtWidgets.QMessageBox.information(self, "Export Complete", 
                                             f"Video exported successfully to:\n{file_path}\n"
                                             f"Resolution: {export_width}x{export_height} "
                                             f"(pixel scale: {pixel_scale}x)\n"
-                                            f"{frame_info}")
+                                            f"{region_info}{frame_info}")
 
         except Exception as e:
             import traceback
