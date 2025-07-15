@@ -6,10 +6,10 @@ from qtpy.QtWidgets import QTextEdit, QVBoxLayout, QWidget, QApplication
 import warnings
 warnings.simplefilter("default")
 
-from . import tools
+from .. import tools
 from . import selection
-from .methods import SimplifiedOpticalFlow
-from .methods import LucasKanade
+from ..methods import SimplifiedOpticalFlow
+from ..methods import LucasKanade
 
 NO_METHOD = '---'
 add_vertical_stretch = True
