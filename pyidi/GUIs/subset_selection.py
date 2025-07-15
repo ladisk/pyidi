@@ -924,16 +924,23 @@ class SelectionGUI(QtWidgets.QMainWindow):
 
     def get_points(self):
         """Get all selected points from manual and polygons."""
-        points = np.array(self.selected_points)[:, ::-1] # set axis 0 to y and axis 1 to x
-        return points
+        filtered_points = self.get_filtered_points()
+        if filtered_points.size > 0:
+            return filtered_points
+        else:
+            return self.get_selected_points()
     
     @property
     def points(self):
         return self.get_points()
     
     def get_filtered_points(self):
-        """Get candidate points from automatic filtering."""
-        return self.candidate_points.copy() if hasattr(self, 'candidate_points') else []
+        """Get candidate points from filtering."""
+        return np.array(self.candidate_points)[:, ::-1] if hasattr(self, 'candidate_points') else []
+    
+    def get_selected_points(self):
+        """Get all selected points from manual, polygons and grid."""
+        return np.array(self.selected_points)[:, ::-1] if self.selected_points else []
 
     # Grid selection
     def handle_grid_drawing(self, event):
@@ -1160,7 +1167,7 @@ class SelectionGUI(QtWidgets.QMainWindow):
 
         eig_threshold = self.max_eig_shi_tomasi * threshold_ratio
 
-        self.candidate_points = [(round(y)+0.5, round(x)+0.5) for (x, y, e) in self.candidates_shi_tomasi if e > eig_threshold]
+        self.candidate_points = [(round(y), round(x)) for (x, y, e) in self.candidates_shi_tomasi if e > eig_threshold]
         self.update_candidate_display()
         self.update_candidate_points_count()
 
@@ -1185,7 +1192,7 @@ class SelectionGUI(QtWidgets.QMainWindow):
             self.view.addItem(self.candidate_scatter)
 
         if self.candidate_points:
-            self.candidate_scatter.setData(pos=self.candidate_points)
+            self.candidate_scatter.setData(pos=np.array(self.candidate_points) + 0.5)
         else:
             self.candidate_scatter.clear()
 
@@ -1277,7 +1284,7 @@ class SelectionGUI(QtWidgets.QMainWindow):
         threshold = self.max_grad_dir * threshold_ratio
 
         self.candidate_points = [
-            (round(y)+0.5, round(x)+0.5)
+            (round(y), round(x))
             for (x, y, v) in self.candidates_grad_dir
             if v > threshold
         ]
