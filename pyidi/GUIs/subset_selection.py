@@ -23,6 +23,49 @@ class BrushViewBox(pg.ViewBox):
             super().mouseClickEvent(ev)
 
     def mouseDragEvent(self, ev, axis=None):
+        # Handle gradient direction selection
+        if self.parent_gui.mode == "filter" and self.parent_gui.setting_direction:
+            if ev.isStart():
+                pos = ev.scenePos()
+                if self.sceneBoundingRect().contains(pos):
+                    point = self.mapSceneToView(pos)
+                    self.parent_gui.gradient_direction_points = [(point.x(), point.y())]
+                    self.parent_gui.gradient_direction_start = (point.x(), point.y())
+                    ev.accept()
+                    return
+            elif ev.isFinish():
+                pos = ev.scenePos()
+                if self.sceneBoundingRect().contains(pos):
+                    point = self.mapSceneToView(pos)
+                    if hasattr(self.parent_gui, 'gradient_direction_start'):
+                        self.parent_gui.gradient_direction_points = [
+                            self.parent_gui.gradient_direction_start,
+                            (point.x(), point.y())
+                        ]
+                        self.parent_gui.compute_direction_vector()
+                        self.parent_gui.update_direction_line()
+                        # Toggle off the direction selection mode
+                        self.parent_gui.direction_button.setChecked(False)
+                        self.parent_gui.set_gradient_direction_mode()
+                        self.parent_gui.compute_candidate_points_gradient_direction()
+                    ev.accept()
+                    return
+            else:
+                # During drag, update the line display
+                pos = ev.scenePos()
+                if self.sceneBoundingRect().contains(pos):
+                    point = self.mapSceneToView(pos)
+                    if hasattr(self.parent_gui, 'gradient_direction_start'):
+                        temp_points = [
+                            self.parent_gui.gradient_direction_start,
+                            (point.x(), point.y())
+                        ]
+                        xs = [p[0] for p in temp_points]
+                        ys = [p[1] for p in temp_points]
+                        self.parent_gui.direction_line.setData(xs, ys)
+                    ev.accept()
+                    return
+        
         if self.parent_gui.mode == "selection" and self.parent_gui.method_buttons["Brush"].isChecked():
             if self.parent_gui.ctrl_held:
                 ev.accept()
@@ -173,7 +216,7 @@ class SelectionGUI(QtWidgets.QMainWindow):
 
         # Ensure method-specific widgets are visible on startup
         self.method_selected(self.button_group.checkedId())
-        self.auto_method_selected(0)
+        # Don't auto-select any filter method - let user choose when needed
 
         # Set the initial mode
         self.switch_mode("selection")  # Default to selection mode
@@ -462,8 +505,7 @@ class SelectionGUI(QtWidgets.QMainWindow):
         for i, name in enumerate(method_names):
             button = QtWidgets.QPushButton(name)
             button.setCheckable(True)
-            if i == 0:
-                button.setChecked(True)
+            # Don't auto-select any method - let user choose
             self.auto_method_group.addButton(button, i)
             filter_method_layout.addWidget(button)
             self.auto_method_buttons[name] = button
@@ -521,6 +563,25 @@ class SelectionGUI(QtWidgets.QMainWindow):
         self.direction_button.clicked.connect(self.set_gradient_direction_mode)
         method_settings_layout.addWidget(self.direction_button)
 
+        # Preset direction buttons
+        preset_layout = QtWidgets.QHBoxLayout()
+        
+        self.x_direction_button = QtWidgets.QPushButton("X Direction")
+        self.x_direction_button.setVisible(False)
+        self.x_direction_button.clicked.connect(self.set_x_direction_preset)
+        preset_layout.addWidget(self.x_direction_button)
+        
+        self.y_direction_button = QtWidgets.QPushButton("Y Direction")
+        self.y_direction_button.setVisible(False)
+        self.y_direction_button.clicked.connect(self.set_y_direction_preset)
+        preset_layout.addWidget(self.y_direction_button)
+        
+        # Create a widget to hold the preset buttons
+        self.preset_buttons_widget = QtWidgets.QWidget()
+        self.preset_buttons_widget.setLayout(preset_layout)
+        self.preset_buttons_widget.setVisible(False)
+        method_settings_layout.addWidget(self.preset_buttons_widget)
+
         self.direction_threshold = 10
         self.gradient_thresh_label = QtWidgets.QLabel(f"Threshold (grad): {self.direction_threshold}")
         self.gradient_thresh_label.setVisible(False)
@@ -543,11 +604,24 @@ class SelectionGUI(QtWidgets.QMainWindow):
         self.automatic_layout.addStretch(1)
 
     def auto_method_selected(self, id: int):
+        # Check if any button is actually checked
+        if self.auto_method_group.checkedButton() is None:
+            return
+            
         method_name = list(self.auto_method_buttons.keys())[id]
         # print(f"Selected automatic method: {method_name}")
         # Here you can switch method behavior, show/hide widgets, etc.
         is_shi_tomasi = method_name == "Shi-Tomasi"
         is_gradient_dir = method_name == "Gradient in direction"
+
+        # Reset gradient direction selection when switching away from gradient method
+        if not is_gradient_dir and hasattr(self, 'direction_button') and self.direction_button.isChecked():
+            self.direction_button.setChecked(False)
+            self.set_gradient_direction_mode()
+        
+        # Hide direction line when not in gradient direction mode
+        if not is_gradient_dir and hasattr(self, 'direction_line'):
+            self.direction_line.clear()
 
         self.threshold_label.setVisible(is_shi_tomasi)
         self.threshold_slider.setVisible(is_shi_tomasi)
@@ -556,15 +630,23 @@ class SelectionGUI(QtWidgets.QMainWindow):
             self.compute_candidate_points_shi_tomasi()
 
         self.direction_button.setVisible(is_gradient_dir)
+        self.preset_buttons_widget.setVisible(is_gradient_dir)
         self.gradient_thresh_label.setVisible(is_gradient_dir)
         self.gradient_thresh_slider.setVisible(is_gradient_dir)
+        self.preset_buttons_widget.setVisible(is_gradient_dir)
+        self.y_direction_button.setVisible(is_gradient_dir)
+        self.x_direction_button.setVisible(is_gradient_dir)
+
         if is_gradient_dir and self.gradient_direction is not None:
             self.compute_candidate_points_gradient_direction()
+            # Show the direction line if we have gradient direction points
+            if hasattr(self, 'gradient_direction_points') and len(self.gradient_direction_points) == 2:
+                self.update_direction_line()
 
         if is_shi_tomasi:
             self.show_instruction("Use the threshold slider to filter points.")
         elif is_gradient_dir:
-            self.show_instruction("Define the gradient direction by clicking 'Set direction on image' and defining two pointsy.")
+            self.show_instruction("Click 'Set direction on image' button and drag to define the gradient direction.")
 
     def show_instruction(self, message: str):
         self.statusBar.showMessage(message)
@@ -612,6 +694,15 @@ class SelectionGUI(QtWidgets.QMainWindow):
             self.filter_mode_button.setChecked(False)
             self.stack.setCurrentWidget(self.manual_widget)
 
+            # Reset gradient direction selection when leaving filter mode
+            if hasattr(self, 'direction_button') and self.direction_button.isChecked():
+                self.direction_button.setChecked(False)
+                self.set_gradient_direction_mode()
+            
+            # Hide direction line when leaving filter mode
+            if hasattr(self, 'direction_line'):
+                self.direction_line.clear()
+
             self.roi_overlay.setVisible(True)
             self.scatter.setVisible(True)
             self.show_instruction("Selection mode: choose a method on the left.")
@@ -621,27 +712,13 @@ class SelectionGUI(QtWidgets.QMainWindow):
             self.filter_mode_button.setChecked(True)
             self.stack.setCurrentWidget(self.automatic_widget)
 
-            self.compute_candidate_points_shi_tomasi()
+            # Don't automatically compute anything - let user select method first
             self.show_points_checkbox.setChecked(False)
             self.roi_overlay.setVisible(False)
             self.scatter.setVisible(False)
             self.show_instruction("Filter mode: choose a filter method and adjust settings.")
 
     def on_mouse_click(self, event):
-        if self.setting_direction:
-            pos = event.scenePos()
-            if self.view.sceneBoundingRect().contains(pos):
-                point = self.view.mapSceneToView(pos)
-                self.gradient_direction_points.append((point.x(), point.y()))
-                if len(self.gradient_direction_points) == 2:
-                    self.compute_direction_vector()
-                    self.update_direction_line()
-                    self.setting_direction = False
-                    self.direction_button.setChecked(False)
-                    # print(f"Gradient direction set: {self.gradient_direction}")
-                    self.compute_candidate_points_gradient_direction()
-            return
-        
         if self.mode == "filter":
             return
         
@@ -833,6 +910,10 @@ class SelectionGUI(QtWidgets.QMainWindow):
 
         self.points_label.setText("Selected subsets: 0")
 
+        # Reset gradient direction selection and clear direction line
+        if hasattr(self, 'direction_button') and self.direction_button.isChecked():
+            self.direction_button.setChecked(False)
+            self.set_gradient_direction_mode()
         self.direction_line.clear()
 
         self.update_selected_points()  # Refresh display
@@ -1116,14 +1197,30 @@ class SelectionGUI(QtWidgets.QMainWindow):
         if hasattr(self, 'candidate_scatter'):
             self.candidate_scatter.clear()
 
+        # Reset gradient direction selection when clearing candidates
+        if hasattr(self, 'direction_button') and self.direction_button.isChecked():
+            self.direction_button.setChecked(False)
+            self.set_gradient_direction_mode()
+
         self.update_selected_points()  # Update main display to remove candidates
     
     # Gradient in a specified direction
     def set_gradient_direction_mode(self):
-        self.setting_direction = True
-        self.gradient_direction_points = []
-        self.direction_button.setChecked(True)  # Keep it visually pressed
-        # print("Click two points to set the gradient direction.")
+        """Toggle gradient direction selection mode."""
+        self.setting_direction = self.direction_button.isChecked()
+        
+        if self.setting_direction:
+            self.direction_button.setText("Cancel Direction")
+            self.direction_button.setStyleSheet("background-color: #d73a00;")
+            self.gradient_direction_points = []
+            # Clear the direction line only when starting new selection
+            self.direction_line.clear()
+            self.show_instruction("Click and drag to set the gradient direction.")
+        else:
+            self.direction_button.setText("Set direction on image")
+            self.direction_button.setStyleSheet("")
+            # Don't clear the direction line when finishing selection - keep it visible
+            self.show_instruction("Filter mode: choose a filter method and adjust settings.")
 
     def compute_direction_vector(self):
         p1, p2 = self.gradient_direction_points
@@ -1284,6 +1381,76 @@ class SelectionGUI(QtWidgets.QMainWindow):
     def activate_brush_deselect(self):
         if self.brush_deselect_button.isChecked():
             self.brush_deselect_mode = True
+
+    def set_x_direction_preset(self):
+        """Set horizontal (X) direction preset."""
+        if self.image_item.image is None:
+            return
+        
+        # Get image dimensions
+        w, h = self.image_item.image.shape[:2]
+        
+        # Set horizontal line in the center of the image
+        center_y = h // 2
+        margin = min(w // 4, 50)  # Use 1/4 of width or 50 pixels, whichever is smaller
+        
+        # Create horizontal line points
+        start_x = margin
+        end_x = w - margin
+        
+        self.gradient_direction_points = [
+            (start_x, center_y),
+            (end_x, center_y)
+        ]
+        
+        # Compute and set the direction vector
+        self.compute_direction_vector()
+        self.update_direction_line()
+        
+        # Ensure direction selection is off
+        if self.direction_button.isChecked():
+            self.direction_button.setChecked(False)
+            self.set_gradient_direction_mode()
+        
+        # Compute candidate points
+        self.compute_candidate_points_gradient_direction()
+        
+        self.show_instruction("X (horizontal) direction preset applied.")
+
+    def set_y_direction_preset(self):
+        """Set vertical (Y) direction preset."""
+        if self.image_item.image is None:
+            return
+        
+        # Get image dimensions
+        w, h = self.image_item.image.shape[:2]
+        
+        # Set vertical line in the center of the image
+        center_x = w // 2
+        margin = min(h // 4, 50)  # Use 1/4 of height or 50 pixels, whichever is smaller
+        
+        # Create vertical line points
+        start_y = margin
+        end_y = h - margin
+        
+        self.gradient_direction_points = [
+            (center_x, start_y),
+            (center_x, end_y)
+        ]
+        
+        # Compute and set the direction vector
+        self.compute_direction_vector()
+        self.update_direction_line()
+        
+        # Ensure direction selection is off
+        if self.direction_button.isChecked():
+            self.direction_button.setChecked(False)
+            self.set_gradient_direction_mode()
+        
+        # Compute candidate points
+        self.compute_candidate_points_gradient_direction()
+        
+        self.show_instruction("Y (vertical) direction preset applied.")
 
 def points_along_polygon(polygon, subset_size, spacing=0):
     if len(polygon) < 2:
