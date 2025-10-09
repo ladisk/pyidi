@@ -20,4 +20,5 @@ rich
 qtpy
 opencv-contrib-python
 pytest-warnings
- 
+ipywidgets
+ipykernel
