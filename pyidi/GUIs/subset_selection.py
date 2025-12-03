@@ -938,9 +938,8 @@ class SelectionGUI(QtWidgets.QMainWindow):
 
     def get_points(self):
         """Get all selected points from manual and polygons."""
-        filtered_points = self.get_filtered_points()
-        if filtered_points.size > 0:
-            return filtered_points
+        if np.array(self.candidate_points).size > 0:
+            return self.get_filtered_points()
         else:
             return self.get_selected_points()
     
