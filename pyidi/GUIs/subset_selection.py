@@ -83,7 +83,7 @@ class BrushViewBox(pg.ViewBox):
         super().mouseDragEvent(ev, axis)
 
 class SelectionGUI(QtWidgets.QMainWindow):
-    def __init__(self, video):
+    def __init__(self, video, subset_size=11, subset_overlap=0):
         """Initialize the selection GUI for manual subset selection.
 
         To extract the points, use the ``get_points`` method or the ``points`` attribute.
@@ -101,6 +101,9 @@ class SelectionGUI(QtWidgets.QMainWindow):
 
         self.setWindowTitle("ROI Selection Tool")
         self.resize(1200, 800)
+
+        self.subset_size = subset_size
+        self.subset_overlap = subset_overlap
 
         self._paint_mask = None  # Same shape as the image
         self._paint_radius = 10  # pixels
@@ -365,7 +368,7 @@ class SelectionGUI(QtWidgets.QMainWindow):
         
         self.subset_size_spinbox = QtWidgets.QSpinBox()
         self.subset_size_spinbox.setRange(1, 1000)
-        self.subset_size_spinbox.setValue(11)
+        self.subset_size_spinbox.setValue(self.subset_size)
         self.subset_size_spinbox.setAlignment(QtCore.Qt.AlignmentFlag.AlignRight)
         self.subset_size_spinbox.setSingleStep(2)
         self.subset_size_spinbox.setMinimum(1)
@@ -381,7 +384,7 @@ class SelectionGUI(QtWidgets.QMainWindow):
         
         self.subset_size_slider = QtWidgets.QSlider(QtCore.Qt.Orientation.Horizontal)
         self.subset_size_slider.setRange(1, 100)
-        self.subset_size_slider.setValue(11)
+        self.subset_size_slider.setValue(self.subset_size)
         self.subset_size_slider.setSingleStep(1)
         self.subset_size_slider.valueChanged.connect(self.update_subset_size_from_slider)
         config_layout.addWidget(self.subset_size_slider)
@@ -410,7 +413,7 @@ class SelectionGUI(QtWidgets.QMainWindow):
         self.distance_spinbox = QtWidgets.QSpinBox()
         self.distance_spinbox.setRange(-50, 50)
         self.distance_spinbox.setSingleStep(1)
-        self.distance_spinbox.setValue(0)
+        self.distance_spinbox.setValue(self.subset_overlap)
         self.distance_spinbox.setSuffix("px")
         self.distance_spinbox.setFixedWidth(80)
         self.distance_spinbox.valueChanged.connect(self.update_distance_from_spinbox)
@@ -427,7 +430,7 @@ class SelectionGUI(QtWidgets.QMainWindow):
         self.distance_slider = QtWidgets.QSlider(QtCore.Qt.Orientation.Horizontal)
         self.distance_slider.setRange(-50, 50)
         self.distance_slider.setSingleStep(1)
-        self.distance_slider.setValue(0)
+        self.distance_slider.setValue(self.subset_overlap)
         self.distance_slider.setVisible(False)
         self.distance_slider.valueChanged.connect(self.update_distance_from_slider)
         method_controls_layout.addWidget(self.distance_slider)
