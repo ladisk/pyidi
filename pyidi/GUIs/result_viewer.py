@@ -47,7 +47,7 @@ class RegionSelectViewBox(pg.ViewBox):
         else:
             super().mouseReleaseEvent(ev)
 
-class ResultViewer(QtWidgets.QMainWindow):
+class Viewer(QtWidgets.QMainWindow):
     def __init__(self, video, displacements, points, fps=30, magnification=1, point_size=10, colormap="cool"):
         """
         The results from the pyidi analysis can directly be passed to this class:
@@ -996,7 +996,8 @@ class ResultViewer(QtWidgets.QMainWindow):
             self.export_button.setEnabled(True)
             writer.release()
 
-
+class ResultViewer(Viewer):
+    pass
 
 if __name__ == "__main__":
     n_frames, height, width = 200, 300, 400
