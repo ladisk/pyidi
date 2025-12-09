@@ -10,6 +10,7 @@ except ImportError:
 if HAS_PYQT6 or typing.TYPE_CHECKING:
     from .subset_selection import SelectionGUI
     from .result_viewer import ResultViewer
+    from .result_viewer import Viewer
 else:
     class SelectionGUI:
         def __init__(self, *args, **kwargs):

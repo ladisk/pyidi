@@ -48,7 +48,7 @@ class RegionSelectViewBox(pg.ViewBox):
             super().mouseReleaseEvent(ev)
 
 class Viewer(QtWidgets.QMainWindow):
-    def __init__(self, video, displacements, points, fps=30, magnification=1, point_size=10, colormap="cool"):
+    def __init__(self, video, displacements=None, points=None, fps=30, magnification=1, point_size=10, colormap="cool"):
         """
         The results from the pyidi analysis can directly be passed to this class:
         
@@ -88,24 +88,31 @@ class Viewer(QtWidgets.QMainWindow):
         else:
             self.video = video
 
-        # Check if displacements are 2D (mode shapes) or 3D (time-series)
-        if displacements.ndim == 2:
-            # Mode shapes: shape (n_points, 2)
-            self.is_mode_shape = True
-            self.displacements = displacements[:, ::-1]  # Flip x,y coordinates
-            self.time_per_period = 1.0 # Seconds
-        else:
-            # Time-series displacements: shape (n_frames, n_points, 2)
-            self.is_mode_shape = False
-            self.displacements = displacements[:, :, ::-1]  # Flip x,y coordinates
+        # Check if displacements are provided
+        if displacements is not None:
+            # Check if displacements are 2D (mode shapes) or 3D (time-series)
+            if displacements.ndim == 2:
+                # Mode shapes: shape (n_points, 2)
+                self.is_mode_shape = True
+                self.displacements = displacements[:, ::-1]  # Flip x,y coordinates
+                self.time_per_period = 1.0 # Seconds
+            else:
+                # Time-series displacements: shape (n_frames, n_points, 2)
+                self.is_mode_shape = False
+                self.displacements = displacements[:, :, ::-1]  # Flip x,y coordinates
 
-        self.grid = points[:, ::-1] + 0.5  # Flip x,y coordinates
+            self.grid = points[:, ::-1] + 0.5  # Flip x,y coordinates
+            self.disp_max = np.max(np.abs(displacements))
+        else:
+            self.displacements = None
+            self.grid = None
+            self.is_mode_shape = False
+            self.disp_max = 0
+
         self.fps = fps
         self.magnification = magnification
         self.points_size = point_size
         self.current_frame = 0
-
-        self.disp_max = np.max(np.abs(displacements))
         self.colormap = colormap
 
         # Region selection variables
@@ -708,6 +715,12 @@ class Viewer(QtWidgets.QMainWindow):
         self.update_frame()
 
     def update_frame(self):
+        # If no displacements, just show the video
+        if self.displacements is None:
+            frame = self.video[self.current_frame]
+            self.img_item.setImage(frame.T)
+            return
+
         scale = self.magnification
 
         if self.is_mode_shape:
