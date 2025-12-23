@@ -5,10 +5,10 @@ Module for reading video files from high-speed video recordings.
 """
 
 import os
+import warnings
 import pyMRAW
 import numpy as np
 import imageio.v3 as iio
-import warnings
 
 PHORTRON_HEADER_FILE = ['cih', 'cihx']
 SUPPORTED_IMAGE_FORMATS = ['png', 'tif', 'tiff', 'bmp', 'jpg', 'jpeg', 'gif']
@@ -49,14 +49,14 @@ class VideoReader:
         """
         if fps:
             fps = int(fps)
-            
+
         self.fps = fps
 
 
         if isinstance(input_file, np.ndarray):
             if root is None:
                 raise ValueError('Root directory must be provided for np.ndarray input file!')
-            
+
             self.root = root
             if not os.path.exists(self.root): # Create the folder if it does not exist
                 os.mkdir(self.root)
@@ -68,7 +68,7 @@ class VideoReader:
         elif isinstance(input_file, str):
             if not os.path.exists(input_file):
                 raise FileNotFoundError(f'File "{input_file}" not found!')
-            
+
             self.root, self.file = os.path.split(input_file)
             self.file_format = self.file.split('.')[-1].lower()
             self.input_file = input_file
@@ -83,7 +83,7 @@ class VideoReader:
             if self.fps is None:
                 self.fps = int(info['Record Rate(fps)'])
             self.info = info
-        
+
         elif self.file_format in SUPPORTED_IMAGE_FORMATS:
             image_prop = iio.improps(input_file)
             self.image_meta = iio.immeta(input_file, plugin='pyav')
@@ -93,6 +93,7 @@ class VideoReader:
                 self.frame_files = [f.name for f in sc_dir \
                                     if f.name.endswith(self.file_format) \
                                         or f.name.endswith(self.file_format.upper())]
+                self.frame_files.sort()
                 self.N = len(self.frame_files)
                 self.image_width = image_prop.shape[1]
                 self.image_height = image_prop.shape[0]
@@ -101,7 +102,7 @@ class VideoReader:
                 self.N = image_prop.n_images
                 self.image_width = image_prop.shape[2]
                 self.image_height = image_prop.shape[1]
-        
+
         elif self.file_format in PYAV_SUPPORTED_VIDEO_FORMATS:
             video_prop = iio.improps(input_file, plugin='pyav')
             video_meta = iio.immeta(input_file, plugin='pyav')
@@ -120,7 +121,7 @@ class VideoReader:
             raise ValueError('Unsupported file format!')
 
         return None
-    
+
     def get_frame(self, frame_number, *args, **kwargs):
         """
         Returns the "frame_number"-th frame from the video. Frames from image and video
@@ -145,7 +146,7 @@ class VideoReader:
             image = self._get_frame_from_video_file(frame_number, *args, **kwargs)
 
         return image
-    
+
     def get_frames(self, frame_range=None, *args, **kwargs):
         """Returns all the available frames.
         
@@ -161,10 +162,10 @@ class VideoReader:
         """
         if type(frame_range) not in [int, list, tuple, type(None)]:
             raise ValueError('Unsupported frame range! Supported types are int, list and tuple.')
-        
+
         if type(frame_range) in [list, tuple] and len(frame_range) != 2:
             raise ValueError('Length of the frame range must be 2!')
-        
+
         if frame_range is None:
             frames_start = 0
             frames_end = self.N + 1
@@ -180,7 +181,7 @@ class VideoReader:
 
         if self.file_format in PHORTRON_HEADER_FILE or self.file_format == 'np.ndarray':
             frames = self._frames[frames_start:frames_end]
-        
+
         else:
             frames = np.zeros((n_frames, self.image_height, self.image_width), dtype=int)
             for i in range(n_frames):
@@ -201,11 +202,13 @@ class VideoReader:
         """
         if self.is_n_images:
             input_file = os.path.join(self.root, self.file)
-            image = iio.imread(input_file, index=frame_number, plugin='pyav', format=self.image_meta['video_format'])
+            image = iio.imread(input_file, index=frame_number, plugin='pyav',\
+                               format=self.image_meta['video_format'])
         else:
             input_file = os.path.join(self.root, self.frame_files[frame_number])
-            image = iio.imread(input_file, index=0, plugin='pyav', format=self.image_meta['video_format'])
-        
+            image = iio.imread(input_file, index=0, plugin='pyav',\
+                               format=self.image_meta['video_format'])
+
         im_bit_depth = int(np.ceil(np.log2(image.max())))
         if im_bit_depth <= 8 and image.dtype != np.uint8:
             image = np.asarray(image, dtype=np.uint8)
@@ -218,21 +221,21 @@ class VideoReader:
         else:
             raise ValueError('image format is not 8 or 16 bit depth! Image format: {}'.format(image.dtype))
 
-        
+
         if len(image.shape) == 2:
             pass
-        
+
         elif use_channel.upper() == 'Y':
             image = _rgb2luma(image[:, :, :3])
-        
+
         elif use_channel.upper() in CHANNELS.keys():
             image = image[:, :, CHANNELS.get(use_channel.upper())]
-        
+
         else:
             raise ValueError('Unsupported channel! Only R, G, B, Y are supported.')
-        
+
         return image
-    
+
     def _get_frame_from_video_file(self, frame_number, use_channel='Y'):
         """Reads the frame from the video file which is supported by the
         "imagio.v3" "pyav" plug-in.
@@ -251,12 +254,12 @@ class VideoReader:
         elif use_channel.upper() in CHANNELS.keys():
             image = iio.imread(input_file, index=frame_number, plugin='pyav')
             image = image[:, :, CHANNELS.get(use_channel.upper())]
-        
+
         else:
             raise ValueError('Unsupported channel! Only R, G, B and Y are supported.')
 
         return image
-    
+
     def close(self):
         """
         Close the video and clear the resources.
@@ -288,7 +291,7 @@ def _rgb2luma(rgb_image):
     T = np.array([[ 0.29900, -0.16874,  0.50000],
                  [0.58700, -0.33126, -0.41869],
                  [ 0.11400, 0.50000, -0.08131]])
-    
+
     yuv_image = np.dot(rgb_image, T)
     y = np.asarray(np.around(yuv_image[:, :, 0]), dtype=rgb_image.dtype)
 
