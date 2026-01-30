@@ -333,8 +333,11 @@ class IDIMethod:
         analyses = glob.glob(os.path.join(self.root_analysis, 'analysis_*/'))
         if analyses:
             last_an = sorted(analyses)[-1]
-            print(last_an, last_an.split('\\')[-2])
-            n = int(last_an.split('\\')[-2].split('_')[-1])
+
+            n = int( os.path.split(os.path.dirname(last_an))[-1].split("_")[-1] )
+
+            # print(last_an, last_an.split('\\')[-2])
+            # n = int(last_an.split('\\')[-2].split('_')[-1])
         else:
             n = 0
         self.root_this_analysis = os.path.join(self.root_analysis, f'analysis_{n+1:0>3.0f}')
