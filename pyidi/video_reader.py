@@ -8,9 +8,11 @@ import os
 import warnings
 import pyMRAW
 import numpy as np
+from . import slow_reader as _slow_reader
 import imageio.v3 as iio
 
 PHORTRON_HEADER_FILE = ['cih', 'cihx']
+SLOW_FILE = ['slow']
 SUPPORTED_IMAGE_FORMATS = ['png', 'tif', 'tiff', 'bmp', 'jpg', 'jpeg', 'gif']
 PYAV_SUPPORTED_VIDEO_FORMATS = ['avi', 'mkv', 'mp4', 'mov', 'm4v', 'wmv', 'webm', 'flv', 'ogg', 'ogv']
 CHANNELS = {'R': 0, 'G': 1, 'B': 2}
@@ -84,6 +86,16 @@ class VideoReader:
                 self.fps = int(info['Record Rate(fps)'])
             self.info = info
 
+        elif self.file_format in SLOW_FILE:
+            self._slow = _slow_reader.SlowFile(input_file)
+            self._frames = self._slow.images
+            self.N = self._slow.fr_cnt
+            self.image_width = self._slow.width
+            self.image_height = self._slow.height
+            if self.fps is None:
+                self.fps = self._slow.fr_rate
+            self.info = self._slow.meta
+
         elif self.file_format in SUPPORTED_IMAGE_FORMATS:
             image_prop = iio.improps(input_file)
             self.image_meta = iio.immeta(input_file, plugin='pyav')
@@ -136,7 +148,7 @@ class VideoReader:
         if not 0 <= frame_number < self.N:
             raise ValueError('Frame number exceeds total frame number!')
 
-        if self.file_format in PHORTRON_HEADER_FILE or self.file_format == 'np.ndarray':
+        if self.file_format in PHORTRON_HEADER_FILE or self.file_format in SLOW_FILE or self.file_format == 'np.ndarray':
             image = self._frames[frame_number]
 
         elif self.file_format in SUPPORTED_IMAGE_FORMATS:
@@ -179,7 +191,7 @@ class VideoReader:
             frames_end = frame_range[1]
             n_frames = frame_range[1] - frame_range[0]
 
-        if self.file_format in PHORTRON_HEADER_FILE or self.file_format == 'np.ndarray':
+        if self.file_format in PHORTRON_HEADER_FILE or self.file_format in SLOW_FILE or self.file_format == 'np.ndarray':
             frames = self._frames[frames_start:frames_end]
 
         else:
@@ -265,9 +277,12 @@ class VideoReader:
         Close the video and clear the resources.
         In case of a MRAW video, closes the memory map for "mraw" file format.
         """
-        if hasattr(self, 'frames') and self.file_format in PHORTRON_HEADER_FILE:
+        if hasattr(self, '_frames') and self.file_format in PHORTRON_HEADER_FILE:
             self._frames._mmap.close()
             del self._frames
+        elif hasattr(self, '_slow') and self.file_format in SLOW_FILE:
+            del self._frames
+            del self._slow
 
     def gui(self):
         """Starts the GUI for pyIDI."""
