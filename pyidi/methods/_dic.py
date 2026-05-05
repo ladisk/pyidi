@@ -1,3 +1,32 @@
+"""Full-field 2D Digital Image Correlation method for pyidi.
+
+This module is a port of the pyDIC library by the LADISK research group
+(University of Ljubljana, Faculty of Mechanical Engineering) into pyidi's
+multi-point ``IDIMethod`` framework. The original pyDIC implementation lives
+at:
+
+    https://github.com/ladisk/pyDIC
+
+Algorithmically, this module mirrors the original: Inverse Compositional
+Gauss-Newton (IC-GN) optimization with the Zero Normalized Sum of Squared
+Differences (ZNSSD) criterion, with both a 6-parameter affine and a
+3-parameter rigid (translation + in-plane rotation) warp model. Per-point
+precomputables (gradient, steepest-descent images, Hessian) and the warp
+update equations follow pyDIC's ``py_dic.dic`` and ``py_dic.dic_tools``
+modules.
+
+Differences with respect to the upstream pyDIC implementation:
+
+- The single-ROI, function-call API of pyDIC is wrapped into a multi-point
+  ``IDIMethod`` subclass (``DIC``) so that many subsets can be tracked in a
+  single analysis with the standard pyidi configuration / checkpointing /
+  multiprocessing infrastructure.
+- The full converged warp parameters are exposed per point per frame as
+  ``self.warp_params`` (see the ``DIC`` class docstring).
+- Subset coordinates are mean-centered so that, at the identity warp, the
+  spline of the target frame is sampled exactly at each point's center.
+"""
+
 import numpy as np
 import time
 import datetime
@@ -20,9 +49,17 @@ from qtpy.QtWidgets import QApplication
 class DIC(IDIMethod):
     """Full-field 2D Digital Image Correlation method using Inverse
     Compositional Gauss-Newton optimization with the Zero Normalized Sum
-    of Squared Differences (ZNSSD) criterion. Ports the pyDIC algorithm
-    (https://github.com/ladisk/pyDIC) into pyidi's multi-point method
-    framework.
+    of Squared Differences (ZNSSD) criterion.
+
+    Origin
+    ------
+    This class is a port of the pyDIC library
+    (https://github.com/ladisk/pyDIC, LADISK research group, University of
+    Ljubljana) into the pyidi multi-point ``IDIMethod`` framework. The core
+    math (gradient kernel, Jacobians, steepest-descent images, Hessian,
+    inverse-compositional warp update, ZNSSD error image) follows pyDIC's
+    ``py_dic.dic`` and ``py_dic.dic_tools`` modules. Please cite the
+    underlying algorithm and the pyDIC repository when using this method.
 
     Outputs
     -------

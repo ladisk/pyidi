@@ -29,6 +29,8 @@ Available methods are:
 
 * :py:class:`DirectionalLucasKanade <pyidi.methods._directional_lucas_kanade.DirectionalLucasKanade>`
 
+* :py:class:`DIC <pyidi.methods._dic.DIC>`
+
 To use the Simplified Optical Flow method, the object must be instantiated:
 
 .. code:: python

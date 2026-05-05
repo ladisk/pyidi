@@ -31,6 +31,12 @@ Directional Lucas-Kanade
 .. automodule:: pyidi.methods._directional_lucas_kanade
     :members:
 
+Digital Image Correlation (DIC)
+-------------------------------
+
+.. automodule:: pyidi.methods._dic
+    :members:
+
 Postprocessing
 --------------
 
