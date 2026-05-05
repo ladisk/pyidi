@@ -3,13 +3,14 @@ import json
 import pickle
 import warnings
 
-from .methods import LucasKanade, SimplifiedOpticalFlow, DirectionalLucasKanade, IDIMethod
+from .methods import LucasKanade, SimplifiedOpticalFlow, DirectionalLucasKanade, DIC, IDIMethod
 from .video_reader import VideoReader
 
 method_mappings = {
     "LucasKanade": LucasKanade,
     "SimplifiedOpticalFlow": SimplifiedOpticalFlow,
     "DirectionalLucasKanade": DirectionalLucasKanade,
+    "DIC": DIC,
 }
 
 def load_analysis(analysis_path, input_file=None, load_results=True):
@@ -46,8 +47,13 @@ def load_analysis(analysis_path, input_file=None, load_results=True):
     if load_results:
         with open(os.path.join(analysis_path, 'results.pkl'), 'rb') as f:
             results = pickle.load(f)
-            
+
         idi.displacements = results
+
+        warp_params_path = os.path.join(analysis_path, 'warp_params.pkl')
+        if os.path.exists(warp_params_path):
+            with open(warp_params_path, 'rb') as f:
+                idi.warp_params = pickle.load(f)
 
     idi.set_points(points)
 

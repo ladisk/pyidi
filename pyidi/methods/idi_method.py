@@ -350,6 +350,9 @@ class IDIMethod:
             pickle.dump(self.displacements, f, protocol=-1)
         with open(os.path.join(root, 'points.pkl'), 'wb') as f:
             pickle.dump(self.points, f, protocol=-1)
+        if hasattr(self, 'warp_params'):
+            with open(os.path.join(root, 'warp_params.pkl'), 'wb') as f:
+                pickle.dump(self.warp_params, f, protocol=-1)
 
         out = {
             'info': {
