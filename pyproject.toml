@@ -77,3 +77,8 @@ source = "https://github.com/ladisk/pyidi"
 include = [
     "pyidi/*",
 ]
+
+[dependency-groups]
+dev = [
+    "pyidi[qt]",
+]
