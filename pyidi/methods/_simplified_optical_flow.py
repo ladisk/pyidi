@@ -7,7 +7,10 @@ from tqdm import tqdm
 import tkinter as tk
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 from matplotlib.figure import Figure
-from qtpy.QtWidgets import QApplication
+try:
+    from qtpy.QtWidgets import QApplication
+except ImportError:
+    QApplication = None
 
 import warnings
 warnings.simplefilter("default")
@@ -129,7 +132,8 @@ class SimplifiedOpticalFlow(IDIMethod):
             if self.pixel_shift:
                 self.pixel_shift_fun(i, self.points, image.shape)
             # Update the progress bar in the GUI
-            QApplication.processEvents()
+            if QApplication is not None and QApplication.instance() is not None:
+                QApplication.processEvents()
 
         # Convert the displacements from pixels to physical units:
         self.displacements *= self.convert_from_px

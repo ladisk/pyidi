@@ -43,7 +43,10 @@ from ..video_reader import VideoReader
 
 from .idi_method import IDIMethod
 from ..progress_bar import progress_bar, rich_progress_bar_setup
-from qtpy.QtWidgets import QApplication
+try:
+    from qtpy.QtWidgets import QApplication
+except ImportError:
+    QApplication = None
 
 
 class DIC(IDIMethod):
@@ -327,7 +330,8 @@ class DIC(IDIMethod):
 
             if hasattr(self, "progress") and hasattr(self, "task_id"):
                 self.progress[self.task_id] = {"progress": ii + 1, "total": len_of_task}
-            QApplication.processEvents()
+            if QApplication is not None and QApplication.instance() is not None:
+                QApplication.processEvents()
 
     def _process_frame(self, G_spline, current_warps, frame_index, ii):
         """Optimize all points for a single frame and store outputs."""
