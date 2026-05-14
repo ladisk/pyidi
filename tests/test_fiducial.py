@@ -67,8 +67,9 @@ def test_compensation():
     # Detect fiducial markers in processed frames
     fiducials = test.detect_markers(processed)
     
-    # Randomly select a reference frame index
-    ref = np.random.randint(0, data.shape[0] - 1)
+    # Pick a reference frame from those with detected markers (deterministic for CI)
+    valid_indices = [i for i, f in enumerate(fiducials) if f != 'none']
+    ref = int(np.random.default_rng(0).choice(valid_indices))
     
     # Compute transformation matrices relative to the reference frame
     matrices = test.compute_transformations(fiducials, reference_index=ref)
