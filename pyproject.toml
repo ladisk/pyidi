@@ -27,8 +27,6 @@ dependencies = [
     "mantichora==0.9.7",
     "atpbar",
     "numba",
-    "napari[all]",
-    "magicgui",
     "imageio[pyav]",
     "opencv-python",
     "qtpy",
@@ -66,6 +64,8 @@ dev = [
 qt = [
     "pyqt6",
     "pyqtgraph",
+    "napari[all]",
+    "magicgui",
 ]
 
 [project.urls]
