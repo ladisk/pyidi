@@ -32,6 +32,9 @@ dependencies = [
     "imageio[pyav]",
     "opencv-python",
     "ipywidgets",
+    "ipykernel",
+    "qtpy",
+    "rich",
 ]
 classifiers = [
     "Development Status :: 5 - Production/Stable",
