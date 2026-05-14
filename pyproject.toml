@@ -28,7 +28,7 @@ dependencies = [
     "atpbar",
     "numba",
     "imageio[pyav]",
-    "opencv-python",
+    "opencv-contrib-python",
     "qtpy",
     "rich",
 ]
