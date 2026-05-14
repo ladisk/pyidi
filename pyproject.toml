@@ -31,8 +31,6 @@ dependencies = [
     "magicgui",
     "imageio[pyav]",
     "opencv-python",
-    "ipywidgets",
-    "ipykernel",
     "qtpy",
     "rich",
 ]
@@ -62,6 +60,8 @@ dev = [
     "sphinx-copybutton",
     "nbsphinx",
     "nbsphinx_link",
+    "ipykernel",
+    "ipywidgets",
 ]
 qt = [
     "pyqt6",
