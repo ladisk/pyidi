@@ -6,7 +6,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "pyidi"
-version = "1.3.2"
+version = "1.3.3"
 license = "MIT"
 description = "Python Image Displacement Identification."
 readme = "README.md"
