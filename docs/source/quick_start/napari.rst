@@ -5,6 +5,14 @@ Napari image viewer
 
 Interactive image viewer **napari** is implemented and can be used for viewing video and selecting points. More information about napari can be obtained `here <https://napari.org/>`_.
 
+.. note::
+
+   The ``GUI`` class requires the Qt/napari dependencies. Install pyIDI with the ``[qt]`` extras before using this module::
+
+      pip install pyidi[qt]
+
+   Importing ``GUI`` without these extras raises a ``RuntimeError``.
+
 Basic usage
 ------------
 To use the image viewer, the ``VideoReader`` object must first be available. It can be created by:
@@ -19,6 +27,7 @@ Image viewer is launched by instantiating ``GUI`` object. Method object is creat
 
 .. code:: python
 
+    from pyidi import GUI
     gui = GUI(video)
 
 Viewer is divided in few key areas. On the left side from main canvas there are: layer controls (editing layer colors, brightness), layer buttons, layer list and viewer buttons. On the right side there is a dock widget used for point selection. Slider below the canvas can be used for scrolling through video. By selecting image layer from layer list you can toggle layer visibility and adjust video colors or lightning.

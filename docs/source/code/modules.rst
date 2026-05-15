@@ -7,7 +7,7 @@ Video Reader
 .. automodule:: pyidi.video_reader
     :members:
 
-IDIMetod base class
+IDIMethod base class
 -------------------
 
 .. automodule:: pyidi.methods.idi_method
@@ -41,6 +41,12 @@ Postprocessing
 --------------
 
 .. automodule:: pyidi.postprocessing._motion_magnification
+    :members:
+
+Fiducial markers
+----------------
+
+.. automodule:: pyidi.fiducial
     :members:
 
 pyIDI base class

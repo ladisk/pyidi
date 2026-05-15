@@ -5,18 +5,22 @@ Point selection UI
 
 A convinient UI is available to make the point selection easier.
 
-To use the UI, the ``pyIDI`` object must first be available. It is created
-by:
+To use the UI, a ``VideoReader`` object must first be created:
 
 .. code:: python
 
-    video = pyidi.pyIDI(cih_file)
+    from pyidi import VideoReader, SubsetSelection
 
-A ``ROISelect`` object can then be created:
+    video = VideoReader(input_file)
+
+where ``input_file`` can be a Photron ``.cih``/``.cihx`` path, an image, a
+video file, a numpy array, or a ``.SLOW`` file.
+
+A ``SubsetSelection`` object can then be created:
 
 .. code:: python
 
-    Points = pyidi.selection.SubsetSelect(video, roi_size=(21, 21), noverlap=0)
+    Points = SubsetSelection(video, roi_size=(21, 21), noverlap=0)
 
 where ``roi_size`` is the size of a single Region-Of-Interest/subset in ``y`` and
 ``x`` direction respsectivly. The ``noverlap`` argument prescribes the overlap of the

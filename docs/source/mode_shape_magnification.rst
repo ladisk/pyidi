@@ -1,7 +1,7 @@
 Mode shape magnification
 ========================
 
-For example of mode shape magnification, see this `showcase <https://github.com/ladisk/pyidi/blob/master/Showcase_MS_mag.ipynb>`_.
+For example of mode shape magnification, see this `showcase <https://github.com/ladisk/pyidi/blob/master/examples/Showcase_MS_mag.ipynb>`_.
 
 The mode shape magnification implementation is based on the following paper:
 

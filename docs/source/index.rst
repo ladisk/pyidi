@@ -10,6 +10,7 @@ Welcome to pyIDI's documentation!
    :maxdepth: 2
    :caption: Contents:
    
+   installation
    quick_start/basic_usage
    quick_start/points_selection
    quick_start/napari
