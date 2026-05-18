@@ -108,9 +108,9 @@ class DirectionalLucasKanade(IDIMethod):
             self.use_numba = use_numba
         if dij is not None:
             self.dij = np.array(dij)
-            if np.linalg.norm(self.dij) != 1:
-                self.dij = self.dij/np.linalg.norm(self.dij)
-                # warnings.warn('The direction vector d must have a norm of 1. The input vector was normalized.')
+            if np.any(np.linalg.norm(self.dij, axis=-1) != 1):
+                self.dij = self.dij/(np.linalg.norm(self.dij, axis=-1, keepdims=True))
+
         self._set_frame_range()
 
         self.temp_dir = os.path.join(self.video.root, 'temp_file')
@@ -149,6 +149,15 @@ class DirectionalLucasKanade(IDIMethod):
             
         self.N_time_points = len(range(self.start_time-self.step_time, self.stop_time, self.step_time))
 
+    def set_directions(self, dij):
+        dij = np.array(dij)
+        if np.any(np.linalg.norm(dij, axis=-1) != 1):
+            dij = dij/(np.linalg.norm(dij, axis=-1, keepdims=True))
+        self.dij = dij
+        if dij.ndim == 1:
+            if not hasattr(self, "points"):
+                return
+            self.dij = np.ones_like(self.points) * dij
 
     def calculate_displacements(self, **kwargs):
         """
@@ -163,10 +172,14 @@ class DirectionalLucasKanade(IDIMethod):
         config_kwargs.pop('self', None)
         config_kwargs.update((k, kwargs[k]) for k in config_kwargs.keys() & kwargs.keys())
         self.configure(**config_kwargs)
+        
+        #self.dij can still be 1D if set as global direction with the configure function, or if set_directions got called before set_points.
+        # this ensures it gets extended into an array of size (n_points, 2)
+        self.set_directions(self.dij) 
 
         if self.process_number == 0:
             # Happens only once per analysis
-            if self.temp_files_check() and self.resume_analysis:
+            if self.temp_files_check_dir() and self.resume_analysis:
                 if self.verbose:
                     print('-- Resuming last analysis ---')
                     print(' ')
@@ -178,8 +191,7 @@ class DirectionalLucasKanade(IDIMethod):
 
         if self.processes != 1:
             if not self.resume_analysis:
-                self.create_temp_files(init_multi=True)
-            
+                self.create_temp_files(init_multi=True, add_directions_file = True)
             self.displacements = multi(self.video, self, self.processes, self.configuration_keys)
             
             # Clear the temporary files (only once per analysis)
@@ -192,7 +204,7 @@ class DirectionalLucasKanade(IDIMethod):
             self.resume_temp_files()
         else:
             self.displacements = np.zeros((self.points.shape[0], self.N_time_points, 2))
-            self.create_temp_files(init_multi=False)
+            self.create_temp_files(init_multi=False, add_directions_file = True)
 
         self.warnings = []
 
@@ -205,14 +217,14 @@ class DirectionalLucasKanade(IDIMethod):
         self._interpolate_reference(self.video)
         if self.verbose:
             print(f'...done in {time.time() - t:.2f} s')
-
+        
         # Time iteration.
         len_of_task = len(range(self.start_time, self.stop_time, self.step_time))
         for ii, i in enumerate(progress_bar(self.start_time, self.stop_time, self.step_time, show_pbar=self.show_pbar)):
             ii = ii + 1
 
             # Iterate over points.
-            for p, point in enumerate(self.points):
+            for p, (point, dij) in enumerate(zip(self.points, self.dij)):
                 
                 # start optimization with previous optimal parameter values
                 d_init = np.round(self.displacements[p, ii-1, :]).astype(int)
@@ -226,7 +238,7 @@ class DirectionalLucasKanade(IDIMethod):
                     F_spline=self.interpolation_splines[p], 
                     maxiter=self.max_nfev,
                     tol=self.tol,
-                    dij = self.dij,
+                    dij = dij,
                     d_subpixel_init = -d_res
                     )
                 self.displacements[p, ii, :] = displacements + d_init
@@ -415,9 +427,67 @@ class DirectionalLucasKanade(IDIMethod):
                                             linewidth=1, edgecolor=color, facecolor='none')
             ax.add_patch(roi_border)
 
+        if self.dij.ndim==1:
+                dij = np.ones_like(self.points)*self.dij
+        else:
+            dij = self.dij
+        ax.quiver(
+            self.points[:, 1],   # x positions
+            self.points[:, 0],   # y positions
+            dij[..., 1],    # dx
+            dij[..., 0],    # dy
+            color=color,
+            angles='xy',
+            scale_units='xy',
+            scale=1/self.roi_size[1],
+            width=0.003,
+            headwidth=3,
+            headlength=5
+        )
+
         plt.grid(False)
         plt.show()
 
+    def temp_files_check_dir(self):
+        """Checking the settings of computation.
+
+        The computation can only be resumed if all the settings and data
+        are the same as with the original analysis.
+        """
+
+        if os.path.exists(self.settings_filename):
+            with open(self.settings_filename, 'rb') as f:
+                settings_old = pickle.load(f)
+
+            json_old = json.dumps(settings_old, sort_keys=True, indent=2)
+
+            settings_new = self._make_comparison_dict()
+            json_new = json.dumps(settings_new, sort_keys=True, indent=2)
+
+            # if settings are different - new analysis
+            if json_new != json_old:
+                return False
+
+            # check stored points + directions
+            points_path = os.path.join(self.temp_dir, 'points.pkl')
+            directions_path = os.path.join(self.temp_dir, 'directions.pkl')
+
+            if os.path.exists(points_path) and os.path.exists(directions_path):
+
+                with open(points_path, 'rb') as f:
+                    points = pickle.load(f)
+
+                with open(directions_path, 'rb') as f:
+                    dij = pickle.load(f)
+
+                points_ok = np.array_equal(points, self.points)
+                directions_ok = np.array_equal(dij, self.dij)
+
+                return points_ok and directions_ok
+
+            return False
+
+        return False
 
 def multi(video: VideoReader, idi_method: DirectionalLucasKanade, processes, configuration_keys: list):
     """
@@ -444,6 +514,9 @@ def multi(video: VideoReader, idi_method: DirectionalLucasKanade, processes, con
 
     points = idi_method.points
     points_split = tools.split_points(points, processes=processes)
+    dij = idi_method.dij
+    dij_split = tools.split_points(dij, processes=processes)
+
 
     idi_kwargs = {
         'input_file': video.input_file,
@@ -473,7 +546,7 @@ def multi(video: VideoReader, idi_method: DirectionalLucasKanade, processes, con
                 for n in range(0, len(points_split)):  # iterate over the jobs we need to run
                     # set visible false so we don't have a lot of bars all at once:
                     task_id = progress.add_task(f"task {n} ({len(points_split[n])} points)")
-                    futures.append(executor.submit(worker, points_split[n], idi_kwargs, method_kwargs, n, _progress, task_id))
+                    futures.append(executor.submit(worker, points_split[n], dij_split[n], idi_kwargs, method_kwargs, n, _progress, task_id))
 
                 # monitor the progress:
                 while sum([future.done() for future in futures]) < len(futures):
@@ -500,7 +573,7 @@ def multi(video: VideoReader, idi_method: DirectionalLucasKanade, processes, con
     return out1
 
 
-def worker(points, idi_kwargs, method_kwargs, i, progress, task_id):
+def worker(points, directions, idi_kwargs, method_kwargs, i, progress, task_id):
     """
     A function that is called when for each job in multiprocessing.
     """
@@ -511,6 +584,7 @@ def worker(points, idi_kwargs, method_kwargs, i, progress, task_id):
     idi.configure(**method_kwargs)
     idi.configure_multiprocessing(i+1, progress, task_id) # configure the multiprocessing settings
     idi.set_points(points)
+    idi.set_directions(directions)
     return idi.get_displacements(autosave=False), i
 
 

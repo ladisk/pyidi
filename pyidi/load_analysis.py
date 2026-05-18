@@ -51,5 +51,11 @@ def load_analysis(analysis_path, input_file=None, load_results=True):
 
     idi.set_points(points)
 
+    exists = os.path.exists(os.path.join(analysis_path, 'directions.pkl'))
+    if exists:
+        with open(os.path.join(analysis_path, 'directions.pkl'), 'rb') as f:
+            dij = pickle.load(f)
+        idi.set_directions(dij)
+
     return video, idi, settings['settings']
 
