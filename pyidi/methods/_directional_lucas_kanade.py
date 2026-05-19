@@ -159,6 +159,17 @@ class DirectionalLucasKanade(IDIMethod):
                 return
             self.dij = np.ones_like(self.points) * dij
 
+    def set_rigid_body_motion(self, rbm_ij):
+        if rbm_ij is None:
+            if not hasattr(self, "N_time_points"):
+                raise ValueError(f'First run configure')
+                # return
+            self.rbm_ij = np.zeros((self.N_time_points, 2))
+        else:
+            self.rbm_ij = np.array(rbm_ij)
+            # if self.rbm_ij.shape != (self.N_time_points, 2):
+                # raise ValueError(f'Ensure a rigid body is prescribed for all time points in 2 directions')
+
     def calculate_displacements(self, **kwargs):
         """
         Calculate displacements for set points and roi size.
@@ -176,6 +187,9 @@ class DirectionalLucasKanade(IDIMethod):
         #self.dij can still be 1D if set as global direction with the configure function, or if set_directions got called before set_points.
         # this ensures it gets extended into an array of size (n_points, 2)
         self.set_directions(self.dij) 
+
+        if not hasattr(self, 'rbm_ij'):
+            self.set_rigid_body_motion(None)
 
         if self.process_number == 0:
             # Happens only once per analysis
@@ -222,6 +236,9 @@ class DirectionalLucasKanade(IDIMethod):
         len_of_task = len(range(self.start_time, self.stop_time, self.step_time))
         for ii, i in enumerate(progress_bar(self.start_time, self.stop_time, self.step_time, show_pbar=self.show_pbar)):
             ii = ii + 1
+            rbm = self.rbm_ij[ii]
+            rbm_int = np.round(rbm).astype(int)
+            rbm_res = rbm - rbm_int
 
             # Iterate over points.
             for p, (point, dij) in enumerate(zip(self.points, self.dij)):
@@ -230,18 +247,18 @@ class DirectionalLucasKanade(IDIMethod):
                 d_init = np.round(self.displacements[p, ii-1, :]).astype(int)
                 d_res = self.displacements[p, ii-1, :] - d_init
 
-                yslice, xslice = self._padded_slice(point+d_init, self.roi_size, self.image_size, (1,1))
+                yslice, xslice = self._padded_slice(point+d_init + rbm_int, self.roi_size, self.image_size, (1,1))
                 G = self.video.get_frame(i)[yslice, xslice].astype(np.float64)
 
-                displacements = self.optimize_translations(
+                displacement = self.optimize_translations(
                     G=G, 
                     F_spline=self.interpolation_splines[p], 
                     maxiter=self.max_nfev,
                     tol=self.tol,
                     dij = dij,
-                    d_subpixel_init = -d_res
+                    d_subpixel_init = -d_res + rbm_res
                     )
-                self.displacements[p, ii, :] = displacements + d_init
+                self.displacements[p, ii, :] = displacement + d_init - rbm_res
 
             # temp
             self.temp_disp[:, ii, :] = self.displacements[:, ii, :]
@@ -593,4 +610,4 @@ def compute_delta_numba(F, G, Gd, Gd2_inv, dij):
     F_G = G - F
     error = np.sum(Gd*F_G)*Gd2_inv
     delta = dij*error
-    return delta, error
+    return delta, np.abs(error)
