@@ -242,6 +242,8 @@ class DirectionalLucasKanade(IDIMethod):
 
             # Iterate over points.
             for p, (point, dij) in enumerate(zip(self.points, self.dij)):
+                rbm_res_para = np.dot(rbm_res, dij) * dij
+                rbm_res_perp = rbm_res - rbm_res_para
                 
                 # start optimization with previous optimal parameter values
                 d_init = np.round(self.displacements[p, ii-1, :]).astype(int)
@@ -258,7 +260,7 @@ class DirectionalLucasKanade(IDIMethod):
                     dij = dij,
                     d_subpixel_init = -d_res + rbm_res
                     )
-                self.displacements[p, ii, :] = displacement + d_init - rbm_res
+                self.displacements[p, ii, :] = displacement + d_init - rbm_res - rbm_res_perp
 
             # temp
             self.temp_disp[:, ii, :] = self.displacements[:, ii, :]
@@ -610,4 +612,4 @@ def compute_delta_numba(F, G, Gd, Gd2_inv, dij):
     F_G = G - F
     error = np.sum(Gd*F_G)*Gd2_inv
     delta = dij*error
-    return delta, np.abs(error)
+    return delta, error**2

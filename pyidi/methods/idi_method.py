@@ -308,7 +308,7 @@ class IDIMethod:
         # auto-save
         if autosave:
             self.create_analysis_directory()
-            self.save(root=self.root_this_analysis, save_directions=True)
+            self.save(root=self.root_this_analysis, save_directions=hasattr(self, 'dij'))
 
         return self.displacements
     
