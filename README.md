@@ -51,7 +51,10 @@ with the following command:
 ```bash
 pip install pyidi==0.30.2
 ```
-
+or when using .cine videos:
+```bash
+pip install pyidi[cine]
+```
 or use the legacy `pyIDI` class:
 
 ```python
