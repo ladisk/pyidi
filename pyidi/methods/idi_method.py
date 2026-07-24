@@ -72,7 +72,7 @@ class IDIMethod:
         """
         raise NotImplementedError("The 'calculate_displacements' method is not implemented.")
     
-    def create_temp_files(self, init_multi=False):
+    def create_temp_files(self, init_multi=False, add_directions_file = False):
         """Temporary files to track the solving process.
 
         This is done in case some error occurs. In this eventuality the calculation
@@ -100,11 +100,18 @@ class IDIMethod:
             with open(self.points_filename, 'wb') as f:
                 pickle.dump(self.points, f)
 
+            if add_directions_file:
+                self.directions_filename = os.path.join(temp_dir, 'directions.pkl')
+                with open(self.directions_filename, 'wb') as f:
+                    pickle.dump(self.dij, f)
+
         if not init_multi:
             token = f'{self.process_number:0>3.0f}'
 
             self.process_log = os.path.join(temp_dir, 'process_log_' + token + '.json')
             self.points_filename = os.path.join(temp_dir, 'points.pkl')
+            if add_directions_file:
+                self.direction_filename = os.path.join(temp_dir, 'directions.pkl')
             self.disp_filename = os.path.join(temp_dir, 'disp_' + token + '.pkl')
 
             log = {
@@ -315,7 +322,7 @@ class IDIMethod:
         # auto-save
         if autosave:
             self.create_analysis_directory()
-            self.save(root=self.root_this_analysis)
+            self.save(root=self.root_this_analysis, save_directions=hasattr(self, 'dij'))
 
         return self.displacements
     
@@ -345,7 +352,7 @@ class IDIMethod:
         os.mkdir(self.root_this_analysis)
 
     
-    def save(self, root=''):
+    def save(self, root='', save_directions = False):
         with open(os.path.join(root, 'results.pkl'), 'wb') as f:
             pickle.dump(self.displacements, f, protocol=-1)
         with open(os.path.join(root, 'points.pkl'), 'wb') as f:
@@ -354,6 +361,9 @@ class IDIMethod:
             with open(os.path.join(root, 'warp_params.pkl'), 'wb') as f:
                 pickle.dump(self.warp_params, f, protocol=-1)
 
+        if save_directions:
+            with open(os.path.join(root, 'directions.pkl'), 'wb') as f:
+                pickle.dump(self.dij, f, protocol=-1)
         out = {
             'info': {
                 'width': self.video.image_width,
