@@ -13,6 +13,7 @@ from . import slow_reader as _slow_reader
 
 PHORTRON_HEADER_FILE = {"cih", "cihx"}
 SLOW_FILE = {"slow"}
+CINE_FILE = {"cine"}
 SUPPORTED_IMAGE_FORMATS = {"png", "tif", "tiff", "bmp", "jpg", "jpeg", "gif"}
 PYAV_SUPPORTED_VIDEO_FORMATS = {
     "avi",
@@ -92,6 +93,9 @@ class VideoReader:
         elif self.file_format in SLOW_FILE:
             self._initialise_slow_files(input_file)
 
+        elif self.file_format in CINE_FILE:
+            self._initialise_cine_files(input_file)
+    
         elif self.file_format in SUPPORTED_IMAGE_FORMATS:
             self._initalise_image_files(input_file)
 
@@ -183,6 +187,9 @@ class VideoReader:
         ):
             image = self._frames[frame_number]
 
+        elif self.file_format in CINE_FILE:
+            image = self._get_frame_from_cine(frame_number, *args, **kwargs)
+
         elif self.file_format in SUPPORTED_IMAGE_FORMATS:
             image = self._get_frame_from_image(frame_number, *args, **kwargs)
 
@@ -242,6 +249,9 @@ class VideoReader:
         ):
             frames = self._frames[frames_start:frames_end]
 
+        elif self.file_format in CINE_FILE:
+            frames = self._get_frames_from_cine(frames_start, n_frames)
+
         else:
             frames = np.zeros(
                 (n_frames, self.image_height, self.image_width), dtype=int
@@ -250,6 +260,30 @@ class VideoReader:
                 frames[i] = self.get_frame(i + frames_start, *args, **kwargs)
 
         return frames
+
+    def _get_frame_from_cine(self, frame_number):
+        """Reads a single frame from the .cine file.
+
+        :param frame_number: Zero-based frame index
+        :type frame_number: int
+        :return: monochrome image as np.ndarray
+        """
+        # Map 0-based frame index to original cine frame numbers
+        cine_frame_idx = self._cine.first_frame_number + frame_number
+        self._cine.load_frame(cine_frame_idx)
+        return self._cine.frame
+
+    def _get_frames_from_cine(self, frames_start, n_frames):
+        """Reads a range of frames from the .cine file.
+
+        :param frames_start: Start frame index
+        :type frames_start: int
+        :param n_frames: Number of frames to read
+        :type n_frames: int
+        :return: np.ndarray containing the frames in the specified range
+        """
+        cine_frame_idx_start = self._cine.first_frame_number + frames_start
+        return self._cine.load_frames_batch(cine_frame_idx_start, n_frames).transpose(2, 0, 1)
 
     def _get_frame_from_image(self, frame_number):
         """Reads the frame from the image stream, or image file containing multiple images.
@@ -397,6 +431,26 @@ class VideoReader:
             self.configure(fps=self._slow.fr_rate)
         self.info = self._slow.meta
 
+    def _initialise_cine_files(self, input_file):
+        """Initialise reader state for ``.cine`` recordings.
+
+        :param input_file: Path to a ``.cine`` file
+        :type input_file: str
+        """
+        try:
+            from cine_reader import Cine
+        except ImportError as e:
+            raise ImportError(
+                "Reading .cine files requires the 'cine-reader' package. "
+                "Please install it using: pip install cine-reader"
+            ) from e
+
+        self._cine = Cine(input_file)
+        self.N = self._cine.total_frames
+        self.image_width = self._cine.image_header.biWidth
+        self.image_height = abs(self._cine.image_header.biHeight)
+        self.fps = int(self._cine.frame_rate)
+
     def _initalise_image_files(self, input_file):
         """Initialise reader state for image files and image sequences.
 
@@ -482,6 +536,9 @@ class VideoReader:
         elif hasattr(self, "_slow") and self.file_format in SLOW_FILE:
             del self._frames
             del self._slow
+        elif hasattr(self, "_cine") and self.file_format in CINE_FILE:
+            self._cine.close_file()
+            del self._cine
 
     def gui(self):
         """Starts the GUI for pyIDI."""
