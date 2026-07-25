@@ -442,10 +442,11 @@ class VideoReader:
         except ImportError as e:
             raise ImportError(
                 "Reading .cine files requires the 'cine-reader' package. "
-                "Please install it using: pip install cine-reader"
+                "Please install it using: pip install cine-handler"
             ) from e
 
         self._cine = Cine(input_file)
+        self._cine.keep_annotations = False
         self.N = self._cine.total_frames
         self.image_width = self._cine.image_header.biWidth
         self.image_height = abs(self._cine.image_header.biHeight)
