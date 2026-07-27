@@ -52,6 +52,10 @@ def parse_requirements(filename):
 
 requirements = parse_requirements('requirements.txt')
 
+extras = {
+    'cine': ['cine-handler'],
+}
+
 setup(name='pyidi',
       version=version,
       author='Klemen Zaletelj, Domen Gorjup, Janko Slavič',
@@ -63,4 +67,4 @@ setup(name='pyidi',
       long_description_content_type='text/markdown',
       install_requires=requirements,
       keywords='computer vision dic gradient-based image identification',
-      )
+      extras_require=extras)
