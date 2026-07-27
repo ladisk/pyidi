@@ -447,10 +447,21 @@ class VideoReader:
 
         self._cine = Cine(input_file)
         self._cine.keep_annotations = False
+        setup = self._cine.camera_setup
+        i_hdr = self._cine.image_header
         self.N = self._cine.total_frames
-        self.image_width = self._cine.image_header.biWidth
-        self.image_height = abs(self._cine.image_header.biHeight)
-        self.fps = int(self._cine.frame_rate)
+        self.image_width = i_hdr.biWidth
+        self.image_height = abs(i_hdr.biHeight)
+        if not getattr(self, "fps", False) and isinstance(setup.FrameRate, (int, float)):
+            self.configure(fps=setup.FrameRate)
+        self.info = {
+            'Total Frames': self._cine.total_frames,
+            'biWidth': self.image_width,
+            'biHeight': self.image_height,
+            'biBitCount': i_hdr.biBitCount,
+            'FrameRate': setup.FrameRate,
+            'ShutterNs': setup.ShutterNs,
+        }
 
     def _initalise_image_files(self, input_file):
         """Initialise reader state for image files and image sequences.
