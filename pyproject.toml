@@ -31,6 +31,7 @@ dependencies = [
     "opencv-contrib-python",
     "qtpy",
     "rich",
+    "cine-handler",
 ]
 classifiers = [
     "Development Status :: 5 - Production/Stable",
