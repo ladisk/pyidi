@@ -48,16 +48,16 @@ def test_get_frames():
     # print('test_get_frames: passed')
 
     weights = list(np.ones(3) / 3)
-    video.configure(use_channel='RGB', channel_weights=weights)
+    video.configure(channel_weights=weights)
     assert video.get_frames().shape[0] == 10
 
-    video.configure(use_channel='R')
+    video.configure(channel='R')
     assert video.get_frames().shape[0] == 10
 
-    video.configure(use_channel='G')
+    video.configure(channel='G')
     assert video.get_frames().shape[0] == 10
 
-    video.configure(use_channel='B')
+    video.configure(channel='B')
     assert video.get_frames().shape[0] == 10
 
     # print('test_get_frames_mp4: passed')
@@ -88,16 +88,16 @@ def test_get_frames_mp4():
     assert video.get_frames((1, 5)).shape[0] == 4
 
     weights = list(np.ones(3) / 3)
-    video.configure(use_channel='RGB', channel_weights=weights)
+    video.configure(channel_weights=weights)
     assert video.get_frames().shape[0] == 10
 
-    video.configure(use_channel='R')
+    video.configure(channel='R')
     assert video.get_frames().shape[0] == 10
 
-    video.configure(use_channel='G')
+    video.configure(channel='G')
     assert video.get_frames().shape[0] == 10
 
-    video.configure(use_channel='B')
+    video.configure(channel='B')
     assert video.get_frames().shape[0] == 10
 
     # print('test_get_frames_mp4: passed')

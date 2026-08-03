@@ -16,19 +16,9 @@ SLOW_FILE = {"slow"}
 CINE_FILE = {"cine"}
 SUPPORTED_IMAGE_FORMATS = {"png", "tif", "tiff", "bmp", "jpg", "jpeg", "gif"}
 PYAV_SUPPORTED_VIDEO_FORMATS = {
-    "avi",
-    "mkv",
-    "mp4",
-    "mov",
-    "m4v",
-    "wmv",
-    "webm",
-    "flv",
-    "ogg",
-    "ogv",
-}
+    "avi", "mkv", "mp4", "mov", "m4v", "wmv", "webm", "flv", "ogg", "ogv"
+    }
 CHANNELS = {"R": 0, "G": 1, "B": 2}
-
 
 class VideoReader:
     """
@@ -72,7 +62,9 @@ class VideoReader:
                     "Root directory must be provided for np.ndarray input file!"
                 )
 
-            self.configure(root=root)
+            self.root = root
+            if not os.path.exists(self.root):  # Create the folder if it does not exist
+                os.mkdir(self.root)
 
             self.file_format = "np.ndarray"
             self.input_file = "ndarray"
@@ -114,8 +106,6 @@ class VideoReader:
         Supported keyword arguments:
 
         - ``fps`` *(int)*: Frames per second.
-        - ``root`` *(str)*: Root directory for output or image sequence files.
-          Used with "np.ndarray".The directory is created if it does not exist.
         - ``video_format`` *(str)*: PyAV pixel format string used when reading frames.
           (default: "gray", "gray16be", "gray16le"). For custom selection 
           of image channels, or using custom weights for conversion to monochrome,
@@ -133,14 +123,7 @@ class VideoReader:
             ``channel_weights`` is not a list/tuple of length 3.
         """
         if "fps" in kwargs:
-            self.fps = int(kwargs["fps"])
-
-        if "root" in kwargs:
-            if not isinstance(kwargs["root"], str):
-                raise ValueError("Root must be a string!")
-            self.root = kwargs["root"]
-            if not os.path.exists(self.root):  # Create the folder if it does not exist
-                os.mkdir(self.root)
+            self.fps = float(kwargs["fps"])
 
         if "video_format" in kwargs:
             if not isinstance(kwargs["video_format"], str):
@@ -218,7 +201,7 @@ class VideoReader:
         :type kwargs: dict
         """
         if not isinstance(frame_range, (int, list, tuple, type(None))):
-            raise ValueError(
+            raise TypeError(
                 "Unsupported frame range! Supported types are int, list and tuple."
             )
 
@@ -508,6 +491,8 @@ class VideoReader:
             self.N = image_prop.n_images
             self.image_width = image_prop.shape[2]
             self.image_height = image_prop.shape[1]
+            if not getattr(self, "fps", False):
+                self.configure(fps=image_meta.get("fps", None))
 
     def _initialise_video_files(self, input_file):
         """Initialise reader state for video containers handled by ``pyav``.
