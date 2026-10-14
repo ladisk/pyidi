@@ -1,5 +1,6 @@
 from .idi_method import IDIMethod
 from ._simplified_optical_flow import SimplifiedOpticalFlow
+from ._simplified_optical_flow_pyramid import SimplifiedOpticalFlowPyramid
 from ._lucas_kanade import LucasKanade
 from ._directional_lucas_kanade import DirectionalLucasKanade
 from ._dic import DIC
