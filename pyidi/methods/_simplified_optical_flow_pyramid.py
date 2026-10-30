@@ -47,7 +47,9 @@ class SimplifiedOpticalFlowPyramid(IDIMethod):
             Labs.
     """
 
-    def configure(self, subset_size=3, levels=None, n_levels=2, scale=2,
+    def configure(self,
+                  subset_size: int | tuple[int, int] | np.ndarray | dict = 3,
+                  levels=None, n_levels=2, scale=2,
                   sigma=1., interpolation='nearest', reference_range=(0, 100),
                   frame_range='all', convert_from_px=1., zero_shift=False,
                   progress_bar=True):
