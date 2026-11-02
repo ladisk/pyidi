@@ -1,5 +1,6 @@
 import warnings
 
+import cv2
 import numpy as np
 from scipy.ndimage import gaussian_filter, map_coordinates
 from tqdm import tqdm
@@ -56,10 +57,20 @@ class SimplifiedOpticalFlowPyramid(IDIMethod):
         """
         Set the attributes and build the reference pyramid.
 
-        :param subset_size: size of the averaging subset around each point. Pass an
-            int for a square subset, or a ``(size_y, size_x)`` pair for a rectangular
-            one. Both sizes must be odd. Defaults to 3.
-        :type subset_size: int or tuple of int, optional
+        :param subset_size: size of the averaging subset around each point, in
+            pixels of the full resolution image (level 0). Pass an int for a square
+            subset, or a ``(size_y, size_x)`` pair for a rectangular one; a flat
+            sequence of length 2 is always read as such a pair. Pass an array of
+            shape ``(n_points, 2)`` with one ``(size_y, size_x)`` per row to set the
+            size of each point. Pass a dict ``{level: value}``, each value an int,
+            a pair or an array as above, to set the size on each level; its keys
+            must be exactly the used levels. A size without a dict applies to every
+            level. Sizes are positive whole numbers, even or odd. On level ``k`` the size is divided by
+            ``scale**k``. With ``'nearest'`` interpolation the result is rounded to
+            the nearest odd integer, ties going up, so the subset covers whole
+            pixels. With the spline interpolations it stays fractional, and the
+            subset edges fall between pixels. Defaults to 3.
+        :type subset_size: int, tuple of int, numpy.ndarray or dict, optional
         :param levels: pyramid levels to use, from any order, for example ``[0, 1, 2]``
             or ``[0, 2]``. Level 0 is full resolution and a higher number is a more
             reduced image. Intermediate levels can be skipped. If None, ``n_levels``
@@ -112,7 +123,7 @@ class SimplifiedOpticalFlowPyramid(IDIMethod):
         if interpolation is not None:
             self.interpolation = interpolation
         if reference_range is not None:
-            self.reference_range = reference_range
+            self.reference_range = self._validate_refereance_range(reference_range)
         if frame_range is not None:
             self.frame_range = frame_range
         if convert_from_px is not None:
@@ -131,31 +142,103 @@ class SimplifiedOpticalFlowPyramid(IDIMethod):
                 + "', '".join(INTERPOLATION_ORDERS)
                 + f', got {self.interpolation!r}.')
 
-        self._subset_shape = self._validate_subset_size(self.subset_size)
         self._levels = self._validate_levels(self.levels, self.n_levels)
-
+        self._subset_sizes = self._validate_subset_size(
+            self.subset_size, self._levels)
+       
         self._reference()
 
-    def _validate_subset_size(self, subset_size):
-        """Turn ``subset_size`` into a ``(size_y, size_x)`` pair of odd integers.
+    def _validate_refereance_range(self, reference_range):
+        """ Return ''reference_range'' as a tuple of two intagers '(start, stop)' """
+        if reference_range is not None:
+            if np.isscalar(reference_range):          # a single frame, e.g. 50
+                reference_range = (reference_range, reference_range + 1)
+            start, stop = reference_range
+            if start != int(start) or stop != int(stop):
+                raise ValueError(f'reference_range must hold whole frame numbers, got {reference_range}')
+            start, stop = int(start), int(stop)
+            if not 0 <= start < stop:
+                raise ValueError(f'reference_range must satisfy 0 <= start < stop, got {reference_range}')
+        return (start, stop)
+ 
+
+    def _validate_subset_size(self, subset_size, levels):
+        """Turn ``subset_size`` into a subset size for every used level.
+
+        The sizes stay in full-resolution pixels. The number of rows of a
+        per-point array is checked against the points later, in
+        ``_level_half_sizes``, as the points may be set after ``configure``.
 
         :param subset_size: subset size as configured
-        :type subset_size: int or tuple of int
-        :return: subset size in the y and x direction
-        :rtype: tuple of int
+        :type subset_size: int, tuple of int, numpy.ndarray or dict
+        :param levels: used pyramid levels
+        :type levels: list of int
+        :return: for each level either a ``(size_y, size_x)`` tuple, or an
+            integer array of shape ``(n_points, 2)``
+        :rtype: dict
         """
-        if np.ndim(subset_size) == 0:
-            shape = (int(subset_size), int(subset_size))
+        if isinstance(subset_size, dict):
+            sizes = {int(level): value for level, value in subset_size.items()}
+            if set(sizes) != set(levels):
+                raise ValueError(
+                    f'subset_size keys must be exactly the used levels {levels}, '
+                    f'got {sorted(sizes)}.')
         else:
-            shape = tuple(int(_) for _ in subset_size)
+            sizes = {level: subset_size for level in levels}
 
-        if len(shape) != 2:
+        return {level: self._validate_subset_size_value(value)
+                for level, value in sizes.items()}
+
+    def _validate_subset_size_value(self, value):
+        """Check one subset size entry and make its integers explicit.
+
+        :param value: an int, a ``(size_y, size_x)`` pair or an array of shape ``(n_points, 2)``
+        :type value: int, tuple of int or numpy.ndarray
+        :return: a ``(size_y, size_x)`` tuple, or an integer array of shape ``(n_points, 2)``
+        :rtype: tuple of int or numpy.ndarray
+        """
+        sizes = np.asarray(value)
+        if sizes.ndim == 0:
+            sizes = np.array([sizes, sizes])
+        if sizes.ndim == 1 and sizes.shape == (2,):
+            result = tuple(int(_) for _ in sizes)
+        elif sizes.ndim == 2 and sizes.shape[1] == 2:
+            result = sizes.astype(int)
+        else:
             raise ValueError(
-                f'subset_size must be an int or a (size_y, size_x) pair, got {subset_size}.')
-        if any(_ < 1 or _ % 2 == 0 for _ in shape):
+                'subset_size must be an int, a (size_y, size_x) pair or an array '
+                f'of shape (n_points, 2), got {value}.')
+
+        if np.any(np.asarray(result) < 1):
             raise ValueError(
-                f'Both subset sizes must be odd and positive, got {shape}.')
-        return shape
+                f'All subset sizes must be positive whole numbers, got {result}.')
+        return result
+
+    def _level_half_sizes(self, level):
+        """Half the subset size of every point on one pyramid level.
+
+        The full-resolution size is divided by ``scale**level``. With
+        ``'nearest'`` interpolation it is then rounded to the nearest odd
+        integer, ``2 * floor(size / 2) + 1``, with ties going up. The spline
+        interpolations keep it fractional.
+
+        :param level: pyramid level
+        :type level: int
+        :return: half the subset size in y and in x, in pixels of this level, one value per point
+        :rtype: tuple of numpy.ndarray
+        """
+        n_points = np.shape(self.points)[0]
+        sizes = self._subset_sizes[level]
+        if not isinstance(sizes, tuple) and sizes.shape[0] != n_points:
+            raise ValueError(
+                f'subset_size on level {level} has {sizes.shape[0]} rows, but '
+                f'there are {n_points} points.')
+
+        sizes = np.broadcast_to(np.asarray(sizes, dtype=float), (n_points, 2))
+        sizes = sizes / self.scale**level
+        if self.interpolation == 'nearest':
+            sizes = 2 * np.floor(sizes / 2) + 1
+        return sizes[:, 0] / 2, sizes[:, 1] / 2
 
     def _validate_levels(self, levels, n_levels):
         """Sort the requested pyramid levels from the coarsest to the finest.
@@ -229,32 +312,27 @@ class SimplifiedOpticalFlowPyramid(IDIMethod):
         """Build the integral image (summed-area table) of an image.
 
         Element ``[i, j]`` of the table holds the sum of ``data[:i, :j]``, so
-        the table has one row and one column more than the image. The mean of
-        the image is subtracted first and returned alongside the table: the
-        sums then stay small, and the difference of four table values that
-        gives a subset sum loses less precision.
+        the table has one row and one column more than the image.
 
         :param data: image to integrate
         :type data: numpy.ndarray
-        :return: the table and the subtracted mean, under the keys
-            ``'table'`` and ``'offset'``
-        :rtype: dict
+        :return: the integral image
+        :rtype: numpy.ndarray
         """
-        offset = np.mean(data, dtype=float)
-        table = np.zeros((data.shape[0] + 1, data.shape[1] + 1))
-        inner = table[1:, 1:]
-        np.subtract(data, offset, out=inner)
-        np.cumsum(inner, axis=0, out=inner)
-        np.cumsum(inner, axis=1, out=inner)
-        return {'table': table, 'offset': offset}
+        # cv2.integral pads the first row and column with zeros itself.
+        table = cv2.integral(data, sdepth=cv2.CV_64F)
+        return table
 
-    def _subset_mean(self, integral, rows, cols, order=0):
+    def _subset_mean(self, integral, rows, cols, half_y, half_x, order=0):
         """Read the mean of the subset centred on each point from an integral
         image.
 
-        The subset spans the pixels from ``row - size_y // 2`` to
-        ``row + size_y // 2``, and likewise in x. A subset that reaches over
-        the image edge is cut to the pixels inside the image.
+        With the subset size ``size_y = 2 * half_y``, the subset edges lie at
+        ``row + 0.5 - half_y`` and ``row + 0.5 + half_y`` in integral image
+        coordinates, and likewise in x. For an odd whole size this spans the
+        pixels from ``row - size_y // 2`` to ``row + size_y // 2``. A
+        fractional size puts the edges between pixels. A subset that reaches
+        over the image edge is cut to the pixels inside the image.
 
         With a fractional centre, the subset edges fall between pixels. The
         integral image is then interpolated at the four corners. A bilinear
@@ -265,25 +343,29 @@ class SimplifiedOpticalFlowPyramid(IDIMethod):
         instead.
 
         :param integral: integral image from ``_integral_image``
-        :type integral: dict
+        :type integral: numpy.ndarray
         :param rows: row of each subset centre
         :type rows: numpy.ndarray
         :param cols: column of each subset centre
         :type cols: numpy.ndarray
-        :param order: 0 for whole-pixel centres, read without interpolation,
-            or the spline order used at fractional centres, defaults to 0
+        :param half_y: half the subset size in y, for each point or a single value
+        :type half_y: numpy.ndarray or float
+        :param half_x: half the subset size in x, for each point or a single value
+        :type half_x: numpy.ndarray or float
+        :param order: 0 when all four subset edges are whole numbers, read
+            without interpolation, or the spline order used at fractional
+            edges, defaults to 0
         :type order: int, optional
         :return: subset mean around each point
         :rtype: numpy.ndarray
         """
-        table = integral['table']
+        table = integral
         height, width = table.shape[0] - 1, table.shape[1] - 1
-        half_y, half_x = self._subset_shape[0] // 2, self._subset_shape[1] // 2
 
-        top = np.clip(rows - half_y, 0, height)
-        bottom = np.clip(rows + half_y + 1, 0, height)
-        left = np.clip(cols - half_x, 0, width)
-        right = np.clip(cols + half_x + 1, 0, width)
+        top = np.clip(rows + 0.5 - half_y, 0, height)
+        bottom = np.clip(rows + 0.5 + half_y, 0, height)
+        left = np.clip(cols + 0.5 - half_x, 0, width)
+        right = np.clip(cols + 0.5 + half_x, 0, width)
 
         corner_rows = np.concatenate([top, top, bottom, bottom])
         corner_cols = np.concatenate([left, right, left, right])
@@ -297,46 +379,64 @@ class SimplifiedOpticalFlowPyramid(IDIMethod):
         top_left, top_right, bottom_left, bottom_right = corners.reshape(4, -1)
 
         area = (bottom - top) * (right - left)
-        return ((bottom_right - bottom_left - top_right + top_left) / area
-                + integral['offset'])
+        return ((bottom_right - bottom_left - top_right + top_left) / area)
 
-    def _reference_at_points(self, level, points):
+    def _reference_at_points(self, level, points, half_sizes):
         """Read the reference subset means around the points of one level.
 
-        :param level: pyramid level
-        :type level: int
         On a coarse level a point generally falls between pixels. Its subset
         is then read with interpolation rather than moved to the nearest
         pixel, so that every level centres the subset on the same spot of the
-        image. With ``'nearest'`` interpolation the spline order off the grid
-        is 1.
+        image. The same holds for a fractional subset size, which puts the
+        subset edges between pixels. With ``'nearest'`` interpolation the
+        spline order off the grid is 1.
 
         :param level: pyramid level
         :type level: int
         :param points: points in the pixel coordinates of this level, possibly
             fractional
         :type points: numpy.ndarray
+        :param half_sizes: half the subset size in y and in x of each point, in
+            pixels of this level, from ``_level_half_sizes``
+        :type half_sizes: tuple of numpy.ndarray
         :return: the points, the level shape, the spline order to read the
-            current frame with, and the subset means of the reference image,
-            both gradients and the gradient magnitude
+            current frame with, the half subset sizes, and the subset means of
+            the reference image, both gradients and the gradient magnitude
         :rtype: dict
         """
         reference = self._reference_levels[level]
         rows, cols = points[:, 0], points[:, 1]
 
-        # Whole-pixel points need no interpolation for the reference, and
+        # Whole-pixel subset edges need no interpolation for the reference, and
         # with 'nearest' neither for the current frame, whose shift is whole
-        # pixels as well.
-        on_grid = np.array_equal(points, np.round(points))
+        # pixels as well. The edges are whole when the points and the subset
+        # sizes are.
+        half_y, half_x = half_sizes
+        edges = np.concatenate([
+            points[:, 0] + 0.5 - half_y, points[:, 0] + 0.5 + half_y,
+            points[:, 1] + 0.5 - half_x, points[:, 1] + 0.5 + half_x])
+        on_grid = np.array_equal(edges, np.round(edges))
         order = INTERPOLATION_ORDERS.get(self.interpolation, 0 if on_grid else 1)
 
         at_points = {'points': points, 'shape': reference['shape'],
-                     'order': order}
+                     'order': order, 'half_sizes': half_sizes}
         for key in ('image', 'gradient_0', 'gradient_1'):
             at_points[key] = self._subset_mean(
-                reference[key], rows, cols, order=0 if on_grid else order)
+                reference[key], rows, cols, half_y, half_x,
+                order=0 if on_grid else order)
         at_points['gradient_magnitude'] = np.sqrt(
             at_points['gradient_0']**2 + at_points['gradient_1']**2)
+
+        # As in SimplifiedOpticalFlow: the sign and the absolute direction
+        # cosine of each gradient component split the displacement along the
+        # gradient onto the image axes. A zero gradient gives NaN cosines, as
+        # there.
+        for axis in (0, 1):
+            gradient = at_points[f'gradient_{axis}']
+            with np.errstate(divide='ignore', invalid='ignore'):
+                cosine = np.abs(gradient / at_points['gradient_magnitude'])
+            at_points[f'signs_{axis}'] = np.sign(gradient)
+            at_points[f'direction_correction_{axis}'] = cosine
         return at_points
 
     def _level_points(self, level):
@@ -386,7 +486,8 @@ class SimplifiedOpticalFlowPyramid(IDIMethod):
         in_range = np.ones(self.points.shape[0], dtype=bool)
         for level in self._levels:
             points, valid = self._level_points(level)
-            level_references[level] = self._reference_at_points(level, points)
+            level_references[level] = self._reference_at_points(
+                level, points, self._level_half_sizes(level))
             in_range &= valid
 
         if not np.all(in_range):
@@ -396,6 +497,12 @@ class SimplifiedOpticalFlowPyramid(IDIMethod):
                 'displacements are set to NaN.')
 
         self.out_of_range_points = np.nonzero(~in_range)[0]
+
+        # Direction cosines of the finest used level, stored under the same
+        # names as in SimplifiedOpticalFlow.
+        finest = level_references[self._levels[-1]]
+        self.direction_correction_0 = finest['direction_correction_0']
+        self.direction_correction_1 = finest['direction_correction_1']
 
         p_bar = tqdm if self.progress_bar else (lambda x, **kwargs: x)
 
@@ -432,6 +539,7 @@ class SimplifiedOpticalFlowPyramid(IDIMethod):
 
         displacement = np.zeros((self.points.shape[0], 2))
         previous_level = self._levels[0]
+        latest_displacements = {}
 
         for level in self._levels:
             # Carry the estimate from the previous level over to this one.
@@ -444,11 +552,19 @@ class SimplifiedOpticalFlowPyramid(IDIMethod):
                 pre_shift = np.round(displacement)
             else:
                 pre_shift = displacement
-            residual = self._residual_displacement(
+            residual, along_gradient, current = self._residual_displacement(
                 pyramid[level], level_references[level], pre_shift)
 
             displacement = pre_shift + residual
             previous_level = level
+            latest_displacements[level] = along_gradient
+
+        # As in SimplifiedOpticalFlow, keep the displacement along the
+        # gradient of the last frame: on every used level, keyed by level, in
+        # pixels of that level. The current subset value is kept from the
+        # finest used level.
+        self.latest_displacements = latest_displacements
+        self.image_roi = current
 
         # The finest used level is not necessarily level 0.
         return displacement * self.scale**previous_level
@@ -464,26 +580,37 @@ class SimplifiedOpticalFlowPyramid(IDIMethod):
         :param pre_shift: subset shift of each point, in (y, x); whole pixels
             with ``'nearest'`` interpolation, fractional otherwise
         :type pre_shift: numpy.ndarray
-        :return: residual displacement of each point, in (y, x)
-        :rtype: numpy.ndarray
+        :return: residual displacement of each point, in (y, x), the
+            displacement along the gradient it comes from, and the current
+            subset mean
+        :rtype: tuple of numpy.ndarray
         """
         points = reference['points']
         height, width = reference['shape']
 
+        # A point whose estimate is already NaN, from a zero gradient on a
+        # coarser level, is read unshifted; its displacement stays NaN.
+        pre_shift = np.where(np.isfinite(pre_shift), pre_shift, 0.)
         rows = np.clip(points[:, 0] + pre_shift[:, 0], 0, height - 1)
         cols = np.clip(points[:, 1] + pre_shift[:, 1], 0, width - 1)
 
         # One pass over the image builds the integral image, after which each
         # subset mean costs four reads, whatever the subset size.
+        half_y, half_x = reference['half_sizes']
         current = self._subset_mean(
-            self._integral_image(image), rows, cols, order=reference['order'])
+            self._integral_image(image), rows, cols, half_y, half_x,
+            order=reference['order'])
         difference = reference['image'] - current
 
-        # Displacement along the gradient direction, projected onto the image
-        # axes through the gradient components.
+        # Displacement along the gradient direction, as in
+        # SimplifiedOpticalFlow, projected onto the image axes through the
+        # direction cosines. A zero gradient gives an infinite displacement
+        # along the gradient and NaN on the axes, as there.
         with np.errstate(divide='ignore', invalid='ignore'):
-            along_gradient = difference / reference['gradient_magnitude']**2
-        along_gradient[~np.isfinite(along_gradient)] = 0.
-
-        return np.column_stack([along_gradient * reference['gradient_0'],
-                                along_gradient * reference['gradient_1']])
+            along_gradient = difference / reference['gradient_magnitude']
+            residual = np.column_stack([
+                reference['signs_0'] * (reference['direction_correction_0']
+                                        * along_gradient),
+                reference['signs_1'] * (reference['direction_correction_1']
+                                        * along_gradient)])
+        return residual, along_gradient, current

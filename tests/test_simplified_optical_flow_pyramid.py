@@ -30,14 +30,35 @@ def striped_video(displacements, root, height=200, width=200, seed=1):
     return pyidi.VideoReader(frames, root=str(root))
 
 
-def test_subset_size_must_be_odd(tmp_path):
+def test_subset_size_must_be_positive(tmp_path):
     video = striped_video([0., 0.5], tmp_path)
     method = pyidi.SimplifiedOpticalFlowPyramid(video)
 
-    with pytest.raises(ValueError, match='odd'):
-        method.configure(subset_size=4)
-    with pytest.raises(ValueError, match='odd'):
-        method.configure(subset_size=(3, 8))
+    with pytest.raises(ValueError, match='positive'):
+        method.configure(subset_size=0)
+    with pytest.raises(ValueError, match='positive'):
+        method.configure(subset_size=(3, -2))
+
+
+def test_even_subset_size_is_accepted(tmp_path):
+    video = striped_video([0., 0.5], tmp_path)
+    method = pyidi.SimplifiedOpticalFlowPyramid(video)
+    method.configure(subset_size=(4, 8), levels=[0], reference_range=(0, 1),
+                     progress_bar=False)
+
+    assert method._subset_sizes == {0: (4, 8)}
+
+
+def test_even_size_is_rounded_up_to_odd_with_nearest(tmp_path):
+    video = striped_video([0., 0.5], tmp_path)
+    method = pyidi.SimplifiedOpticalFlowPyramid(video)
+    method.configure(subset_size=4, levels=[0], interpolation='nearest',
+                     reference_range=(0, 1), progress_bar=False)
+    method.set_points([[100, 60], [100, 100]])
+
+    half_y, half_x = method._level_half_sizes(0)
+    np.testing.assert_array_equal(half_y, 5 / 2)
+    np.testing.assert_array_equal(half_x, 5 / 2)
 
 
 def test_rectangular_subset_is_accepted(tmp_path):
@@ -46,7 +67,7 @@ def test_rectangular_subset_is_accepted(tmp_path):
     method.configure(subset_size=(3, 9), reference_range=(0, 1),
                      progress_bar=False)
 
-    assert method._subset_shape == (3, 9)
+    assert method._subset_sizes == {1: (3, 9), 0: (3, 9)}
 
 
 def test_levels_are_ordered_coarse_to_fine(tmp_path):
@@ -87,7 +108,9 @@ def test_pyramid_extends_the_displacement_range(tmp_path):
 
     def estimate(levels):
         method = pyidi.SimplifiedOpticalFlowPyramid(video)
-        method.configure(subset_size=(3, 9), levels=levels, sigma=1.5,
+        # Sizes in level 0 pixels, giving 3 x 9 on every level.
+        sizes = {level: (3 * 2**level, 9 * 2**level) for level in levels}
+        method.configure(subset_size=sizes, levels=levels, sigma=1.5,
                          reference_range=(0, 1), progress_bar=False)
         method.set_points(points)
         return method.get_displacements(autosave=False)[:, :, 1].mean(axis=0)
@@ -192,8 +215,9 @@ def test_subset_mean_matches_filtered_image(tmp_path, order):
     expected = map_coordinates(averaged, [rows, cols], order=max(order, 1))
 
     np.testing.assert_allclose(
-        method._subset_mean(method._integral_image(image), rows, cols, order),
-        expected, rtol=0, atol=1e-8)
+        method._subset_mean(method._integral_image(image), rows, cols,
+                            2.5, 4.5, order),
+        expected, rtol=1e-10, atol=0)
 
 
 def test_subset_mean_is_cut_at_the_image_edge(tmp_path):
@@ -204,7 +228,7 @@ def test_subset_mean_is_cut_at_the_image_edge(tmp_path):
 
     image = np.arange(100.).reshape(10, 10)
     mean = method._subset_mean(
-        method._integral_image(image), np.array([0]), np.array([9]))
+        method._integral_image(image), np.array([0]), np.array([9]), 2.5, 2.5)
 
     np.testing.assert_allclose(mean, image[:3, 7:].mean())
 
@@ -222,10 +246,112 @@ def test_coarse_levels_keep_the_subset_on_the_point(tmp_path):
     video = pyidi.VideoReader(frames, root=str(tmp_path))
 
     method = pyidi.SimplifiedOpticalFlowPyramid(video)
-    method.configure(subset_size=5, levels=[1, 0], interpolation='cubic',
+    method.configure(subset_size={1: 10, 0: 5}, levels=[1, 0],
+                     interpolation='cubic',
                      reference_range=(0, 1), progress_bar=False)
     method.set_points([[50, 59], [50, 66]])   # rising and falling edge
     displacements = method.get_displacements(autosave=False)
 
     np.testing.assert_allclose(displacements[:, 1, 1], -4., atol=0.05)
     np.testing.assert_allclose(displacements[:, :, 0], 0., atol=1e-8)
+
+
+def estimate_sizes(video, subset_size, points, interpolation, levels=(1, 0)):
+    """Displacements of ``points`` for a given ``subset_size`` input."""
+    method = pyidi.SimplifiedOpticalFlowPyramid(video)
+    method.configure(subset_size=subset_size, levels=list(levels),
+                     interpolation=interpolation, reference_range=(0, 1),
+                     progress_bar=False)
+    method.set_points(points)
+    return method.get_displacements(autosave=False)
+
+
+@pytest.mark.parametrize('interpolation', ['nearest', 'cubic'])
+def test_equal_per_point_sizes_match_a_single_size(tmp_path, interpolation):
+    video = striped_video([0., 1.3, -2.1], tmp_path)
+    points = [[100, 60], [100, 101], [100, 140]]
+
+    single = estimate_sizes(video, (5, 9), points, interpolation)
+    per_point = estimate_sizes(video, [(5, 9)] * 3, points, interpolation)
+
+    np.testing.assert_allclose(per_point, single, rtol=0, atol=1e-12)
+
+
+@pytest.mark.parametrize('interpolation', ['nearest', 'cubic'])
+def test_dict_with_equal_sizes_matches_a_single_size(tmp_path, interpolation):
+    video = striped_video([0., 1.3, -2.1], tmp_path)
+    points = [[100, 60], [100, 101], [100, 140]]
+
+    single = estimate_sizes(video, 7, points, interpolation)
+    sized = estimate_sizes(video, {1: 7, 0: (7, 7)}, points, interpolation)
+
+    np.testing.assert_allclose(sized, single, rtol=0, atol=1e-12)
+
+
+@pytest.mark.parametrize('interpolation', ['nearest', 'cubic'])
+def test_mixed_per_point_sizes_match_separate_runs(tmp_path, interpolation):
+    video = striped_video([0., 1.3, -2.1], tmp_path)
+    points = [[100, 60], [100, 101], [100, 140]]
+    sizes = np.array([[3, 3], [5, 9], [9, 15]])
+
+    together = estimate_sizes(video, sizes, points, interpolation)
+    for i, (point, size) in enumerate(zip(points, sizes)):
+        alone = estimate_sizes(video, tuple(size), [point], interpolation)
+        np.testing.assert_allclose(together[i], alone[0], rtol=0, atol=1e-12)
+
+
+def test_per_level_per_point_sizes_match_separate_runs(tmp_path):
+    video = striped_video([0., 1.3, -2.1], tmp_path)
+    points = [[100, 60], [100, 101]]
+    sizes = {1: np.array([[5, 5], [9, 9]]), 0: (3, 7)}
+
+    together = estimate_sizes(video, sizes, points, 'cubic')
+    for i, point in enumerate(points):
+        alone = estimate_sizes(
+            video, {1: tuple(sizes[1][i]), 0: (3, 7)}, [point], 'cubic')
+        np.testing.assert_allclose(together[i], alone[0], rtol=0, atol=1e-12)
+
+
+def test_sizes_are_converted_to_every_level(tmp_path):
+    video = striped_video([0., 0.5], tmp_path)
+    method = pyidi.SimplifiedOpticalFlowPyramid(video)
+    method.configure(subset_size=(9, 5), levels=[2, 1, 0],
+                     reference_range=(0, 1), progress_bar=False)
+    method.set_points([[100, 60], [100, 100]])
+
+    # Rounded to the nearest odd integer: 9 / 4 = 2.25 gives 3, 9 / 2 = 4.5
+    # gives 5.
+    for level, size_y, size_x in [(2, 3, 1), (1, 5, 3), (0, 9, 5)]:
+        half_y, half_x = method._level_half_sizes(level)
+        np.testing.assert_array_equal(half_y, size_y / 2)
+        np.testing.assert_array_equal(half_x, size_x / 2)
+
+    # The spline interpolations keep the size fractional.
+    method.configure(subset_size=(9, 5), interpolation='cubic',
+                     progress_bar=False)
+    half_y, half_x = method._level_half_sizes(2)
+    np.testing.assert_allclose(half_y, 9 / 8)
+    np.testing.assert_allclose(half_x, 5 / 8)
+
+
+def test_subset_size_errors(tmp_path):
+    video = striped_video([0., 0.5], tmp_path)
+    method = pyidi.SimplifiedOpticalFlowPyramid(video)
+    configure = dict(levels=[1, 0], reference_range=(0, 1), progress_bar=False)
+    points = [[100, 60], [100, 100]]
+
+    with pytest.raises(ValueError, match='levels'):
+        method.configure(subset_size={1: 3}, **configure)
+    with pytest.raises(ValueError, match='levels'):
+        method.configure(subset_size={2: 3, 1: 3, 0: 3}, **configure)
+    with pytest.raises(ValueError, match='positive'):
+        method.configure(subset_size={1: 3, 0: (3, 0)}, **configure)
+    with pytest.raises(ValueError, match='positive'):
+        method.configure(subset_size=[[3, 3], [5, -6]], **configure)
+    with pytest.raises(ValueError, match='shape'):
+        method.configure(subset_size=[3, 3, 3], **configure)
+
+    method.configure(subset_size=[[3, 3], [5, 5], [7, 7]], **configure)
+    method.set_points(points)
+    with pytest.raises(ValueError, match='3 rows'):
+        method.get_displacements(autosave=False)
