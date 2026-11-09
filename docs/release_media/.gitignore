@@ -1,0 +1,7 @@
+# Working files the render scripts write next to themselves
+*/scripts/**/frames*/
+*/scripts/**/gui_frames/
+*/scripts/**/*.npz
+*/scripts/**/*.png
+*/scripts/**/*.gif
+*/scripts/**/*.mp4

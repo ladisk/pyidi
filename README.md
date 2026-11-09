@@ -8,6 +8,8 @@
 pyIDI reads a recording, tracks the points you select, and returns their sub-pixel
 displacement history — ready for modal analysis.
 
+<img src="https://raw.githubusercontent.com/ladisk/pyidi/master/docs/source/quick_start/music_box.gif" width="800" alt="The teeth of a music-box comb ringing, drawn from the displacements pyIDI identified in a 7500 fps video, next to the tip displacement and note of each tooth" />
+
 📖 [**Documentation**](https://pyidi.readthedocs.io/en/latest/index.html)
 
 ## Installation
