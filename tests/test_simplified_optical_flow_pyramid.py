@@ -128,7 +128,9 @@ def test_points_outside_the_image_give_nan(tmp_path):
     method = pyidi.SimplifiedOpticalFlowPyramid(video)
     method.configure(subset_size=3, levels=[1, 0], reference_range=(0, 1),
                      progress_bar=False)
-    method.set_points([[100, 100], [100, 500]])
+    # set_points rejects points outside the full image. Column 199 is inside
+    # it, but maps to 99.5 on level 1, which is outside the 100 px wide level.
+    method.set_points([[100, 100], [100, 199]])
 
     with pytest.warns(UserWarning, match='outside the image'):
         displacements = method.get_displacements(autosave=False)
