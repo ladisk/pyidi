@@ -11,6 +11,7 @@ except ImportError:
     QApplication = None
 
 from .idi_method import IDIMethod
+from ._simplified_optical_flow_core import _compute_displacement_along_gradient, _compute_displacement_along_image_axis
 
 # Spline order each interpolation name maps to. 'nearest' does no
 # interpolation at all, so it has no entry.
@@ -600,17 +601,9 @@ class SimplifiedOpticalFlowPyramid(IDIMethod):
         current = self._subset_mean(
             self._integral_image(image), rows, cols, half_y, half_x,
             order=reference['order'])
-        difference = reference['image'] - current
 
-        # Displacement along the gradient direction, as in
-        # SimplifiedOpticalFlow, projected onto the image axes through the
-        # direction cosines. A zero gradient gives an infinite displacement
-        # along the gradient and NaN on the axes, as there.
-        with np.errstate(divide='ignore', invalid='ignore'):
-            along_gradient = difference / reference['gradient_magnitude']
-            residual = np.column_stack([
-                reference['signs_0'] * (reference['direction_correction_0']
-                                        * along_gradient),
-                reference['signs_1'] * (reference['direction_correction_1']
-                                        * along_gradient)])
+        along_gradient = _compute_displacement_along_gradient(reference['image'], current,
+                                                              reference['gradient_magnitude'])
+        residual = _compute_displacement_along_image_axis(along_gradient, reference['signs_0'], reference['signs_1'],
+                                                          reference['direction_correction_0'], reference['direction_correction_1'])
         return residual, along_gradient, current

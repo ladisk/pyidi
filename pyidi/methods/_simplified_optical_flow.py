@@ -11,7 +11,7 @@ import warnings
 warnings.simplefilter("default")
 
 from .idi_method import IDIMethod
-
+from ._simplified_optical_flow_core import _compute_displacement_along_gradient, _compute_displacement_along_image_axis
 
 
 class SimplifiedOpticalFlow(IDIMethod):
@@ -118,11 +118,14 @@ class SimplifiedOpticalFlow(IDIMethod):
             image_filtered = self.subset(image, self.subset_size)
 
             self.image_roi = image_filtered[self.points[:,0] + self.delta_0, self.points[:, 1] + self.delta_1]
-            self.latest_displacements = (self.reference_image[self.points[:,0] , self.points[:, 1] ] - self.image_roi) / \
-                self.gradient_magnitude[self.points[:,0], self.points[:, 1]]
+            self.latest_displacements = _compute_displacement_along_gradient(self.reference_image[self.points[:,0] , self.points[:, 1] ],
+                                                                             self.image_roi, 
+                                                                             self.gradient_magnitude[self.points[:,0], self.points[:, 1]])
 
-            self.displacements[:, i, 0] = signs_0 * (self.direction_correction_0 * self.latest_displacements) + self.delta_0
-            self.displacements[:, i, 1] = signs_1 * (self.direction_correction_1 * self.latest_displacements) + self.delta_1
+            self.displacements[:, i] = _compute_displacement_along_image_axis(self.latest_displacements, signs_0, signs_1,
+                                                                              self.direction_correction_0, self.direction_correction_1)
+            self.displacements[:, i, 0] += self.delta_0
+            self.displacements[:, i, 1] += self.delta_1
 
             if self.pixel_shift:
                 self.pixel_shift_fun(i, self.points, image.shape)
