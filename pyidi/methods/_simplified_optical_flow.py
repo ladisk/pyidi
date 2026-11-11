@@ -119,7 +119,7 @@ class SimplifiedOpticalFlow(IDIMethod):
 
             self.image_roi = image_filtered[self.points[:,0] + self.delta_0, self.points[:, 1] + self.delta_1]
             self.latest_displacements = _compute_displacement_along_gradient(self.reference_image[self.points[:,0] , self.points[:, 1] ],
-                                                                             self.image_roi, 
+                                                                             self.image_roi,
                                                                              self.gradient_magnitude[self.points[:,0], self.points[:, 1]])
 
             self.displacements[:, i] = _compute_displacement_along_image_axis(self.latest_displacements, signs_0, signs_1,

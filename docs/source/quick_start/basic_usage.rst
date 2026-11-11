@@ -62,6 +62,10 @@ The video object is passed to one of the
    * - :class:`SimplifiedOpticalFlow <pyidi.methods._simplified_optical_flow.SimplifiedOpticalFlow>`
      - You want a fast first look at a whole field of points, with small
        displacements (well below a pixel).
+   * - :class:`SimplifiedOpticalFlowPyramid <pyidi.methods._simplified_optical_flow_pyramid.SimplifiedOpticalFlowPyramid>`
+     - You want the speed of simplified optical flow, but the displacements
+       are larger than half a pixel: a coarse-to-fine image pyramid extends
+       the range.
    * - :class:`LucasKanade <pyidi.methods._lucas_kanade.LucasKanade>`
      - This is the default choice: iterative sub-pixel translation of a
        subset, accurate over larger displacements.
