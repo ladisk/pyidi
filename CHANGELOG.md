@@ -39,9 +39,18 @@ px:
 | 2 px | 0.095 | 0.086 | 0.077 |
 
 The subset can be rectangular: `configure(subset_size=(size_y, size_x))` takes
-any pair of odd sizes, and a single int still means a square subset. Choose the
+any pair of positive whole sizes, even or odd, and a single int still means a square subset. Choose the
 levels either with `n_levels`, which uses levels 0 to `n_levels - 1`, or with
 `levels`, which also lets you skip levels, as in `levels=[2, 0]`.
+
+`subset_size` is given in full-resolution pixels. Besides an int or a
+`(size_y, size_x)` pair, it takes an array of shape `(n_points, 2)` with one
+size per point, or a dict `{level: value}` with a size, pair or array for each
+used level (the keys must be exactly the used levels). On level `k` the size is
+divided by `scale**k`: with `'nearest'` it is rounded to the nearest odd integer,
+with the spline interpolations it stays fractional and the subset edges fall
+between pixels. A size of 3 on levels `[1, 0]` therefore means 1.5 px on
+level 1, not 3 px.
 
 The subset means are read from an integral image (summed-area table), so each
 point costs four reads whatever its subset size. A subset that reaches over the
@@ -52,6 +61,17 @@ and its subset is read with interpolation instead of being moved to the nearest
 pixel of that level. Rounding put the coarse subset up to half a pixel of the
 level off the point, which on a line edge moved by 4 px left an error of
 0.52 px; without rounding the error is 0.03 px.
+
+After a run, the method keeps the same intermediate values as
+`SimplifiedOpticalFlow`: `direction_correction_0` and `direction_correction_1`
+(the gradient direction cosines on the finest used level), `image_roi` (the
+current subset means on the finest level, last frame), and
+`latest_displacements`, the displacement along the gradient of the last frame.
+`latest_displacements` is a dict with one entry per used level, in pixels of
+that level. Where the subset gradient is zero, the displacement along the
+gradient is infinite (NaN if the intensity difference is also zero) and the
+displacement on the image axes is NaN, as in
+`SimplifiedOpticalFlow`.
 
 ## 1.4.0
 
