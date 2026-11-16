@@ -3,12 +3,13 @@ import json
 import pickle
 import warnings
 
-from .methods import LucasKanade, SimplifiedOpticalFlow, DirectionalLucasKanade, DIC, IDIMethod
+from .methods import LucasKanade, SimplifiedOpticalFlow, SimplifiedOpticalFlowPyramid, DirectionalLucasKanade, DIC, IDIMethod
 from .video_reader import VideoReader
 
 method_mappings = {
     "LucasKanade": LucasKanade,
     "SimplifiedOpticalFlow": SimplifiedOpticalFlow,
+    "SimplifiedOpticalFlowPyramid": SimplifiedOpticalFlowPyramid,
     "DirectionalLucasKanade": DirectionalLucasKanade,
     "DIC": DIC,
 }

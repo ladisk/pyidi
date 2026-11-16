@@ -836,6 +836,7 @@ def test_a_preset_costs_one_evaluation_not_two():
     try:
         before = gui.pipeline.store.n_evaluations
         gui.set_direction(1.0, 1.0)
+        gui.flush_refresh()
         assert gui.pipeline.store.n_evaluations == before + 1
         row, col = (spin.value() for spin in gui.direction_spins)
         assert (row, col) == pytest.approx((2 ** -0.5, 2 ** -0.5), abs=1e-3)
